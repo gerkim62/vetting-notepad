@@ -1408,6 +1408,23 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+// Clamp minimum window width to 250px on window resize
+let resizeClampTimer = null;
+window.addEventListener('resize', () => {
+  if (typeof chrome !== 'undefined' && chrome.windows && chrome.windows.getCurrent) {
+    if (window.outerWidth < 250) {
+      if (resizeClampTimer) clearTimeout(resizeClampTimer);
+      resizeClampTimer = setTimeout(() => {
+        chrome.windows.getCurrent((w) => {
+          if (w && typeof w.width === 'number' && w.width < 250) {
+            chrome.windows.update(w.id, { width: 250 });
+          }
+        });
+      }, 50);
+    }
+  }
+});
+
 /* ==========================================================================
    Initialization
    ========================================================================== */

@@ -105,6 +105,7 @@
 html {
   height: 100%;
   width: 100%;
+  min-width: 250px;
 }
 body {
   height: 100%;
@@ -123,6 +124,7 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
 
 #app {
   width: 100%;
+  min-width: 250px;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -133,6 +135,7 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
 .views-root {
   flex: 1;
   min-height: 0;
+  min-width: 250px;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -733,34 +736,44 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   background: var(--color-danger-soft);
 }
 
-/* Static Topbar Alert / Message Banner with Shake Effect */
+/* Floating Overlay Toast Notification with Shake Effect (Zero Layout Shifts) */
 .top-banner {
-  flex: none;
+  position: absolute;
+  top: 5px;
+  left: 6px;
+  right: 6px;
+  z-index: 100;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 6px;
   padding: 5px 8px;
-  background: var(--bg-panel-alt);
-  border-bottom: 1px solid var(--border-line);
+  background: var(--bg-panel);
+  border: 1px solid var(--border-line);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
   font-size: 11px;
   color: var(--text-main);
+  backdrop-filter: blur(8px);
   animation: bannerShake 0.4s ease-in-out;
 }
 .top-banner.banner-info {
-  background: var(--saf-emerald-soft);
+  background: var(--bg-panel);
   color: var(--saf-emerald);
-  border-bottom-color: var(--saf-emerald);
+  border-color: var(--saf-emerald);
+  box-shadow: 0 4px 12px var(--saf-emerald-glow);
 }
 .top-banner.banner-warn {
-  background: var(--color-warn-soft);
+  background: var(--bg-panel);
   color: var(--color-warn);
-  border-bottom-color: var(--color-warn);
+  border-color: var(--color-warn);
+  box-shadow: 0 4px 12px var(--color-warn-soft);
 }
 .top-banner.banner-danger {
-  background: var(--color-danger-soft);
+  background: var(--bg-panel);
   color: var(--color-danger);
-  border-bottom-color: var(--color-danger);
+  border-color: var(--color-danger);
+  box-shadow: 0 4px 12px var(--color-danger-soft);
 }
 .top-banner-msg {
   flex: 1;
