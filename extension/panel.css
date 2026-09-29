@@ -522,8 +522,8 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   color: var(--color-danger);
   font-weight: 700;
 }
-.pf-btn.fail.active svg path {
-  fill: var(--color-danger);
+.pf-btn.fail.active svg {
+  stroke: var(--color-danger);
 }
 .pf-btn.pass.active {
   background: var(--saf-emerald);
@@ -631,7 +631,7 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   border: 1px solid var(--border-line);
   border-radius: var(--radius-md);
   padding: 6px 8px;
-  max-height: 100px;
+  max-height: 122px; /* Fits 6 lines cleanly before scrolling (+1 line) */
   overflow-y: auto;
   display: none;
 }
@@ -643,6 +643,72 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   word-break: break-word;
 }
 .preview-drawer pre.empty { color: var(--text-dim); font-style: italic; }
+
+/* Comment Suggestions Floating Menu (Searchable Select Style) */
+.comment-container {
+  position: relative;
+}
+
+.comment-suggestions-menu {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 140px;
+  overflow-y: auto;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-line);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  z-index: 80;
+  padding: 3px 0;
+  display: none;
+  list-style: none;
+  margin: 0;
+}
+.comment-suggestions-menu.open {
+  display: block;
+  animation: slideUp 0.15s ease-out;
+}
+.comment-suggestions-menu li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 4px 8px;
+  font-size: 11px;
+  cursor: pointer;
+  color: var(--text-main);
+  transition: background 0.12s ease;
+}
+.comment-suggestions-menu li:hover {
+  background: var(--bg-hover);
+}
+.comment-suggestions-menu li .cs-text {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.comment-suggestions-menu li .cs-del {
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 3px;
+  color: var(--text-dim);
+  cursor: pointer;
+  flex: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  transition: all 0.12s ease;
+}
+.comment-suggestions-menu li .cs-del:hover {
+  color: var(--color-danger);
+  background: var(--color-danger-soft);
+}
 
 .toast-shelf {
   position: absolute;

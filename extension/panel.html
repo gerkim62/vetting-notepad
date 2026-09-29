@@ -40,10 +40,10 @@
       <div class="field-container comment-container">
         <div class="material-field" id="commentFieldBox">
           <label class="mat-label" for="commentInput">Comment (optional)</label>
-          <input type="text" class="mat-input" id="commentInput" list="commentSuggestions" autocomplete="off" spellcheck="false">
-          <span class="mat-underline"></span>
+          <input type="text" class="mat-input" id="commentInput" autocomplete="off" spellcheck="false">
+          <div class="mat-underline-continuous"></div>
         </div>
-        <datalist id="commentSuggestions"></datalist>
+        <ul class="comment-suggestions-menu" id="commentSuggestionsMenu" role="listbox"></ul>
       </div>
 
       <!-- Action Row -->

@@ -34,6 +34,19 @@ const Storage = {
     try {
       localStorage.setItem(key, JSON.stringify(value));
     } catch (e) {}
+  },
+  async setMultiple(obj) {
+    if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+      try {
+        await chrome.storage.local.set(obj);
+        return;
+      } catch (e) {}
+    }
+    try {
+      for (const [k, v] of Object.entries(obj)) {
+        localStorage.setItem(k, JSON.stringify(v));
+      }
+    } catch (e) {}
   }
 };
 
@@ -112,7 +125,7 @@ function applyTheme(theme) {
   Storage.set('vpad.settings', settings);
 }
 
-const saveTypes = () => { Storage.set('vpad.types', types); Storage.set('vpad.active', activeTypeId); };
+const saveTypes = () => { Storage.setMultiple({ 'vpad.types': types, 'vpad.active': activeTypeId }); };
 const saveComments = () => { Storage.set('vpad.comments', savedComments); };
 
 /* ==========================================================================
@@ -517,12 +530,12 @@ function createRowHtml(it, kind, idx) {
         </div>
       </div>
 
-      <!-- Pass / Fail Action Icons: Flag ⚑ and Check ✓ -->
+      <!-- Pass / Fail Action Icons: Ban ⊘ and Check ✓ -->
       <div class="status-actions">
-        <button type="button" class="pf-btn fail ${st === 'failed' ? 'active' : ''}" data-status-btn="failed" data-id="${it.id}" title="Flag as Failed" aria-label="Flag ${escapeHtml(it.label)} as Failed">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
-            <line x1="4" y1="22" x2="4" y2="15"/>
+        <button type="button" class="pf-btn fail ${st === 'failed' ? 'active' : ''}" data-status-btn="failed" data-id="${it.id}" title="Mark as Failed" aria-label="Mark ${escapeHtml(it.label)} as Failed">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
           </svg>
         </button>
         <button type="button" class="pf-btn pass ${st === 'passed' ? 'active' : ''}" data-status-btn="passed" data-id="${it.id}" title="Mark as Passed" aria-label="Mark ${escapeHtml(it.label)} as Passed">
