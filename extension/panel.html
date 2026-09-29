@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="auto">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Vetting Notepad</title>
+  <link rel="stylesheet" href="panel.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Top Navigation Bar & Creatable Select -->
+    <header class="top-nav">
+      <div class="select-wrapper" id="selectWrapper">
+        <button class="type-trigger" id="typeTrigger" aria-haspopup="listbox" aria-expanded="false" title="Switch or create vetting type (Ctrl+K)">
+          <span class="ttl-txt" id="curTypeLabel">SIM Swap</span>
+          <svg class="chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        
+        <!-- Searchable Dropdown Popup -->
+        <div class="dropdown-menu" id="dropdownMenu">
+          <div class="search-box">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+            <input type="text" id="typeSearchInput" placeholder="Search or type new..." autocomplete="off" spellcheck="false">
+          </div>
+          <div class="type-options-list" id="typeOptionsList"></div>
+        </div>
+      </div>
+
+      <!-- 1-Click Pencil Icon to Edit Items -->
+      <button class="ibtn primary" id="btnEditType" title="Edit items for this vetting type" aria-label="Edit items">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+      </button>
+
+      <!-- Settings Icon -->
+      <button class="ibtn" id="btnSettings" title="Settings & Theme" aria-label="Settings">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </button>
+    </header>
+
+    <!-- Floating Toast Notifications Shelf -->
+    <div class="toast-shelf" id="toastShelf"></div>
+
+    <!-- Main Scrollable Form Area -->
+    <div class="scroll-pane" id="mainForm"></div>
+
+    <!-- Compact Footer -->
+    <footer class="footer-bar">
+      <!-- Collapsible Preview Drawer (Off by default) -->
+      <div class="preview-drawer" id="previewDrawer">
+        <pre id="previewText" class="empty">Nothing filled yet</pre>
+      </div>
+
+      <!-- Material Underline Comment Input with Suggestions -->
+      <div class="field-container comment-container">
+        <div class="material-field" id="commentFieldBox">
+          <label class="mat-label" for="commentInput">Comment (optional)</label>
+          <input type="text" class="mat-input" id="commentInput" list="commentSuggestions" autocomplete="off" spellcheck="false">
+          <span class="mat-underline"></span>
+        </div>
+        <datalist id="commentSuggestions"></datalist>
+      </div>
+
+      <!-- Action Row -->
+      <div class="action-row">
+        <button class="btn-action btn-eye" id="btnTogglePreview" title="Toggle copy preview" aria-label="Toggle preview">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+        <button class="btn-action" id="btnClear" title="Clear filled items">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>
+          Clear
+        </button>
+        <button class="btn-action btn-copy" id="btnCopy" title="Copy to clipboard (Ctrl+Enter)">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>
+          <span id="copyBtnText">Copy</span>
+        </button>
+      </div>
+    </footer>
+
+    <!-- Sub-view: Settings & Theme Screen -->
+    <div class="view-sub" id="settingsView" style="display:none;">
+      <div class="view-header">
+        <button class="ibtn" id="btnBackSettings" title="Back to main">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <span class="view-title">Settings</span>
+      </div>
+      <div class="scroll-pane" style="padding:10px 12px;">
+        <div class="section-head">Appearance Theme</div>
+        <div class="setting-chips" id="themeChips">
+          <button class="chip" data-theme-val="auto">Auto (System)</button>
+          <button class="chip" data-theme-val="light">Light</button>
+          <button class="chip" data-theme-val="dark">Dark</button>
+        </div>
+
+        <div class="section-head" style="margin-top:16px;">Auto-Clear Details After Copy</div>
+        <p style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">Wipes customer data once timer ends. Typing or clicking Keep cancels it.</p>
+        <div class="setting-chips" id="autoClearChips">
+          <button class="chip" data-ac="0">Off (Default)</button>
+          <button class="chip" data-ac="5">5s</button>
+          <button class="chip" data-ac="10">10s</button>
+          <button class="chip" data-ac="15">15s</button>
+          <button class="chip" data-ac="30">30s</button>
+          <button class="chip" data-ac="60">1m</button>
+        </div>
+
+        <div class="section-head" style="margin-top:16px;">
+          <span>Saved Comments</span>
+          <span id="commentCountBadge" style="font-size:10px;color:var(--text-dim);">0 saved</span>
+        </div>
+        <div class="comment-list" id="savedCommentList"></div>
+
+        <div class="section-head" style="margin-top:20px;">Data Management</div>
+        <button class="btn-action" id="btnResetAll" style="width:100%;color:var(--color-danger);border-color:var(--border-line);">
+          Reset Vetting Types to Defaults
+        </button>
+      </div>
+    </div>
+
+    <!-- Sub-view: Edit Vetting Items Screen -->
+    <div class="view-sub" id="editView" style="display:none;">
+      <div class="view-header">
+        <button class="ibtn" id="btnBackEdit" title="Back to main">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+        </button>
+        <span class="view-title">Edit Vetting Items</span>
+      </div>
+      <div class="scroll-pane" style="padding:10px 12px;" id="editPane"></div>
+    </div>
+  </div>
+
+  <script src="panel.js"></script>
+</body>
+</html>
