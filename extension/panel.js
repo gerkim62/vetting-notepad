@@ -1,13 +1,10 @@
 /**
  * Vetting Notepad — Chrome Extension Controller
- * Pure Javascript, no heavy dependencies, fast & lightweight.
+ * Ultra-compact, fast, KISS, lightweight.
  */
 (() => {
 'use strict';
 
-/* ==========================================================================
-   State & Storage Handlers (chrome.storage.local with localStorage fallback)
-   ========================================================================== */
 const uid = () => Math.random().toString(36).slice(2, 8);
 
 const Storage = {
@@ -100,13 +97,14 @@ let savedComments = [
 ];
 let activeTypeId = '';
 let formValues = {};
+let itemStatus = {};
 let previewOpen = false;
 let autoClearTimer = null;
 let autoClearSeconds = 0;
-let activeToastAutoClear = null;
 
 const curType = () => types.find(t => t.id === activeTypeId) || types[0];
 const curValues = () => (formValues[activeTypeId] || (formValues[activeTypeId] = {}));
+const curStatus = () => (itemStatus[activeTypeId] || (itemStatus[activeTypeId] = {}));
 
 function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
@@ -118,7 +116,189 @@ const saveTypes = () => { Storage.set('vpad.types', types); Storage.set('vpad.ac
 const saveComments = () => { Storage.set('vpad.comments', savedComments); };
 
 /* ==========================================================================
-   Toast Notification System
+   Reusable CreatableSelect Component
+   ========================================================================== */
+class CreatableSelect {
+  static n = 0;
+  constructor(root, o = {}) {
+    this.o = { options: [], value: null, placeholder: 'Select or type...', onChange: null, onCreate: null, ...o };
+    this.opts = this.o.options.map(CreatableSelect.norm);
+    this.val = this.o.value !== null ? String(this.o.value) : (this.opts[0] ? this.opts[0].value : null);
+    this.q = ''; this.dirty = false; this.isOpen = false; this.idx = 0; this.items = [];
+    this.id = 'cs' + (++CreatableSelect.n);
+    this.root = root;
+    this.renderSkeleton();
+    this.sync();
+  }
+
+  static norm(x) {
+    return typeof x === 'object' ? { value: String(x.value), label: String(x.label ?? x.value) } : { value: String(x), label: String(x) };
+  }
+
+  get selected() {
+    return this.opts.find(o => o.value === this.val) || null;
+  }
+
+  setOptions(newOpts, newVal = null) {
+    this.opts = newOpts.map(CreatableSelect.norm);
+    if (newVal !== null) this.val = String(newVal);
+    this.sync();
+    this.render();
+  }
+
+  renderSkeleton() {
+    this.root.innerHTML = `
+      <div class="box">
+        <input role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="${this.id}-l" autocomplete="off" spellcheck="false" placeholder="${this.o.placeholder}">
+        <span class="ctl">
+          <button type="button" class="tog" tabindex="-1" aria-label="Toggle">
+            <svg class="arrow" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+          </button>
+        </span>
+      </div>
+      <ul id="${this.id}-l" role="listbox"></ul>
+    `;
+    this.input = this.root.querySelector('input');
+    this.list = this.root.querySelector('ul');
+    this.box = this.root.querySelector('.box');
+
+    this.box.addEventListener('click', () => this.open());
+    this.root.querySelector('.tog').addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.isOpen ? this.close() : this.open();
+    });
+
+    this.list.addEventListener('mousedown', e => e.preventDefault());
+    this.list.addEventListener('click', e => {
+      const li = e.target.closest('li[data-i]');
+      if (li) this.pick(this.items[+li.dataset.i]);
+    });
+
+    this.input.addEventListener('focus', () => {
+      this.root.classList.add('focus');
+      this.input.select();
+      this.sync();
+    });
+    this.input.addEventListener('blur', () => {
+      this.root.classList.remove('focus');
+      this.close();
+    });
+    this.input.addEventListener('input', () => {
+      this.dirty = true;
+      this.q = this.input.value;
+      this.idx = 0;
+      this.open();
+      this.render();
+    });
+    this.input.addEventListener('keydown', e => this.key(e));
+  }
+
+  sync() {
+    if (!this.dirty) {
+      this.input.value = this.selected ? this.selected.label : '';
+    }
+  }
+
+  open() {
+    if (this.isOpen) return;
+    this.isOpen = true;
+    this.root.classList.add('open');
+    this.input.setAttribute('aria-expanded', 'true');
+    this.render();
+    this.sync();
+  }
+
+  close() {
+    if (!this.isOpen && !this.dirty) return;
+    this.isOpen = false;
+    this.dirty = false;
+    this.q = '';
+    this.root.classList.remove('open');
+    this.input.setAttribute('aria-expanded', 'false');
+    this.sync();
+  }
+
+  hl(label) {
+    const q = this.q.trim();
+    if (!q) return CreatableSelect.esc(label);
+    const i = label.toLowerCase().indexOf(q.toLowerCase());
+    if (i < 0) return CreatableSelect.esc(label);
+    return CreatableSelect.esc(label.slice(0, i)) + '<mark>' + CreatableSelect.esc(label.slice(i, i + q.length)) + '</mark>' + CreatableSelect.esc(label.slice(i + q.length));
+  }
+
+  static esc(s) {
+    return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  render() {
+    if (!this.isOpen) return;
+    const q = this.q.trim().toLowerCase();
+    this.items = this.opts.filter(o => !q || o.label.toLowerCase().includes(q)).map(o => ({ o }));
+    const exact = this.opts.some(o => o.label.toLowerCase() === q);
+    if (q && !exact) {
+      this.items.push({ create: this.q.trim() });
+    }
+
+    this.idx = Math.min(this.idx, Math.max(this.items.length - 1, 0));
+    const tick = '<svg class="tick" width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>';
+
+    this.list.innerHTML = this.items.length ? this.items.map((it, i) => it.create !== undefined
+      ? `<li role="option" id="${this.id}-o${i}" data-i="${i}" class="create">+ Create “${CreatableSelect.esc(it.create)}”</li>`
+      : `<li role="option" id="${this.id}-o${i}" data-i="${i}" aria-selected="${it.o.value === this.val}"><span>${this.hl(it.o.label)}</span>${tick}</li>`).join('')
+      : '<li class="empty">No results</li>';
+
+    this.paintActive(true);
+  }
+
+  paintActive(scroll) {
+    this.list.querySelectorAll('li.active').forEach(l => l.classList.remove('active'));
+    const el = this.list.querySelector(`li[data-i="${this.idx}"]`);
+    if (el) {
+      el.classList.add('active');
+      this.input.setAttribute('aria-activedescendant', el.id);
+      if (scroll) el.scrollIntoView({ block: 'nearest' });
+    }
+  }
+
+  pick(it) {
+    if (!it) return;
+    let o = it.o;
+    if (it.create !== undefined) {
+      o = { value: uid(), label: it.create };
+      this.opts.push(o);
+      this.o.onCreate && this.o.onCreate(o);
+    }
+    this.val = o.value;
+    this.close();
+    this.sync();
+    this.o.onChange && this.o.onChange(this.val, this);
+  }
+
+  key(e) {
+    const k = e.key;
+    if (k === 'ArrowDown' || k === 'ArrowUp') {
+      e.preventDefault();
+      if (!this.isOpen) return this.open();
+      const n = this.items.length;
+      if (!n) return;
+      this.idx = (this.idx + (k === 'ArrowDown' ? 1 : -1) + n) % n;
+      this.paintActive(true);
+    } else if (k === 'Enter') {
+      if (this.isOpen) {
+        e.preventDefault();
+        this.pick(this.items[this.idx]);
+      }
+    } else if (k === 'Escape') {
+      if (this.isOpen) {
+        e.preventDefault();
+        this.close();
+      }
+    }
+  }
+}
+
+/* ==========================================================================
+   Minimal Toast Shelf
    ========================================================================== */
 const toastShelf = document.getElementById('toastShelf');
 
@@ -148,10 +328,10 @@ function showToast(message, actionLabel = null, actionCallback = null, durationM
   if (durationMs > 0) {
     setTimeout(() => {
       if (toast.isConnected) {
-        toast.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+        toast.style.transition = 'opacity 0.18s ease, transform 0.18s ease';
         toast.style.opacity = '0';
-        toast.style.transform = 'translateY(-6px)';
-        setTimeout(() => toast.remove(), 220);
+        toast.style.transform = 'translateY(-4px)';
+        setTimeout(() => toast.remove(), 200);
       }
     }, durationMs);
   }
@@ -163,18 +343,22 @@ function showToast(message, actionLabel = null, actionCallback = null, durationM
    ========================================================================== */
 function buildCopyText(t) {
   const v = curValues();
+  const st = curStatus();
   const lines = [];
-  
-  for (const it of t.required) {
-    const val = (v[it.id] || '').trim();
-    if (val) lines.push(`${it.label}: ${val}`);
-  }
-  for (const it of t.optional) {
-    const val = (v[it.id] || '').trim();
-    if (val) lines.push(`${it.label}: ${val}`);
-  }
+
   const c = (v._comment || '').trim();
   if (c) lines.push(c);
+
+  const allItems = [...t.required, ...t.optional];
+  for (const it of allItems) {
+    const val = (v[it.id] || '').trim();
+    if (val) {
+      let line = `${it.label}: ${val}`;
+      if (st[it.id] === 'passed') line += ' (Passed)';
+      else if (st[it.id] === 'failed') line += ' (Failed)';
+      lines.push(line);
+    }
+  }
 
   return lines.join('\n');
 }
@@ -201,18 +385,19 @@ async function writeToClipboard(text) {
 }
 
 /* ==========================================================================
-   Auto-Clear Countdown
+   Auto-Clear Countdown on Clear Button
    ========================================================================== */
+const btnClear = document.getElementById('btnClear');
+const clearBtnText = document.getElementById('clearBtnText');
+
 function stopAutoClear() {
   if (autoClearTimer) {
     clearInterval(autoClearTimer);
     autoClearTimer = null;
   }
   autoClearSeconds = 0;
-  if (activeToastAutoClear && activeToastAutoClear.isConnected) {
-    activeToastAutoClear.remove();
-    activeToastAutoClear = null;
-  }
+  btnClear.classList.remove('countdown-active');
+  clearBtnText.textContent = 'Clear';
 }
 
 function startAutoClear(typeId) {
@@ -220,65 +405,62 @@ function startAutoClear(typeId) {
   if (!settings.autoClear || settings.autoClear <= 0) return;
 
   autoClearSeconds = settings.autoClear;
-  const updateToast = () => {
-    if (activeToastAutoClear && activeToastAutoClear.isConnected) {
-      activeToastAutoClear.querySelector('.toast-msg').innerHTML = `Auto-clearing in <b>${autoClearSeconds}s</b>`;
-    }
-  };
-
-  activeToastAutoClear = showToast(
-    `Auto-clearing in <b>${autoClearSeconds}s</b>`,
-    'Keep',
-    () => stopAutoClear(),
-    0
-  );
+  btnClear.classList.add('countdown-active');
+  clearBtnText.textContent = `Cancel (${autoClearSeconds}s)`;
 
   autoClearTimer = setInterval(() => {
     autoClearSeconds--;
     if (autoClearSeconds <= 0) {
       stopAutoClear();
       formValues[typeId] = {};
+      itemStatus[typeId] = {};
       renderForm();
       updateCommentInput();
       syncPreview();
-      showToast('Customer details auto-cleared');
     } else {
-      updateToast();
+      clearBtnText.textContent = `Cancel (${autoClearSeconds}s)`;
     }
   }, 1000);
 }
 
-/* ==========================================================================
-   Dynamic Input Guide Calculator
-   ========================================================================== */
-function calculateGuide(val, maxLen) {
-  if (!maxLen || maxLen <= 0) return { slots: '', count: '', match: false, overflow: false };
-  const n = val.length;
-  const slots = [];
-  for (let i = 0; i < maxLen; i++) {
-    if (i < n) slots.push(val[i]);
-    else slots.push('_');
+btnClear.onclick = () => {
+  if (autoClearTimer) {
+    stopAutoClear();
+    return;
   }
-  if (n > maxLen) {
-    for (let i = maxLen; i < n; i++) slots.push(val[i]);
+
+  const v = curValues();
+  if (!Object.values(v).some(x => x && x.trim())) {
+    return;
   }
-  return {
-    slots: slots.join(' '),
-    count: `${n}/${maxLen}`,
-    match: n === maxLen,
-    overflow: n > maxLen
-  };
-}
+
+  const snapVal = Object.assign({}, v);
+  const snapStatus = Object.assign({}, curStatus());
+
+  formValues[activeTypeId] = {};
+  itemStatus[activeTypeId] = {};
+  stopAutoClear();
+  renderForm();
+  updateCommentInput();
+  syncPreview();
+
+  showToast('Details cleared', 'Undo', () => {
+    formValues[activeTypeId] = snapVal;
+    itemStatus[activeTypeId] = snapStatus;
+    renderForm();
+    updateCommentInput();
+    syncPreview();
+  }, 4000);
+};
 
 /* ==========================================================================
-   Main Form Rendering
+   Main Form Rendering (Masked Underline Slots)
    ========================================================================== */
 const mainForm = document.getElementById('mainForm');
 
 function renderForm() {
   const t = curType();
   if (!t) return;
-  document.getElementById('curTypeLabel').textContent = t.name || 'Untitled';
 
   let html = '';
 
@@ -303,33 +485,55 @@ function createRowHtml(it, kind, idx) {
   const val = curValues()[it.id] || '';
   const isFilled = val.length > 0;
   const isMandatory = kind === 'mandatory';
+  const st = curStatus()[it.id] || '';
+  const isExpanded = isFilled || !!st;
+
+  let underlineHtml = '';
+  if (it.len > 0) {
+    let slots = '';
+    for (let i = 0; i < it.len; i++) {
+      slots += `<span class="slot" data-slot-idx="${i}"></span>`;
+    }
+    underlineHtml = `
+      <div class="mat-underline-wrap">
+        <div class="mat-underline-track ${st ? 'status-' + st : ''}" id="track_${it.id}">${slots}</div>
+        <div class="mat-underline-rest"></div>
+      </div>
+    `;
+  } else {
+    underlineHtml = `<div class="mat-underline-continuous"></div>`;
+  }
 
   return `
-    <div class="item-row ${kind}" data-id="${it.id}" data-kind="${kind}" data-index="${idx}">
-      <div class="left-gutter">
-        ${isMandatory 
-          ? `<span class="mandatory-dot ${isFilled ? 'filled' : ''}" title="Required Field"></span>`
-          : `<div class="drag-handle" draggable="true" title="Drag to reorder" aria-label="Reorder">
-               <svg width="10" height="14" viewBox="0 0 10 16" fill="currentColor">
-                 <circle cx="2" cy="2" r="1.5"/><circle cx="8" cy="2" r="1.5"/>
-                 <circle cx="2" cy="8" r="1.5"/><circle cx="8" cy="8" r="1.5"/>
-                 <circle cx="2" cy="14" r="1.5"/><circle cx="8" cy="14" r="1.5"/>
-               </svg>
-             </div>`
-        }
-      </div>
-
+    <div class="item-row ${kind}" data-id="${it.id}">
       <div class="field-container">
-        <div class="material-field ${isFilled ? 'has-value' : ''}">
-          <label class="mat-label" for="inp_${it.id}">${it.label}</label>
-          <input type="text" class="mat-input" id="inp_${it.id}" data-id="${it.id}" value="${escapeHtml(val)}" autocomplete="off" spellcheck="false">
-          <span class="mat-underline"></span>
+        <div class="material-field ${isExpanded ? 'expanded' : ''} ${isFilled ? 'has-value' : ''} ${st ? 'status-' + st : ''}">
+          <label class="mat-label" for="inp_${it.id}">
+            ${escapeHtml(it.label)}${isMandatory ? ' <span class="req-mark" title="Required">*</span>' : ''}
+          </label>
+          ${it.len > 0 ? `<span class="field-counter" id="cnt_${it.id}"></span>` : ''}
+          <input type="text" class="mat-input ${it.len > 0 ? 'has-len' : ''}" id="inp_${it.id}" data-id="${it.id}" value="${escapeHtml(val)}" autocomplete="off" spellcheck="false">
+          ${underlineHtml}
         </div>
-        <div class="guide-badge" id="guide_${it.id}"></div>
       </div>
 
-      <button class="paste-btn" data-paste-id="${it.id}" title="Paste from clipboard" aria-label="Paste ${it.label}">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
+      <!-- Pass / Fail Action Icons: Flag ⚑ and Check ✓ -->
+      <div class="status-actions">
+        <button type="button" class="pf-btn fail ${st === 'failed' ? 'active' : ''}" data-status-btn="failed" data-id="${it.id}" title="Flag as Failed" aria-label="Flag ${escapeHtml(it.label)} as Failed">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
+            <line x1="4" y1="22" x2="4" y2="15"/>
+          </svg>
+        </button>
+        <button type="button" class="pf-btn pass ${st === 'passed' ? 'active' : ''}" data-status-btn="passed" data-id="${it.id}" title="Mark as Passed" aria-label="Mark ${escapeHtml(it.label)} as Passed">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m5 12 5 5L20 7"/>
+          </svg>
+        </button>
+      </div>
+
+      <button type="button" class="paste-btn" data-paste-id="${it.id}" title="Paste from clipboard" aria-label="Paste ${escapeHtml(it.label)}">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
       </button>
     </div>
   `;
@@ -357,38 +561,66 @@ function updateRowGuide(itemId) {
 
   const input = row.querySelector('.mat-input');
   const fieldBox = row.querySelector('.material-field');
-  const guideEl = row.querySelector(`#guide_${itemId}`);
-  const dot = row.querySelector('.mandatory-dot');
+  const track = row.querySelector(`#track_${itemId}`);
+  const counter = row.querySelector(`#cnt_${itemId}`);
 
   const val = input.value;
-  fieldBox.classList.toggle('has-value', val.length > 0);
-  if (dot) dot.classList.toggle('filled', val.trim().length > 0);
+  const n = val.length;
+  const isFocused = document.activeElement === input;
+  const hasStatus = !!curStatus()[itemId];
 
-  if (it.len > 0) {
-    const { slots, count, match, overflow } = calculateGuide(val, it.len);
-    guideEl.innerHTML = `
-      <span class="guide-slots">${slots}</span>
-      <span class="guide-count ${match ? 'match' : overflow ? 'overflow' : ''}">${count}</span>
-    `;
-  } else {
-    guideEl.innerHTML = '';
+  fieldBox.classList.toggle('has-value', n > 0);
+  fieldBox.classList.toggle('expanded', n > 0 || isFocused || hasStatus);
+
+  if (track && it.len > 0) {
+    const slots = track.querySelectorAll('.slot');
+    slots.forEach((slot, idx) => {
+      slot.classList.toggle('filled', idx < n);
+      // Only highlight cursor slot if focused and not full, NEVER when empty and blurred!
+      slot.classList.toggle('current', isFocused && idx === n && n < it.len);
+    });
+
+    if (counter) {
+      if (n > 0) {
+        counter.classList.add('visible');
+        counter.textContent = `${n}/${it.len}${n === it.len ? ' ✓' : ''}`;
+        counter.classList.toggle('match', n === it.len);
+        counter.classList.toggle('overflow', n > it.len);
+      } else {
+        counter.classList.remove('visible');
+        counter.textContent = '';
+      }
+    }
   }
 }
 
 /* ==========================================================================
-   Events & Drag-and-Drop Reordering
+   Events & Status Pass / Fail
    ========================================================================== */
 function bindFormEvents() {
   mainForm.querySelectorAll('.mat-input').forEach(input => {
     const box = input.closest('.material-field');
+    const id = input.dataset.id;
 
-    input.addEventListener('focus', () => box.classList.add('is-focused'));
-    input.addEventListener('blur', () => box.classList.remove('is-focused'));
+    input.addEventListener('focus', () => {
+      box.classList.add('is-focused', 'expanded');
+      updateRowGuide(id);
+    });
+
+    input.addEventListener('blur', () => {
+      box.classList.remove('is-focused');
+      const val = input.value;
+      const hasStatus = !!curStatus()[id];
+      if (val.length === 0 && !hasStatus) {
+        box.classList.remove('expanded');
+      }
+      updateRowGuide(id);
+    });
 
     input.addEventListener('input', () => {
       stopAutoClear();
-      curValues()[input.dataset.id] = input.value;
-      updateRowGuide(input.dataset.id);
+      curValues()[id] = input.value;
+      updateRowGuide(id);
       syncPreview();
     });
 
@@ -406,6 +638,40 @@ function bindFormEvents() {
     });
   });
 
+  mainForm.querySelectorAll('[data-status-btn]').forEach(btn => {
+    btn.onclick = () => {
+      const id = btn.dataset.id;
+      const targetStatus = btn.dataset.statusBtn;
+      const cur = curStatus()[id];
+
+      const newStatus = cur === targetStatus ? null : targetStatus;
+      curStatus()[id] = newStatus;
+
+      const row = btn.closest('.item-row');
+      const box = row.querySelector('.material-field');
+      const track = row.querySelector('.mat-underline-track');
+      const input = row.querySelector('.mat-input');
+
+      box.classList.remove('status-passed', 'status-failed');
+      if (track) track.classList.remove('status-passed', 'status-failed');
+
+      if (newStatus) {
+        box.classList.add(`status-${newStatus}`, 'expanded');
+        if (track) track.classList.add(`status-${newStatus}`);
+      } else {
+        if (input && input.value.trim().length === 0 && document.activeElement !== input) {
+          box.classList.remove('expanded');
+        }
+      }
+
+      row.querySelectorAll('.pf-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.statusBtn === newStatus);
+      });
+
+      syncPreview();
+    };
+  });
+
   mainForm.querySelectorAll('.paste-btn').forEach(btn => {
     btn.onclick = async () => {
       const id = btn.dataset.pasteId;
@@ -416,78 +682,21 @@ function bindFormEvents() {
         input.value = text;
         curValues()[id] = text;
         stopAutoClear();
+        const box = input.closest('.material-field');
+        if (box) box.classList.add('expanded');
         updateRowGuide(id);
         syncPreview();
         input.focus();
-        showToast('Pasted into field');
+
+        input.style.transition = 'background 0.2s ease';
+        input.style.background = 'var(--saf-emerald-soft)';
+        setTimeout(() => { input.style.background = 'transparent'; }, 400);
       } catch (err) {
-        showToast('Clipboard access denied. Press Ctrl+V directly.', null, null, 3000, 'warn');
+        showToast('Clipboard access denied', null, null, 2500, 'warn');
         input.focus();
       }
     };
   });
-
-  let draggedId = null;
-
-  mainForm.querySelectorAll('.item-row.optional').forEach(row => {
-    const handle = row.querySelector('.drag-handle');
-    if (!handle) return;
-
-    handle.addEventListener('dragstart', (e) => {
-      draggedId = row.dataset.id;
-      row.classList.add('dragging');
-      e.dataTransfer.effectAllowed = 'move';
-      e.dataTransfer.setData('text/plain', draggedId);
-    });
-
-    handle.addEventListener('dragend', () => {
-      row.classList.remove('dragging');
-      clearDropIndicators();
-      draggedId = null;
-    });
-
-    row.addEventListener('dragover', (e) => {
-      if (!draggedId || draggedId === row.dataset.id) return;
-      e.preventDefault();
-      clearDropIndicators();
-      const rect = row.getBoundingClientRect();
-      const mid = rect.top + rect.height / 2;
-      if (e.clientY < mid) row.classList.add('drag-over-top');
-      else row.classList.add('drag-over-bottom');
-    });
-
-    row.addEventListener('drop', (e) => {
-      e.preventDefault();
-      if (!draggedId || draggedId === row.dataset.id) return;
-      const rect = row.getBoundingClientRect();
-      const insertAfter = e.clientY >= rect.top + rect.height / 2;
-
-      reorderOptionalItem(draggedId, row.dataset.id, insertAfter);
-      clearDropIndicators();
-    });
-  });
-}
-
-function clearDropIndicators() {
-  mainForm.querySelectorAll('.drag-over-top, .drag-over-bottom').forEach(el => {
-    el.classList.remove('drag-over-top', 'drag-over-bottom');
-  });
-}
-
-function reorderOptionalItem(sourceId, targetId, insertAfter) {
-  const t = curType();
-  const list = t.optional;
-  const fromIdx = list.findIndex(x => x.id === sourceId);
-  if (fromIdx < 0) return;
-
-  const [item] = list.splice(fromIdx, 1);
-  let toIdx = list.findIndex(x => x.id === targetId);
-  if (insertAfter) toIdx++;
-
-  list.splice(toIdx, 0, item);
-  saveTypes();
-  renderForm();
-  showToast('Items reordered');
 }
 
 /* ==========================================================================
@@ -497,12 +706,21 @@ const commentInput = document.getElementById('commentInput');
 const commentFieldBox = document.getElementById('commentFieldBox');
 const commentSuggestions = document.getElementById('commentSuggestions');
 
-commentInput.addEventListener('focus', () => commentFieldBox.classList.add('is-focused'));
-commentInput.addEventListener('blur', () => commentFieldBox.classList.remove('is-focused'));
+commentInput.addEventListener('focus', () => {
+  commentFieldBox.classList.add('is-focused', 'expanded');
+});
+commentInput.addEventListener('blur', () => {
+  commentFieldBox.classList.remove('is-focused');
+  if (commentInput.value.trim().length === 0) {
+    commentFieldBox.classList.remove('expanded');
+  }
+});
 commentInput.addEventListener('input', () => {
   stopAutoClear();
   curValues()._comment = commentInput.value;
-  commentFieldBox.classList.toggle('has-value', commentInput.value.length > 0);
+  const hasVal = commentInput.value.length > 0;
+  commentFieldBox.classList.toggle('has-value', hasVal);
+  commentFieldBox.classList.toggle('expanded', hasVal || document.activeElement === commentInput);
   syncPreview();
 });
 commentInput.addEventListener('keydown', (e) => {
@@ -515,7 +733,9 @@ commentInput.addEventListener('keydown', (e) => {
 function updateCommentInput() {
   const v = curValues()._comment || '';
   commentInput.value = v;
-  commentFieldBox.classList.toggle('has-value', v.length > 0);
+  const hasVal = v.length > 0;
+  commentFieldBox.classList.toggle('has-value', hasVal);
+  commentFieldBox.classList.toggle('expanded', hasVal || document.activeElement === commentInput);
   commentSuggestions.innerHTML = savedComments.map(c => `<option value="${escapeHtml(c)}">`).join('');
 }
 
@@ -570,167 +790,59 @@ async function doCopy() {
   }
 
   btnCopy.classList.add('copied-success');
-  copyBtnText.textContent = 'Copied!';
+  copyBtnText.textContent = 'Copied ✓';
   setTimeout(() => {
     btnCopy.classList.remove('copied-success');
     copyBtnText.textContent = 'Copy';
-  }, 1200);
-
-  const missing = t.required.filter(it => !(curValues()[it.id] || '').trim()).length;
-  if (missing > 0) {
-    showToast(`Copied, but ${missing} required ${missing === 1 ? 'field is' : 'fields are'} blank`, null, null, 3000, 'warn');
-  } else {
-    showToast('Copied to clipboard!');
-  }
+  }, 1400);
 
   startAutoClear(t.id);
 }
 btnCopy.onclick = doCopy;
 
-const btnClear = document.getElementById('btnClear');
-btnClear.onclick = () => {
-  const v = curValues();
-  if (!Object.values(v).some(x => x && x.trim())) {
-    showToast('Already empty');
-    return;
-  }
-
-  const snapshot = Object.assign({}, v);
-  formValues[activeTypeId] = {};
-  stopAutoClear();
-  renderForm();
-  updateCommentInput();
-  syncPreview();
-
-  showToast('Details cleared', 'Undo', () => {
-    formValues[activeTypeId] = snapshot;
-    renderForm();
-    updateCommentInput();
-    syncPreview();
-    showToast('Restored previous details');
-  }, 4500);
-};
-
 /* ==========================================================================
-   Creatable Searchable Select Dropdown
+   Mount CreatableSelect for Vetting Types
    ========================================================================== */
-const typeTrigger = document.getElementById('typeTrigger');
-const dropdownMenu = document.getElementById('dropdownMenu');
-const typeSearchInput = document.getElementById('typeSearchInput');
-const typeOptionsList = document.getElementById('typeOptionsList');
+const typeSelectMount = document.getElementById('typeSelectMount');
+let typeSelectComponent = null;
 
-typeTrigger.onclick = (e) => {
-  e.stopPropagation();
-  toggleDropdown();
-};
-
-function toggleDropdown(forceState = null) {
-  const isOpen = forceState !== null ? forceState : !dropdownMenu.classList.contains('open');
-  if (isOpen) {
-    dropdownMenu.classList.add('open');
-    typeTrigger.setAttribute('aria-expanded', 'true');
-    typeSearchInput.value = '';
-    renderDropdownOptions('');
-    setTimeout(() => typeSearchInput.focus(), 30);
-  } else {
-    dropdownMenu.classList.remove('open');
-    typeTrigger.setAttribute('aria-expanded', 'false');
-  }
-}
-
-document.addEventListener('click', (e) => {
-  if (!e.target.closest('#selectWrapper')) {
-    toggleDropdown(false);
-  }
-});
-
-typeSearchInput.addEventListener('input', () => {
-  renderDropdownOptions(typeSearchInput.value.trim());
-});
-
-typeSearchInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') {
-    toggleDropdown(false);
-  } else if (e.key === 'Enter') {
-    e.preventDefault();
-    const firstOpt = typeOptionsList.querySelector('.type-opt');
-    if (firstOpt) firstOpt.click();
-  }
-});
-
-function renderDropdownOptions(q) {
-  const lower = q.toLowerCase();
-  const matched = types.filter(t => t.name.toLowerCase().includes(lower));
-
-  let html = '';
-  matched.forEach(t => {
-    const isSelected = t.id === activeTypeId;
-    html += `
-      <div class="type-opt ${isSelected ? 'selected' : ''}" data-type-id="${t.id}">
-        <span>${escapeHtml(t.name)}</span>
-        ${isSelected ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
-      </div>
-    `;
-  });
-
-  if (q && !types.some(t => t.name.toLowerCase() === lower)) {
-    html += `
-      <div class="type-opt create-opt" data-create-name="${escapeHtml(q)}">
-        <span>+ Create "${escapeHtml(q)}"</span>
-      </div>
-    `;
-  }
-
-  if (!q) {
-    html += `
-      <div class="type-opt create-opt" data-create-new="true">
-        <span>+ New Vetting Type</span>
-      </div>
-    `;
-  }
-
-  typeOptionsList.innerHTML = html;
-
-  typeOptionsList.querySelectorAll('.type-opt').forEach(opt => {
-    opt.onclick = () => {
-      if (opt.dataset.typeId) {
-        switchType(opt.dataset.typeId);
-      } else if (opt.dataset.createName) {
-        createNewType(opt.dataset.createName);
-      } else if (opt.dataset.createNew) {
-        createNewType('');
-      }
-      toggleDropdown(false);
-    };
+function initTypeSelect() {
+  typeSelectComponent = new CreatableSelect(typeSelectMount, {
+    options: types.map(t => ({ value: t.id, label: t.name })),
+    value: activeTypeId,
+    placeholder: 'Vetting type...',
+    onChange: (val) => {
+      activeTypeId = val;
+      saveTypes();
+      stopAutoClear();
+      renderForm();
+      updateCommentInput();
+    },
+    onCreate: (opt) => {
+      const newTypeObj = {
+        id: opt.value,
+        name: opt.label,
+        required: [
+          { id: uid(), label: 'Full Name', len: 0 },
+          { id: uid(), label: 'ID Number', len: 8 },
+          { id: uid(), label: 'Line Number', len: 10 }
+        ],
+        optional: []
+      };
+      types.push(newTypeObj);
+      activeTypeId = newTypeObj.id;
+      saveTypes();
+      renderForm();
+      updateCommentInput();
+      openEditView();
+    }
   });
 }
 
-function switchType(typeId) {
-  activeTypeId = typeId;
-  saveTypes();
-  renderForm();
-  updateCommentInput();
-  showToast(`Switched to ${curType().name}`);
-}
-
-function createNewType(name) {
-  const newTypeObj = {
-    id: uid(),
-    name: name || 'Untitled Vetting',
-    required: [
-      { id: uid(), label: 'Full Name', len: 0 },
-      { id: uid(), label: 'ID Number', len: 8 },
-      { id: uid(), label: 'Line Number', len: 10 }
-    ],
-    optional: []
-  };
-  types.push(newTypeObj);
-  activeTypeId = newTypeObj.id;
-  saveTypes();
-  renderForm();
-  updateCommentInput();
-  openEditView();
-  showToast(`Created ${newTypeObj.name}`);
+function refreshTypeSelect() {
+  if (typeSelectComponent) {
+    typeSelectComponent.setOptions(types.map(t => ({ value: t.id, label: t.name })), activeTypeId);
+  }
 }
 
 /* ==========================================================================
@@ -751,6 +863,7 @@ function openEditView() {
 function closeEditView() {
   editView.style.display = 'none';
   saveTypes();
+  refreshTypeSelect();
   renderForm();
 }
 
@@ -758,30 +871,30 @@ function renderEditView() {
   const t = curType();
   let html = `
     <div class="section-head" style="margin-top:0;">Vetting Type Name</div>
-    <div class="material-field has-value" style="margin-bottom:12px;">
+    <div class="material-field has-value" style="margin-bottom:10px;">
       <input type="text" class="mat-input" id="editTypeName" value="${escapeHtml(t.name)}" placeholder="e.g. SIM Swap">
-      <span class="mat-underline" style="transform:scaleX(1)"></span>
+      <div class="mat-underline-continuous" style="height:2px;background:var(--saf-emerald)"></div>
     </div>
 
     <div class="section-head">
       <span>Required Items</span>
-      <span style="font-size:10px;color:var(--text-dim);">Fixed Order</span>
+      <span style="font-size:9.5px;color:var(--text-dim);">Fixed Order</span>
     </div>
     <div id="editReqList">
       ${t.required.map((it, i) => createEditRowHtml(it, 'required', i, t.required.length)).join('')}
     </div>
-    <button class="btn-action" style="width:100%;margin-top:6px;" id="btnAddReq">+ Add Required Item</button>
+    <button class="btn-action" style="width:100%;margin-top:5px;" id="btnAddReq">+ Add Required Item</button>
 
-    <div class="section-head" style="margin-top:16px;">
+    <div class="section-head" style="margin-top:14px;">
       <span>Optional Items</span>
-      <span style="font-size:10px;color:var(--text-dim);">Reorderable</span>
+      <span style="font-size:9.5px;color:var(--text-dim);">Use ▲▼ or Alt+↑/↓ to Reorder</span>
     </div>
     <div id="editOptList">
       ${t.optional.map((it, i) => createEditRowHtml(it, 'optional', i, t.optional.length)).join('')}
     </div>
-    <button class="btn-action" style="width:100%;margin-top:6px;" id="btnAddOpt">+ Add Optional Item</button>
+    <button class="btn-action" style="width:100%;margin-top:5px;" id="btnAddOpt">+ Add Optional Item</button>
 
-    <button class="btn-action" id="btnDeleteType" style="width:100%;margin-top:24px;color:var(--color-danger);border-color:var(--border-line);">
+    <button class="btn-action" id="btnDeleteType" style="width:100%;margin-top:20px;color:var(--color-danger);border-color:var(--border-line);">
       Delete this Vetting Type
     </button>
   `;
@@ -794,13 +907,13 @@ function createEditRowHtml(it, kind, idx, total) {
   return `
     <div class="edit-row" data-id="${it.id}" data-kind="${kind}">
       <div class="arrows-col">
-        <button class="arr-btn" data-move="-1" ${idx === 0 ? 'disabled' : ''}>▲</button>
-        <button class="arr-btn" data-move="1" ${idx === total - 1 ? 'disabled' : ''}>▼</button>
+        <button type="button" class="arr-btn" data-move="-1" title="Move Up (Alt+↑)" aria-label="Move Up" ${idx === 0 ? 'disabled' : ''}>▲</button>
+        <button type="button" class="arr-btn" data-move="1" title="Move Down (Alt+↓)" aria-label="Move Down" ${idx === total - 1 ? 'disabled' : ''}>▼</button>
       </div>
       <input type="text" class="el-label" value="${escapeHtml(it.label)}" placeholder="Label name">
       <input type="number" class="el-len" value="${it.len || ''}" placeholder="len" title="Guide length in characters">
-      <button class="ibtn" data-del="true" title="Remove item" style="width:22px;height:22px;color:var(--color-danger);">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      <button type="button" class="ibtn" data-del="true" title="Remove item" style="width:20px;height:20px;color:var(--color-danger);">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
       </button>
     </div>
   `;
@@ -811,8 +924,8 @@ function bindEditEvents() {
   const nameInput = document.getElementById('editTypeName');
   nameInput.oninput = () => {
     t.name = nameInput.value || 'Untitled';
-    document.getElementById('curTypeLabel').textContent = t.name;
     saveTypes();
+    refreshTypeSelect();
   };
 
   editPane.onclick = (e) => {
@@ -832,10 +945,11 @@ function bindEditEvents() {
         if (confirm(`Delete "${t.name}"?`)) {
           types = types.filter(x => x.id !== t.id);
           delete formValues[t.id];
+          delete itemStatus[t.id];
           activeTypeId = types[0].id;
           saveTypes();
+          refreshTypeSelect();
           closeEditView();
-          showToast('Vetting type deleted');
         }
       }
       return;
@@ -843,7 +957,8 @@ function bindEditEvents() {
 
     const kind = row.dataset.kind;
     const list = kind === 'required' ? t.required : t.optional;
-    const idx = list.findIndex(x => x.id === row.dataset.id);
+    const itemId = row.dataset.id;
+    const idx = list.findIndex(x => x.id === itemId);
 
     if (e.target.closest('[data-del]')) {
       list.splice(idx, 1);
@@ -853,7 +968,53 @@ function bindEditEvents() {
       const targetIdx = idx + step;
       if (targetIdx >= 0 && targetIdx < list.length) {
         [list[idx], list[targetIdx]] = [list[targetIdx], list[idx]];
+        saveTypes();
         renderEditView();
+        const newRow = editPane.querySelector(`.edit-row[data-id="${itemId}"]`);
+        if (newRow) {
+          const btn = newRow.querySelector(`[data-move="${step}"]`) || newRow.querySelector('.arr-btn');
+          if (btn && !btn.disabled) btn.focus();
+        }
+      }
+    }
+  };
+
+  // Keyboard reordering: Alt+↑ / Alt+↓ anywhere on row, plain ↑ / ↓ on arr-btn
+  editPane.onkeydown = (e) => {
+    const row = e.target.closest('.edit-row');
+    if (!row) return;
+
+    const isAltUp = e.altKey && e.key === 'ArrowUp';
+    const isAltDown = e.altKey && e.key === 'ArrowDown';
+    const isArrBtn = e.target.classList.contains('arr-btn');
+    const isPlainUp = isArrBtn && e.key === 'ArrowUp';
+    const isPlainDown = isArrBtn && e.key === 'ArrowDown';
+
+    if (isAltUp || isAltDown || isPlainUp || isPlainDown) {
+      e.preventDefault();
+      const step = (isAltUp || isPlainUp) ? -1 : 1;
+      const kind = row.dataset.kind;
+      const list = kind === 'required' ? t.required : t.optional;
+      const itemId = row.dataset.id;
+      const idx = list.findIndex(x => x.id === itemId);
+      const targetIdx = idx + step;
+
+      if (targetIdx >= 0 && targetIdx < list.length) {
+        [list[idx], list[targetIdx]] = [list[targetIdx], list[idx]];
+        saveTypes();
+        renderEditView();
+        const newRow = editPane.querySelector(`.edit-row[data-id="${itemId}"]`);
+        if (newRow) {
+          if (isArrBtn) {
+            const btn = newRow.querySelector(`[data-move="${step}"]`) || newRow.querySelector('.arr-btn');
+            if (btn && !btn.disabled) btn.focus();
+          } else {
+            const cls = e.target.className.split(' ')[0];
+            const el = cls ? newRow.querySelector(`.${cls}`) : null;
+            if (el) el.focus();
+            else newRow.querySelector('.el-label')?.focus();
+          }
+        }
       }
     }
   };
@@ -894,7 +1055,6 @@ function renderSettingsView() {
     c.onclick = () => {
       applyTheme(c.dataset.themeVal);
       renderSettingsView();
-      showToast(`Theme set to ${c.textContent}`);
     };
   });
 
@@ -905,7 +1065,6 @@ function renderSettingsView() {
       settings.autoClear = parseInt(c.dataset.ac, 10);
       Storage.set('vpad.settings', settings);
       renderSettingsView();
-      showToast(`Auto-clear set to ${c.textContent}`);
     };
   });
 
@@ -913,13 +1072,13 @@ function renderSettingsView() {
   document.getElementById('commentCountBadge').textContent = `${savedComments.length} saved`;
 
   if (savedComments.length === 0) {
-    commentList.innerHTML = `<div style="color:var(--text-dim);font-style:italic;font-size:11px;">No saved comments yet</div>`;
+    commentList.innerHTML = `<div style="color:var(--text-dim);font-style:italic;font-size:10.5px;">No saved comments yet</div>`;
   } else {
     commentList.innerHTML = savedComments.map((c, i) => `
       <div class="comment-item">
         <span title="${escapeHtml(c)}">${escapeHtml(c)}</span>
-        <button class="ibtn" data-del-comment="${i}" style="width:20px;height:20px;color:var(--color-danger);" title="Delete comment">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        <button class="ibtn" data-del-comment="${i}" style="width:18px;height:18px;color:var(--color-danger);" title="Delete comment">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
         </button>
       </div>
     `).join('');
@@ -940,11 +1099,12 @@ function renderSettingsView() {
       types = defaultVettingTypes();
       activeTypeId = types[0].id;
       formValues = {};
+      itemStatus = {};
       saveTypes();
       settingsView.style.display = 'none';
+      refreshTypeSelect();
       renderForm();
       updateCommentInput();
-      showToast('Reset to defaults');
     }
   };
 }
@@ -959,7 +1119,10 @@ document.addEventListener('keydown', (e) => {
   }
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
     e.preventDefault();
-    toggleDropdown(true);
+    if (typeSelectComponent) {
+      typeSelectComponent.open();
+      typeSelectComponent.input.focus();
+    }
   }
 });
 
@@ -980,6 +1143,7 @@ async function init() {
   if (!types.some(t => t.id === activeTypeId)) activeTypeId = types[0].id;
 
   applyTheme(settings.theme || 'auto');
+  initTypeSelect();
   renderForm();
   updateCommentInput();
 }

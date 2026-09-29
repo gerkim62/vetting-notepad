@@ -6,15 +6,15 @@
 <title>Vetting Notepad — Extension Preview</title>
 <style>
 /* ==========================================================================
-   Theme Variables & Design Tokens (Safaricom Emerald Palette)
+   Design Tokens (Safaricom Emerald & Material UI Palette)
    ========================================================================== */
 :root {
-  /* Safaricom Brand Palette */
+  /* Safaricom Brand Emerald */
   --saf-emerald: #008751;
   --saf-emerald-light: #00a651;
   --saf-emerald-hover: #007345;
   --saf-emerald-soft: #e6f7ef;
-  --saf-emerald-glow: rgba(0, 135, 81, 0.25);
+  --saf-emerald-glow: rgba(0, 135, 81, 0.22);
   --saf-emerald-ink: #ffffff;
 
   /* Light Theme Defaults */
@@ -28,9 +28,10 @@
   --text-muted: #64748b;
   --text-dim: #94a3b8;
   --underline-idle: #cbd5e1;
+  --slot-empty: #e2e8f0;
 
-  --color-danger: #e11d48;
-  --color-danger-soft: #ffe4e6;
+  --color-danger: #dc2626;
+  --color-danger-soft: #fee2e2;
   --color-warn: #d97706;
   --color-ok: var(--saf-emerald);
 
@@ -38,7 +39,7 @@
   --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.12);
   --shadow-lg: 0 10px 25px -5px rgba(15, 23, 42, 0.18);
   --radius-sm: 4px;
-  --radius-md: 7px;
+  --radius-md: 6px;
   --radius-lg: 10px;
 
   color-scheme: light;
@@ -55,6 +56,7 @@
   --text-muted: #9ca3af;
   --text-dim: #6b7280;
   --underline-idle: #374151;
+  --slot-empty: #26334a;
 
   --saf-emerald: #10b981;
   --saf-emerald-light: #34d399;
@@ -63,8 +65,8 @@
   --saf-emerald-glow: rgba(16, 185, 129, 0.35);
   --saf-emerald-ink: #042f1a;
 
-  --color-danger: #fb7185;
-  --color-danger-soft: rgba(251, 113, 133, 0.15);
+  --color-danger: #f87171;
+  --color-danger-soft: rgba(248, 113, 113, 0.15);
   --color-warn: #fbbf24;
   --color-ok: #34d399;
 
@@ -87,6 +89,7 @@
     --text-muted: #9ca3af;
     --text-dim: #6b7280;
     --underline-idle: #374151;
+    --slot-empty: #26334a;
 
     --saf-emerald: #10b981;
     --saf-emerald-light: #34d399;
@@ -95,8 +98,8 @@
     --saf-emerald-glow: rgba(16, 185, 129, 0.35);
     --saf-emerald-ink: #042f1a;
 
-    --color-danger: #fb7185;
-    --color-danger-soft: rgba(251, 113, 133, 0.15);
+    --color-danger: #f87171;
+    --color-danger-soft: rgba(248, 113, 113, 0.15);
     --color-warn: #fbbf24;
     --color-ok: #34d399;
 
@@ -104,15 +107,12 @@
   }
 }
 
-/* ==========================================================================
-   Base Layout & Workspace Reset
-   ========================================================================== */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 html, body { height: 100%; }
 body {
   background: var(--bg-stage);
   color: var(--text-main);
-  font: 12.5px/1.35 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font: 12px/1.35 Roboto, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
 }
@@ -121,25 +121,25 @@ button { font: inherit; color: inherit; cursor: pointer; border: 0; background: 
 input, select, textarea { font: inherit; color: inherit; border: 0; background: none; }
 :focus-visible { outline: 2px solid var(--border-focus); outline-offset: 1px; }
 
-/* Stage Presentation Container */
+/* Stage Preview Container */
 .desk {
   height: 100%;
   display: flex;
   justify-content: flex-end;
-  gap: 28px;
-  padding: 14px;
+  gap: 24px;
+  padding: 12px;
 }
 .guide-side {
   flex: 1;
   max-width: 440px;
   margin: auto;
   color: var(--text-muted);
-  font-size: 13.5px;
-  line-height: 1.55;
-  padding: 10px 16px;
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 8px 16px;
 }
 .guide-side h1 {
-  font-size: 21px;
+  font-size: 20px;
   font-weight: 700;
   color: var(--text-main);
   letter-spacing: -0.02em;
@@ -149,33 +149,31 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   gap: 8px;
 }
 .badge-pill {
-  font-size: 10.5px;
+  font-size: 10px;
   font-weight: 600;
   padding: 2px 7px;
   border-radius: 10px;
   background: var(--saf-emerald-soft);
   color: var(--saf-emerald);
 }
-.guide-side ul { padding-left: 18px; margin: 10px 0 14px; }
-.guide-side li { margin: 5px 0; }
+.guide-side ul { padding-left: 18px; margin: 8px 0 12px; }
+.guide-side li { margin: 4px 0; }
 .guide-side kbd {
   font: 11px ui-monospace, Menlo, Consolas, monospace;
   background: var(--bg-panel);
   border: 1px solid var(--border-line);
-  padding: 1px 5px;
+  padding: 1px 4px;
   border-radius: 4px;
   color: var(--text-main);
 }
 
-/* ==========================================================================
-   Extension Mock Frame
-   ========================================================================== */
+/* Extension Frame Simulation */
 .win {
   position: relative;
   flex: none;
   width: 280px;
   min-width: 250px;
-  max-width: 460px;
+  max-width: 440px;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -202,20 +200,20 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
 }
 .titlebar {
   flex: none;
-  height: 25px;
+  height: 24px;
   background: var(--bg-panel-alt);
   border-bottom: 1px solid var(--border-line);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 9px;
-  font-size: 11px;
+  padding: 0 8px;
+  font-size: 10.5px;
   font-weight: 600;
   color: var(--text-muted);
 }
 .titlebar .brand-dot {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: var(--saf-emerald);
   display: inline-block;
@@ -234,140 +232,128 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
 }
 
 /* ==========================================================================
-   Header Bar & Creatable Select
+   Header Bar with Creatable Select
    ========================================================================== */
 .top-nav {
   flex: none;
-  height: 38px;
-  padding: 0 8px;
+  height: 36px;
+  padding: 0 6px;
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   border-bottom: 1px solid var(--border-line);
   background: var(--bg-panel);
   z-index: 25;
 }
-.select-wrapper {
+
+.c-select {
   position: relative;
   flex: 1;
   min-width: 0;
 }
-.type-trigger {
-  width: 100%;
-  height: 27px;
-  padding: 0 8px;
+.c-select .box {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  height: 26px;
+  padding: 0 4px 0 7px;
   background: var(--bg-panel-alt);
-  border: 1px solid var(--border-line);
-  border-radius: var(--radius-md);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-main);
+  border-bottom: 1px solid var(--underline-idle);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  cursor: text;
   transition: all 0.15s ease;
 }
-.type-trigger:hover {
-  background: var(--bg-hover);
-  border-color: var(--saf-emerald);
+.c-select:hover .box { border-bottom-color: var(--text-main); }
+.c-select.focus .box {
+  border-bottom: 2px solid var(--saf-emerald);
+  background: var(--bg-panel);
 }
-.type-trigger .ttl-txt {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.c-select input {
+  flex: 1;
+  min-width: 40px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text-main);
+  font: 600 11.5px inherit;
+  padding: 2px 0;
 }
-.type-trigger .chevron {
+.c-select .ctl {
+  display: flex;
+  align-items: center;
   color: var(--text-muted);
-  flex: none;
-  margin-left: 4px;
 }
+.c-select .ctl button {
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--text-dim);
+}
+.c-select .ctl button:hover { color: var(--text-main); background: var(--bg-hover); }
+.c-select .arrow { transition: transform 0.18s ease; }
+.c-select.open .arrow { transform: rotate(180deg); }
 
-/* Searchable Dropdown Popup */
-.dropdown-menu {
+.c-select ul {
   position: absolute;
-  top: calc(100% + 4px);
+  z-index: 60;
   left: 0;
-  width: 100%;
-  min-width: 210px;
+  right: 0;
+  top: calc(100% + 2px);
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+  max-height: 180px;
+  overflow-y: auto;
   background: var(--bg-panel);
   border: 1px solid var(--border-line);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-md);
-  z-index: 60;
-  padding: 4px;
   display: none;
-  flex-direction: column;
 }
-.dropdown-menu.open { display: flex; animation: slideDown 0.16s ease-out; }
-
-.search-box {
-  position: relative;
-  margin-bottom: 4px;
-}
-.search-box input {
-  width: 100%;
-  height: 27px;
-  padding: 0 7px 0 24px;
-  background: var(--bg-panel-alt);
-  border: 1px solid var(--border-line);
-  border-radius: var(--radius-sm);
-  font-size: 11.5px;
-}
-.search-box input:focus {
-  border-color: var(--saf-emerald);
-  background: var(--bg-panel);
-}
-.search-box svg {
-  position: absolute;
-  left: 6px;
-  top: 6px;
-  color: var(--text-dim);
-  pointer-events: none;
-}
-
-.type-options-list {
-  max-height: 180px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-.type-opt {
-  height: 26px;
-  padding: 0 8px;
-  border-radius: var(--radius-sm);
+.c-select.open ul { display: block; animation: slideDown 0.15s ease-out; }
+.c-select li {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 12px;
+  height: 26px;
+  padding: 0 9px;
+  font-size: 11.5px;
   cursor: pointer;
   color: var(--text-main);
-  text-align: left;
 }
-.type-opt:hover, .type-opt.active {
-  background: var(--bg-hover);
-}
-.type-opt.selected {
-  font-weight: 650;
+.c-select li:hover, .c-select li.active { background: var(--bg-hover); }
+.c-select li[aria-selected="true"] {
   color: var(--saf-emerald);
+  font-weight: 600;
   background: var(--saf-emerald-soft);
 }
-.type-opt.create-opt {
+.c-select li .tick {
+  color: var(--saf-emerald);
+  visibility: hidden;
+}
+.c-select li[aria-selected="true"] .tick { visibility: visible; }
+.c-select li mark {
+  background: none;
+  color: var(--saf-emerald);
+  font-weight: 700;
+}
+.c-select li.create {
   color: var(--saf-emerald);
   font-weight: 600;
   border-top: 1px dashed var(--border-line);
-  margin-top: 3px;
-  padding-top: 3px;
+  margin-top: 2px;
+  padding-top: 2px;
 }
+.c-select li.empty { color: var(--text-dim); cursor: default; }
 
-/* Icon Buttons in Nav */
 .ibtn {
-  width: 27px;
-  height: 27px;
+  width: 25px;
+  height: 25px;
   flex: none;
   display: grid;
   place-items: center;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   color: var(--text-muted);
   transition: all 0.15s ease;
 }
@@ -375,12 +361,8 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   background: var(--bg-hover);
   color: var(--text-main);
 }
-.ibtn.primary {
-  color: var(--saf-emerald);
-}
-.ibtn.primary:hover {
-  background: var(--saf-emerald-soft);
-}
+.ibtn.primary { color: var(--saf-emerald); }
+.ibtn.primary:hover { background: var(--saf-emerald-soft); }
 
 /* ==========================================================================
    Scrollable Body & Item Rows
@@ -390,21 +372,20 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 4px 8px 10px;
+  padding: 4px 6px 8px;
 }
 
-/* Thin Faint Visual Separator between Primary & Secondary */
 .subtle-divider {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin: 9px 0 5px;
+  gap: 6px;
+  margin: 9px 0 4px;
   padding: 0 2px;
   color: var(--text-dim);
-  font-size: 10px;
+  font-size: 9px;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-weight: 600;
+  letter-spacing: 0.06em;
+  font-weight: 700;
 }
 .subtle-divider::after {
   content: "";
@@ -413,72 +394,16 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   background: var(--border-line);
 }
 
-/* Unified Item Row Grid: Left Gutter (18px) | Field (1fr) | Paste (28px) */
+/* Item Row Grid: 100% Flush Left (1fr) | Pass/Fail (34px) | Paste (22px) */
 .item-row {
-  position: relative;
   display: grid;
-  grid-template-columns: 18px 1fr 28px;
+  grid-template-columns: 1fr 34px 22px;
   gap: 4px;
-  align-items: center;
-  padding: 4px 0;
-  transition: background 0.15s ease;
-}
-.item-row.dragging { opacity: 0.35; }
-.item-row.drag-over-top::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 0;
-  height: 2px;
-  background: var(--saf-emerald);
-  border-radius: 2px;
-}
-.item-row.drag-over-bottom::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 2px;
-  background: var(--saf-emerald);
-  border-radius: 2px;
+  align-items: flex-end;
+  padding: 2.5px 0;
+  width: 100%;
 }
 
-/* Unified Left Gutter (18px) */
-.left-gutter {
-  width: 18px;
-  height: 28px;
-  display: grid;
-  place-items: center;
-  flex: none;
-}
-.mandatory-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--color-warn);
-  transition: background 0.2s ease, transform 0.2s ease;
-}
-.mandatory-dot.filled {
-  background: var(--saf-emerald);
-  box-shadow: 0 0 5px var(--saf-emerald-glow);
-}
-.drag-handle {
-  width: 18px;
-  height: 28px;
-  display: grid;
-  place-items: center;
-  color: var(--text-dim);
-  cursor: grab;
-  border-radius: 3px;
-}
-.drag-handle:hover { color: var(--text-main); background: var(--bg-hover); }
-.drag-handle:active { cursor: grabbing; }
-
-/* ==========================================================================
-   Material Design Underline Input with Floating Label
-   ========================================================================== */
 .field-container {
   position: relative;
   min-width: 0;
@@ -486,119 +411,250 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   flex-direction: column;
 }
 
+/* Material Field: Collapsed by default (Single compact 22px line) */
 .material-field {
   position: relative;
-  padding-top: 13px; /* Room for floating label */
+  height: 22px;
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  justify-content: flex-end;
+  transition: height 0.16s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* Expanded state: when focused, has value, or has pass/fail status */
+.material-field.expanded,
+.material-field.is-focused,
+.material-field.has-value {
+  height: 33px;
+}
+
+/* Floating Label: sits inside the field as placeholder when collapsed, floats to top when expanded */
 .mat-label {
   position: absolute;
-  left: 1px;
-  top: 15px;
-  font-size: 12px;
+  left: 0;
+  bottom: 3px;
+  font-size: 11.5px;
   color: var(--text-muted);
   pointer-events: none;
-  transform-origin: left top;
-  transition: transform 0.18s cubic-bezier(0.4, 0, 0.2, 1),
-              color 0.18s cubic-bezier(0.4, 0, 0.2, 1),
-              font-size 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: left bottom;
   white-space: nowrap;
-  max-width: calc(100% - 10px);
+  max-width: 78%;
   overflow: hidden;
   text-overflow: ellipsis;
+  transition: transform 0.16s cubic-bezier(0.4, 0, 0.2, 1),
+              bottom 0.16s cubic-bezier(0.4, 0, 0.2, 1),
+              color 0.16s ease;
+  z-index: 1;
 }
 
+.material-field.expanded .mat-label,
+.material-field.is-focused .mat-label,
+.material-field.has-value .mat-label {
+  bottom: 18px;
+  transform: scale(0.82);
+}
+
+.material-field.is-focused .mat-label {
+  color: var(--saf-emerald);
+  font-weight: 600;
+}
+.material-field.status-passed .mat-label {
+  color: var(--saf-emerald);
+}
+.material-field.status-failed .mat-label {
+  color: var(--color-danger);
+}
+
+/* Required Indicator in label */
+.mat-label .req-mark {
+  color: var(--saf-emerald);
+  font-weight: 700;
+  margin-left: 2px;
+}
+
+/* Counter */
+.field-counter {
+  position: absolute;
+  right: 0;
+  top: 1px;
+  font-size: 9px;
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease, color 0.15s ease;
+}
+.material-field.expanded .field-counter,
+.material-field.is-focused .field-counter,
+.material-field.has-value .field-counter {
+  opacity: 1;
+}
+.field-counter.match { color: var(--saf-emerald); font-weight: 700; }
+.field-counter.overflow { color: var(--color-warn); font-weight: 700; }
+
+/* Input element */
 .mat-input {
   width: 100%;
-  height: 24px;
-  padding: 2px 2px 2px 1px;
+  min-width: 0;
+  height: 19px;
+  padding: 0;
   background: transparent;
   color: var(--text-main);
-  font-size: 12.5px;
+  font-size: 12px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   outline: none;
   border: 0;
-  border-bottom: 1px solid var(--underline-idle);
-  transition: border-color 0.2s ease;
+  position: relative;
+  z-index: 2;
+  transition: color 0.15s ease;
+}
+.mat-input.has-len {
+  letter-spacing: 4px;
 }
 
-/* Material Active Underline Bar */
-.mat-underline {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
+/* Masked Underline Slots: 100% matched to character width and letter-spacing */
+.mat-underline-wrap {
+  display: flex;
+  align-items: center;
+  width: 100%;
   height: 2px;
-  background: var(--saf-emerald);
-  transform: scaleX(0);
-  transform-origin: center;
-  transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-top: 1px;
   pointer-events: none;
 }
 
-/* Float Label States: When focused or has value */
-.material-field.is-focused .mat-label,
-.material-field.has-value .mat-label {
-  transform: translateY(-13px) scale(0.85);
-  font-weight: 600;
+.mat-underline-track {
+  position: relative;
+  height: 2px;
+  display: flex;
+  flex: none;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  pointer-events: none;
 }
-.material-field.is-focused .mat-label {
-  color: var(--saf-emerald);
+.mat-underline-track .slot {
+  flex: none;
+  width: 1ch;
+  margin-right: 4px;
+  height: 2px;
+  background: var(--slot-empty);
+  border-radius: 1px;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
 }
-.material-field.is-focused .mat-underline {
-  transform: scaleX(1);
+.mat-underline-track .slot:last-child {
+  margin-right: 0;
+}
+.mat-underline-track .slot.filled {
+  background: var(--saf-emerald);
+}
+.mat-underline-track .slot.current {
+  background: var(--saf-emerald-light);
+  box-shadow: 0 0 3px var(--saf-emerald-glow);
+}
+.mat-underline-track.status-passed .slot.filled {
+  background: var(--saf-emerald);
+}
+.mat-underline-track.status-failed .slot.filled {
+  background: var(--color-danger);
 }
 
-/* Character Guide & Live Segment Badge */
-.guide-badge {
+.mat-underline-rest {
+  flex: 1;
+  height: 1px;
+  background: var(--underline-idle);
+  opacity: 0.35;
+  margin-left: 3px;
+  transition: all 0.18s ease;
+}
+.material-field.is-focused .mat-underline-rest {
+  background: var(--saf-emerald);
+  opacity: 0.7;
+}
+.material-field.status-passed .mat-underline-rest {
+  background: var(--saf-emerald);
+}
+.material-field.status-failed .mat-underline-rest {
+  background: var(--color-danger);
+}
+
+/* Continuous Underline */
+.mat-underline-continuous {
+  width: 100%;
+  height: 1px;
+  margin-top: 1px;
+  background: var(--underline-idle);
+  transition: all 0.18s ease;
+}
+.material-field.is-focused .mat-underline-continuous {
+  height: 2px;
+  background: var(--saf-emerald);
+}
+.material-field.status-passed .mat-underline-continuous {
+  height: 2px;
+  background: var(--saf-emerald);
+}
+.material-field.status-failed .mat-underline-continuous {
+  height: 2px;
+  background: var(--color-danger);
+}
+
+/* Pass / Fail Action Buttons ([⚑] [✓]) */
+.status-actions {
   display: flex;
   align-items: center;
+  gap: 2px;
   justify-content: flex-end;
-  gap: 5px;
-  font-size: 10px;
-  font-variant-numeric: tabular-nums;
-  margin-top: 1px;
-  color: var(--text-dim);
-  min-height: 14px;
+  width: 34px;
+  height: 20px;
+  flex: none;
+  margin-bottom: 2px;
 }
-.guide-slots {
-  letter-spacing: 2px;
-  font-family: ui-monospace, Menlo, Consolas, monospace;
-  font-weight: 500;
-  color: var(--text-muted);
-}
-.guide-count {
-  font-weight: 600;
-  padding: 0 3px;
+.pf-btn {
+  width: 16px;
+  height: 20px;
+  display: grid;
+  place-items: center;
   border-radius: 3px;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all 0.12s ease;
+  padding: 0;
 }
-.guide-count.match {
-  color: var(--saf-emerald);
-  background: var(--saf-emerald-soft);
+.pf-btn:hover { background: var(--bg-hover); color: var(--text-main); }
+.pf-btn.fail:hover { color: var(--color-danger); background: var(--color-danger-soft); }
+.pf-btn.pass:hover { color: var(--saf-emerald); background: var(--saf-emerald-soft); }
+
+.pf-btn.fail.active {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+  font-weight: 700;
 }
-.guide-count.overflow {
-  color: var(--color-warn);
+.pf-btn.fail.active svg path {
+  fill: var(--color-danger);
+}
+.pf-btn.pass.active {
+  background: var(--saf-emerald);
+  color: #ffffff;
+  font-weight: 700;
+  box-shadow: 0 0 5px var(--saf-emerald-glow);
 }
 
 /* Paste Button */
 .paste-btn {
-  width: 28px;
-  height: 26px;
+  width: 22px;
+  height: 20px;
   display: grid;
   place-items: center;
-  border-radius: var(--radius-sm);
-  background: var(--bg-panel-alt);
-  border: 1px solid var(--border-line);
-  color: var(--text-muted);
-  transition: all 0.15s ease;
-  align-self: center;
-  margin-top: 4px;
+  border-radius: 3px;
+  color: var(--text-dim);
+  flex: none;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  padding: 0;
+  margin-bottom: 2px;
 }
 .paste-btn:hover {
   color: var(--saf-emerald);
-  border-color: var(--saf-emerald);
   background: var(--saf-emerald-soft);
 }
 
@@ -609,49 +665,41 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   flex: none;
   background: var(--bg-panel);
   border-top: 1px solid var(--border-line);
-  padding: 6px 8px 8px;
+  padding: 5px 6px 6px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
   position: relative;
   z-index: 20;
 }
 
-/* Comment Field with Material Underline */
-.comment-container {
-  position: relative;
-}
-.comment-container .mat-label {
-  left: 2px;
-}
+.comment-container .mat-label { left: 0; }
 
-/* Action Buttons Row */
 .action-row {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
 }
 .btn-action {
-  height: 30px;
-  padding: 0 10px;
+  height: 28px;
+  padding: 0 8px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: 4px;
   border-radius: var(--radius-md);
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 600;
   border: 1px solid var(--border-line);
   background: var(--bg-panel-alt);
   color: var(--text-main);
-  transition: all 0.15s ease;
+  transition: all 0.12s ease;
 }
 .btn-action:hover { background: var(--bg-hover); }
 .btn-action:active { transform: translateY(1px); }
 
-/* Eye preview toggle */
 .btn-eye {
-  width: 30px;
+  width: 28px;
   padding: 0;
   color: var(--text-muted);
 }
@@ -661,7 +709,14 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   border-color: var(--saf-emerald);
 }
 
-/* Copy Primary Button in Emerald */
+.btn-clear { position: relative; }
+.btn-clear.countdown-active {
+  background: var(--color-warn);
+  border-color: var(--color-warn);
+  color: #fff;
+  font-weight: 700;
+}
+
 .btn-copy {
   flex: 1;
   background: var(--saf-emerald);
@@ -678,73 +733,65 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   border-color: var(--color-ok);
 }
 
-/* Collapsible Preview Drawer */
 .preview-drawer {
   background: var(--bg-panel-alt);
   border: 1px solid var(--border-line);
   border-radius: var(--radius-md);
-  padding: 7px 9px;
-  max-height: 120px;
+  padding: 6px 8px;
+  max-height: 100px;
   overflow-y: auto;
   display: none;
 }
-.preview-drawer.open { display: block; animation: slideUp 0.16s ease-out; }
+.preview-drawer.open { display: block; animation: slideUp 0.15s ease-out; }
 .preview-drawer pre {
-  font: 11.5px/1.45 ui-monospace, Menlo, Consolas, monospace;
+  font: 11px/1.4 ui-monospace, Menlo, Consolas, monospace;
   color: var(--text-main);
   white-space: pre-wrap;
   word-break: break-word;
 }
-.preview-drawer pre.empty {
-  color: var(--text-dim);
-  font-style: italic;
-}
+.preview-drawer pre.empty { color: var(--text-dim); font-style: italic; }
 
-/* ==========================================================================
-   Floating Toast System (Top under Nav)
-   ========================================================================== */
 .toast-shelf {
   position: absolute;
-  top: 42px;
-  left: 8px;
-  right: 8px;
+  top: 38px;
+  left: 6px;
+  right: 6px;
   z-index: 90;
   pointer-events: none;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
 }
 .toast {
   pointer-events: auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  padding: 6px 10px;
+  gap: 6px;
+  padding: 5px 8px;
   background: var(--bg-panel);
   border: 1px solid var(--border-line);
   border-left: 3px solid var(--saf-emerald);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-md);
-  font-size: 11.5px;
+  font-size: 11px;
   color: var(--text-main);
-  animation: slideDown 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: slideDown 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .toast.toast-warn { border-left-color: var(--color-warn); }
 .toast.toast-danger { border-left-color: var(--color-danger); }
 .toast-msg { flex: 1; min-width: 0; }
-.toast-msg b { color: var(--saf-emerald); }
 .toast-btn {
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 700;
   color: var(--saf-emerald);
-  padding: 2px 6px;
+  padding: 1px 5px;
   border-radius: 3px;
 }
 .toast-btn:hover { background: var(--saf-emerald-soft); }
 
 /* ==========================================================================
-   Settings Screen & Edit Screen Views
+   Settings & Edit Sub-views
    ========================================================================== */
 .view-sub {
   position: absolute;
@@ -755,38 +802,34 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   flex-direction: column;
 }
 .view-header {
-  height: 38px;
-  padding: 0 8px;
+  height: 36px;
+  padding: 0 6px;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   border-bottom: 1px solid var(--border-line);
   background: var(--bg-panel-alt);
 }
-.view-title { font-weight: 700; font-size: 12.5px; }
+.view-title { font-weight: 700; font-size: 12px; }
 
 .section-head {
-  font-size: 11px;
+  font-size: 10.5px;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   font-weight: 700;
   color: var(--text-muted);
-  margin: 12px 0 6px;
+  margin: 10px 0 5px;
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
-.setting-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 5px;
-}
+.setting-chips { display: flex; flex-wrap: wrap; gap: 4px; }
 .chip {
-  padding: 4px 10px;
+  padding: 3px 8px;
   border-radius: 12px;
   border: 1px solid var(--border-line);
   background: var(--bg-panel-alt);
-  font-size: 11.5px;
+  font-size: 11px;
   color: var(--text-main);
   cursor: pointer;
 }
@@ -801,63 +844,50 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
 .comment-list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  max-height: 130px;
+  gap: 3px;
+  max-height: 120px;
   overflow-y: auto;
 }
 .comment-item {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 4px 6px;
+  padding: 3px 6px;
   background: var(--bg-panel-alt);
   border-radius: var(--radius-sm);
-  font-size: 11.5px;
+  font-size: 11px;
 }
 .comment-item span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* Edit Items Grid */
 .edit-row {
   display: grid;
-  grid-template-columns: 24px 1fr 45px 24px;
+  grid-template-columns: 22px 1fr 40px 22px;
   gap: 4px;
   align-items: center;
-  margin-bottom: 4px;
+  margin-bottom: 3px;
 }
 .edit-row input.el-label {
-  padding: 3px 6px;
-  border-bottom: 1px solid var(--border-line);
-  font-size: 12px;
-}
-.edit-row input.el-label:focus {
-  border-color: var(--saf-emerald);
-}
-.edit-row input.el-len {
-  padding: 3px 2px;
+  padding: 2px 4px;
   border-bottom: 1px solid var(--border-line);
   font-size: 11.5px;
+}
+.edit-row input.el-label:focus { border-color: var(--saf-emerald); }
+.edit-row input.el-len {
+  padding: 2px 2px;
+  border-bottom: 1px solid var(--border-line);
+  font-size: 11px;
   text-align: center;
 }
-.arrows-col {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-.arr-btn {
-  font-size: 9px;
-  padding: 0;
-  line-height: 1;
-  color: var(--text-muted);
-}
+.arrows-col { display: flex; flex-direction: column; gap: 1px; }
+.arr-btn { font-size: 8.5px; padding: 0; line-height: 1; color: var(--text-muted); }
 .arr-btn:hover { color: var(--saf-emerald); }
 
-/* Keyframe Animations */
 @keyframes slideDown {
-  from { opacity: 0; transform: translateY(-5px); }
+  from { opacity: 0; transform: translateY(-4px); }
   to { opacity: 1; transform: translateY(0); }
 }
 @keyframes slideUp {
-  from { opacity: 0; transform: translateY(5px); }
+  from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
@@ -872,25 +902,24 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
 <body>
 
 <div class="desk">
-  <!-- Left Side Helper & Features Tour -->
   <aside class="guide-side">
     <h1>
       <span>Vetting Notepad</span>
       <span class="badge-pill">Safaricom Edition</span>
     </h1>
-    <p>Ultra-compact customer vetting notepad tailored for call-center agents and customer verification flows.</p>
+    <p>Ultra-compact customer verification notepad tailored for call-center agents.</p>
     <ul>
-      <li><strong>Material Underline Inputs:</strong> Minimalist bottom borders with floating animated labels that illuminate in Safaricom Emerald on focus.</li>
-      <li><strong>Dynamic Character Guide:</strong> Displays live entered characters with remaining dashes (e.g. <code>4 6 _ _ _</code>) alongside length indicators (<code>2/5</code>).</li>
-      <li><strong>Unified Flush Alignment:</strong> Mandatory indicators and optional drag handles share a unified 18px gutter so field labels align to the exact same guide.</li>
-      <li><strong>Searchable Creatable Dropdown:</strong> Fast combobox selector to switch or create vetting types (SIM Swap, PUK, Reversal) without cluttering height.</li>
-      <li><strong>Floating Toast System:</strong> Smooth slide-down confirmations with auto-clear countdown and 1-click Undo.</li>
-      <li><strong>Comment Suggestions:</strong> Auto-suggests and remembers previous comments, manageable in Settings.</li>
+      <li><strong>Segmented Masked Underline:</strong> Inputs with a defined length display subtle segmented tick-mark slots on the underline that illuminate in emerald as you type.</li>
+      <li><strong>Clean Zero-Duplication:</strong> No mirrored numbers printed underneath. Only a subtle counter (<code>7/10</code> &bull; <code>10/10 ✓</code>) at the top right.</li>
+      <li><strong>Pass / Fail Indicators:</strong> Click ✕ or ✓ on any item to mark Fail or Pass. Appends <code>(Passed)</code> or <code>(Failed)</code> to the copied output with subtle underline tint.</li>
+      <li><strong>Auto-Clear Countdown on Button:</strong> Countdown displays directly on the Clear button (<code>Cancel (15s)</code>). Clicking it stops the timer; typing also cancels it.</li>
+      <li><strong>Creatable Select Presets:</strong> Fast keyboard-driven dropdown for switching or creating vetting types on the fly.</li>
+      <li><strong>Flush Alignment & Zero Clipping:</strong> Right-side buttons are guaranteed fixed width and never clipped.</li>
     </ul>
     <p><kbd>Ctrl+K</kbd> to search/change type &bull; <kbd>Enter</kbd> to jump between fields &bull; <kbd>Ctrl+Enter</kbd> to Copy.</p>
   </aside>
 
-  <!-- The Actual Extension Window Frame -->
+  <!-- Extension Frame Simulation -->
   <div class="win" id="win">
     <div class="rz" id="rz" title="Drag to resize width"></div>
     <div class="titlebar">
@@ -899,46 +928,28 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
     </div>
 
     <div id="app">
-      <!-- Top Navigation & Creatable Select -->
+      <!-- Top Navigation Bar with Creatable Select -->
       <header class="top-nav">
-        <div class="select-wrapper" id="selectWrapper">
-          <button class="type-trigger" id="typeTrigger" aria-haspopup="listbox" aria-expanded="false" title="Switch or create vetting type (Ctrl+K)">
-            <span class="ttl-txt" id="curTypeLabel">SIM Swap</span>
-            <svg class="chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
-          </button>
-          
-          <!-- Dropdown Menu -->
-          <div class="dropdown-menu" id="dropdownMenu">
-            <div class="search-box">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-              <input type="text" id="typeSearchInput" placeholder="Search or type new..." autocomplete="off" spellcheck="false">
-            </div>
-            <div class="type-options-list" id="typeOptionsList"></div>
-          </div>
-        </div>
+        <div id="typeSelectMount" class="c-select"></div>
 
-        <!-- 1-Click Pencil Icon to Edit Items -->
         <button class="ibtn primary" id="btnEditType" title="Edit items for this vetting type" aria-label="Edit items">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
         </button>
 
-        <!-- Settings Icon -->
         <button class="ibtn" id="btnSettings" title="Settings & Theme" aria-label="Settings">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         </button>
       </header>
 
-      <!-- Floating Toast Notifications Shelf -->
+      <!-- Floating Minimal Toast Shelf -->
       <div class="toast-shelf" id="toastShelf"></div>
 
       <!-- Main Scrollable Form Area -->
-      <div class="scroll-pane" id="mainForm">
-        <!-- Rendered dynamically -->
-      </div>
+      <div class="scroll-pane" id="mainForm"></div>
 
       <!-- Compact Footer -->
       <footer class="footer-bar">
-        <!-- Collapsible Preview Drawer (Off by default) -->
+        <!-- Collapsible Preview Drawer -->
         <div class="preview-drawer" id="previewDrawer">
           <pre id="previewText" class="empty">Nothing filled yet</pre>
         </div>
@@ -946,9 +957,11 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
         <!-- Material Underline Comment Input with Suggestions -->
         <div class="field-container comment-container">
           <div class="material-field" id="commentFieldBox">
-            <label class="mat-label" for="commentInput">Comment (optional)</label>
+            <div class="label-counter-row">
+              <label class="mat-label" for="commentInput">Comment (optional)</label>
+            </div>
             <input type="text" class="mat-input" id="commentInput" list="commentSuggestions" autocomplete="off" spellcheck="false">
-            <span class="mat-underline"></span>
+            <div class="mat-underline-continuous"></div>
           </div>
           <datalist id="commentSuggestions"></datalist>
         </div>
@@ -956,29 +969,28 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
         <!-- Action Row -->
         <div class="action-row">
           <button class="btn-action btn-eye" id="btnTogglePreview" title="Toggle copy preview" aria-label="Toggle preview">
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
           </button>
-          <button class="btn-action" id="btnClear" title="Clear filled items">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>
-            Clear
+          <button class="btn-action btn-clear" id="btnClear" title="Clear filled items">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>
+            <span id="clearBtnText">Clear</span>
           </button>
           <button class="btn-action btn-copy" id="btnCopy" title="Copy to clipboard (Ctrl+Enter)">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>
             <span id="copyBtnText">Copy</span>
           </button>
         </div>
       </footer>
 
-      <!-- Sub-view: Settings & Theme Screen (Hidden by default) -->
+      <!-- Sub-view: Settings & Theme Screen -->
       <div class="view-sub" id="settingsView" style="display:none;">
         <div class="view-header">
           <button class="ibtn" id="btnBackSettings" title="Back to main">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
           </button>
           <span class="view-title">Settings</span>
         </div>
-        <div class="scroll-pane" style="padding:10px 12px;">
-          <!-- Theme Setting -->
+        <div class="scroll-pane" style="padding:8px 10px;">
           <div class="section-head">Appearance Theme</div>
           <div class="setting-chips" id="themeChips">
             <button class="chip" data-theme-val="auto">Auto (System)</button>
@@ -986,9 +998,8 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
             <button class="chip" data-theme-val="dark">Dark</button>
           </div>
 
-          <!-- Auto-Clear Setting -->
-          <div class="section-head" style="margin-top:16px;">Auto-Clear Customer Details After Copy</div>
-          <p style="font-size:11px;color:var(--text-muted);margin-bottom:6px;">Wipes filled customer data once timer ends. Typing or clicking Keep cancels it.</p>
+          <div class="section-head" style="margin-top:14px;">Auto-Clear Details After Copy</div>
+          <p style="font-size:10.5px;color:var(--text-muted);margin-bottom:6px;">Wipes customer data after countdown on the Clear button. Typing or clicking Cancel halts it.</p>
           <div class="setting-chips" id="autoClearChips">
             <button class="chip" data-ac="0">Off (Default)</button>
             <button class="chip" data-ac="5">5s</button>
@@ -998,32 +1009,28 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
             <button class="chip" data-ac="60">1m</button>
           </div>
 
-          <!-- Saved Comments Manager -->
-          <div class="section-head" style="margin-top:16px;">
+          <div class="section-head" style="margin-top:14px;">
             <span>Saved Comments</span>
-            <span id="commentCountBadge" style="font-size:10px;color:var(--text-dim);">0 saved</span>
+            <span id="commentCountBadge" style="font-size:9.5px;color:var(--text-dim);">0 saved</span>
           </div>
           <div class="comment-list" id="savedCommentList"></div>
 
-          <!-- Reset Defaults -->
-          <div class="section-head" style="margin-top:20px;">Data Management</div>
+          <div class="section-head" style="margin-top:16px;">Data Management</div>
           <button class="btn-action" id="btnResetAll" style="width:100%;color:var(--color-danger);border-color:var(--border-line);">
             Reset Vetting Types to Defaults
           </button>
         </div>
       </div>
 
-      <!-- Sub-view: Edit Vetting Items Screen (Hidden by default) -->
+      <!-- Sub-view: Edit Vetting Items Screen -->
       <div class="view-sub" id="editView" style="display:none;">
         <div class="view-header">
           <button class="ibtn" id="btnBackEdit" title="Back to main">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
           </button>
           <span class="view-title">Edit Vetting Items</span>
         </div>
-        <div class="scroll-pane" style="padding:10px 12px;" id="editPane">
-          <!-- Rendered dynamically -->
-        </div>
+        <div class="scroll-pane" style="padding:8px 10px;" id="editPane"></div>
       </div>
 
     </div>
@@ -1034,9 +1041,6 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
 (() => {
 'use strict';
 
-/* ==========================================================================
-   State & Local Storage Helpers
-   ========================================================================== */
 const uid = () => Math.random().toString(36).slice(2, 8);
 const LS = {
   get(k, fallback) {
@@ -1048,7 +1052,6 @@ const LS = {
   }
 };
 
-// Default seed data
 function defaultVettingTypes() {
   return [
     {
@@ -1105,7 +1108,7 @@ if (!Array.isArray(types) || !types.length) types = defaultVettingTypes();
 
 let settings = Object.assign({
   theme: 'auto',
-  autoClear: 0 // Default Off as requested
+  autoClear: 0
 }, LS.get('vpad.settings', {}));
 
 let savedComments = LS.get('vpad.comments', [
@@ -1117,13 +1120,12 @@ let savedComments = LS.get('vpad.comments', [
 let activeTypeId = LS.get('vpad.active', types[0].id);
 if (!types.some(t => t.id === activeTypeId)) activeTypeId = types[0].id;
 
-// In-memory filled customer details (vanishes on reload/window close for security)
 let formValues = {};
+let itemStatus = {};
 let previewOpen = false;
 let autoClearTimer = null;
 let autoClearSeconds = 0;
 
-// Apply theme to html element
 function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
   settings.theme = theme;
@@ -1136,9 +1138,192 @@ const saveComments = () => { LS.set('vpad.comments', savedComments); };
 
 const curType = () => types.find(t => t.id === activeTypeId) || types[0];
 const curValues = () => (formValues[activeTypeId] || (formValues[activeTypeId] = {}));
+const curStatus = () => (itemStatus[activeTypeId] || (itemStatus[activeTypeId] = {}));
 
 /* ==========================================================================
-   Toast Notification Engine
+   CreatableSelect Component
+   ========================================================================== */
+class CreatableSelect {
+  static n = 0;
+  constructor(root, o = {}) {
+    this.o = { options: [], value: null, placeholder: 'Select or type...', onChange: null, onCreate: null, ...o };
+    this.opts = this.o.options.map(CreatableSelect.norm);
+    this.val = this.o.value !== null ? String(this.o.value) : (this.opts[0] ? this.opts[0].value : null);
+    this.q = ''; this.dirty = false; this.isOpen = false; this.idx = 0; this.items = [];
+    this.id = 'cs' + (++CreatableSelect.n);
+    this.root = root;
+    this.renderSkeleton();
+    this.sync();
+  }
+
+  static norm(x) {
+    return typeof x === 'object' ? { value: String(x.value), label: String(x.label ?? x.value) } : { value: String(x), label: String(x) };
+  }
+
+  get selected() {
+    return this.opts.find(o => o.value === this.val) || null;
+  }
+
+  setOptions(newOpts, newVal = null) {
+    this.opts = newOpts.map(CreatableSelect.norm);
+    if (newVal !== null) this.val = String(newVal);
+    this.sync();
+    this.render();
+  }
+
+  renderSkeleton() {
+    this.root.innerHTML = `
+      <div class="box">
+        <input role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="${this.id}-l" autocomplete="off" spellcheck="false" placeholder="${this.o.placeholder}">
+        <span class="ctl">
+          <button type="button" class="tog" tabindex="-1" aria-label="Toggle">
+            <svg class="arrow" width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M7 10l5 5 5-5z"/></svg>
+          </button>
+        </span>
+      </div>
+      <ul id="${this.id}-l" role="listbox"></ul>
+    `;
+    this.input = this.root.querySelector('input');
+    this.list = this.root.querySelector('ul');
+    this.box = this.root.querySelector('.box');
+
+    this.box.addEventListener('click', () => this.open());
+    this.root.querySelector('.tog').addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.isOpen ? this.close() : this.open();
+    });
+
+    this.list.addEventListener('mousedown', e => e.preventDefault());
+    this.list.addEventListener('click', e => {
+      const li = e.target.closest('li[data-i]');
+      if (li) this.pick(this.items[+li.dataset.i]);
+    });
+
+    this.input.addEventListener('focus', () => {
+      this.root.classList.add('focus');
+      this.input.select();
+      this.sync();
+    });
+    this.input.addEventListener('blur', () => {
+      this.root.classList.remove('focus');
+      this.close();
+    });
+    this.input.addEventListener('input', () => {
+      this.dirty = true;
+      this.q = this.input.value;
+      this.idx = 0;
+      this.open();
+      this.render();
+    });
+    this.input.addEventListener('keydown', e => this.key(e));
+  }
+
+  sync() {
+    if (!this.dirty) {
+      this.input.value = this.selected ? this.selected.label : '';
+    }
+  }
+
+  open() {
+    if (this.isOpen) return;
+    this.isOpen = true;
+    this.root.classList.add('open');
+    this.input.setAttribute('aria-expanded', 'true');
+    this.render();
+    this.sync();
+  }
+
+  close() {
+    if (!this.isOpen && !this.dirty) return;
+    this.isOpen = false;
+    this.dirty = false;
+    this.q = '';
+    this.root.classList.remove('open');
+    this.input.setAttribute('aria-expanded', 'false');
+    this.sync();
+  }
+
+  hl(label) {
+    const q = this.q.trim();
+    if (!q) return CreatableSelect.esc(label);
+    const i = label.toLowerCase().indexOf(q.toLowerCase());
+    if (i < 0) return CreatableSelect.esc(label);
+    return CreatableSelect.esc(label.slice(0, i)) + '<mark>' + CreatableSelect.esc(label.slice(i, i + q.length)) + '</mark>' + CreatableSelect.esc(label.slice(i + q.length));
+  }
+
+  static esc(s) {
+    return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  render() {
+    if (!this.isOpen) return;
+    const q = this.q.trim().toLowerCase();
+    this.items = this.opts.filter(o => !q || o.label.toLowerCase().includes(q)).map(o => ({ o }));
+    const exact = this.opts.some(o => o.label.toLowerCase() === q);
+    if (q && !exact) {
+      this.items.push({ create: this.q.trim() });
+    }
+
+    this.idx = Math.min(this.idx, Math.max(this.items.length - 1, 0));
+    const tick = '<svg class="tick" width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.2 4.8 12l-1.4 1.4L9 19 21 7l-1.4-1.4z"/></svg>';
+
+    this.list.innerHTML = this.items.length ? this.items.map((it, i) => it.create !== undefined
+      ? `<li role="option" id="${this.id}-o${i}" data-i="${i}" class="create">+ Create “${CreatableSelect.esc(it.create)}”</li>`
+      : `<li role="option" id="${this.id}-o${i}" data-i="${i}" aria-selected="${it.o.value === this.val}"><span>${this.hl(it.o.label)}</span>${tick}</li>`).join('')
+      : '<li class="empty">No results</li>';
+
+    this.paintActive(true);
+  }
+
+  paintActive(scroll) {
+    this.list.querySelectorAll('li.active').forEach(l => l.classList.remove('active'));
+    const el = this.list.querySelector(`li[data-i="${this.idx}"]`);
+    if (el) {
+      el.classList.add('active');
+      this.input.setAttribute('aria-activedescendant', el.id);
+      if (scroll) el.scrollIntoView({ block: 'nearest' });
+    }
+  }
+
+  pick(it) {
+    if (!it) return;
+    let o = it.o;
+    if (it.create !== undefined) {
+      o = { value: uid(), label: it.create };
+      this.opts.push(o);
+      this.o.onCreate && this.o.onCreate(o);
+    }
+    this.val = o.value;
+    this.close();
+    this.sync();
+    this.o.onChange && this.o.onChange(this.val, this);
+  }
+
+  key(e) {
+    const k = e.key;
+    if (k === 'ArrowDown' || k === 'ArrowUp') {
+      e.preventDefault();
+      if (!this.isOpen) return this.open();
+      const n = this.items.length;
+      if (!n) return;
+      this.idx = (this.idx + (k === 'ArrowDown' ? 1 : -1) + n) % n;
+      this.paintActive(true);
+    } else if (k === 'Enter') {
+      if (this.isOpen) {
+        e.preventDefault();
+        this.pick(this.items[this.idx]);
+      }
+    } else if (k === 'Escape') {
+      if (this.isOpen) {
+        e.preventDefault();
+        this.close();
+      }
+    }
+  }
+}
+
+/* ==========================================================================
+   Minimal Toast Shelf (Only for Undo / Error)
    ========================================================================== */
 const toastShelf = document.getElementById('toastShelf');
 
@@ -1168,10 +1353,10 @@ function showToast(message, actionLabel = null, actionCallback = null, durationM
   if (durationMs > 0) {
     setTimeout(() => {
       if (toast.isConnected) {
-        toast.style.transition = 'opacity 0.2s ease, transform 0.2s ease';
+        toast.style.transition = 'opacity 0.18s ease, transform 0.18s ease';
         toast.style.opacity = '0';
-        toast.style.transform = 'translateY(-6px)';
-        setTimeout(() => toast.remove(), 220);
+        toast.style.transform = 'translateY(-4px)';
+        setTimeout(() => toast.remove(), 200);
       }
     }, durationMs);
   }
@@ -1183,21 +1368,22 @@ function showToast(message, actionLabel = null, actionCallback = null, durationM
    ========================================================================== */
 function buildCopyText(t) {
   const v = curValues();
+  const st = curStatus();
   const lines = [];
-  
-  // Mandatory items
-  for (const it of t.required) {
-    const val = (v[it.id] || '').trim();
-    if (val) lines.push(`${it.label}: ${val}`);
-  }
-  // Optional items (in current user order)
-  for (const it of t.optional) {
-    const val = (v[it.id] || '').trim();
-    if (val) lines.push(`${it.label}: ${val}`);
-  }
-  // Comment
+
   const c = (v._comment || '').trim();
   if (c) lines.push(c);
+
+  const allItems = [...t.required, ...t.optional];
+  for (const it of allItems) {
+    const val = (v[it.id] || '').trim();
+    if (val) {
+      let line = `${it.label}: ${val}`;
+      if (st[it.id] === 'passed') line += ' (Passed)';
+      else if (st[it.id] === 'failed') line += ' (Failed)';
+      lines.push(line);
+    }
+  }
 
   return lines.join('\n');
 }
@@ -1224,9 +1410,10 @@ async function writeToClipboard(text) {
 }
 
 /* ==========================================================================
-   Auto-Clear Timer Handler
+   Auto-Clear Countdown on Clear Button
    ========================================================================== */
-let activeToastAutoClear = null;
+const btnClear = document.getElementById('btnClear');
+const clearBtnText = document.getElementById('clearBtnText');
 
 function stopAutoClear() {
   if (autoClearTimer) {
@@ -1234,10 +1421,8 @@ function stopAutoClear() {
     autoClearTimer = null;
   }
   autoClearSeconds = 0;
-  if (activeToastAutoClear && activeToastAutoClear.isConnected) {
-    activeToastAutoClear.remove();
-    activeToastAutoClear = null;
-  }
+  btnClear.classList.remove('countdown-active');
+  clearBtnText.textContent = 'Clear';
 }
 
 function startAutoClear(typeId) {
@@ -1245,75 +1430,69 @@ function startAutoClear(typeId) {
   if (!settings.autoClear || settings.autoClear <= 0) return;
 
   autoClearSeconds = settings.autoClear;
-  const updateToast = () => {
-    if (activeToastAutoClear && activeToastAutoClear.isConnected) {
-      activeToastAutoClear.querySelector('.toast-msg').innerHTML = `Auto-clearing in <b>${autoClearSeconds}s</b>`;
-    }
-  };
-
-  activeToastAutoClear = showToast(
-    `Auto-clearing in <b>${autoClearSeconds}s</b>`,
-    'Keep',
-    () => stopAutoClear(),
-    0 // Persistent until finished or cancelled
-  );
+  btnClear.classList.add('countdown-active');
+  clearBtnText.textContent = `Cancel (${autoClearSeconds}s)`;
 
   autoClearTimer = setInterval(() => {
     autoClearSeconds--;
     if (autoClearSeconds <= 0) {
       stopAutoClear();
       formValues[typeId] = {};
+      itemStatus[typeId] = {};
       renderForm();
       updateCommentInput();
       syncPreview();
-      showToast('Customer details auto-cleared');
     } else {
-      updateToast();
+      clearBtnText.textContent = `Cancel (${autoClearSeconds}s)`;
     }
   }, 1000);
 }
 
-/* ==========================================================================
-   Dynamic Input Guide Calculator
-   Example: len = 5, typed = "46" -> guide = "4 6 _ _ _", badge = "2/5"
-   ========================================================================== */
-function calculateGuide(val, maxLen) {
-  if (!maxLen || maxLen <= 0) return { slots: '', count: '', match: false, overflow: false };
-  const n = val.length;
-  const slots = [];
-  for (let i = 0; i < maxLen; i++) {
-    if (i < n) slots.push(val[i]);
-    else slots.push('_');
+btnClear.onclick = () => {
+  if (autoClearTimer) {
+    stopAutoClear();
+    return;
   }
-  // Add extra characters if typed beyond defined guide length
-  if (n > maxLen) {
-    for (let i = maxLen; i < n; i++) slots.push(val[i]);
+
+  const v = curValues();
+  if (!Object.values(v).some(x => x && x.trim())) {
+    return;
   }
-  return {
-    slots: slots.join(' '),
-    count: `${n}/${maxLen}`,
-    match: n === maxLen,
-    overflow: n > maxLen
-  };
-}
+
+  const snapVal = Object.assign({}, v);
+  const snapStatus = Object.assign({}, curStatus());
+
+  formValues[activeTypeId] = {};
+  itemStatus[activeTypeId] = {};
+  stopAutoClear();
+  renderForm();
+  updateCommentInput();
+  syncPreview();
+
+  showToast('Details cleared', 'Undo', () => {
+    formValues[activeTypeId] = snapVal;
+    itemStatus[activeTypeId] = snapStatus;
+    renderForm();
+    updateCommentInput();
+    syncPreview();
+  }, 4000);
+};
 
 /* ==========================================================================
-   Main Form Rendering
+   Main Form Rendering (Masked Underline Slots)
    ========================================================================== */
 const mainForm = document.getElementById('mainForm');
 
 function renderForm() {
   const t = curType();
-  document.getElementById('curTypeLabel').textContent = t.name || 'Untitled';
+  if (!t) return;
 
   let html = '';
 
-  // Mandatory Items Section
   t.required.forEach((it, idx) => {
     html += createRowHtml(it, 'mandatory', idx);
   });
 
-  // Subtle Faint Divider (No space-wasting headers)
   if (t.optional.length > 0) {
     html += `<div class="subtle-divider">Additional Items</div>`;
     t.optional.forEach((it, idx) => {
@@ -1331,33 +1510,55 @@ function createRowHtml(it, kind, idx) {
   const val = curValues()[it.id] || '';
   const isFilled = val.length > 0;
   const isMandatory = kind === 'mandatory';
+  const st = curStatus()[it.id] || '';
+  const isExpanded = isFilled || !!st;
+
+  let underlineHtml = '';
+  if (it.len > 0) {
+    let slots = '';
+    for (let i = 0; i < it.len; i++) {
+      slots += `<span class="slot" data-slot-idx="${i}"></span>`;
+    }
+    underlineHtml = `
+      <div class="mat-underline-wrap">
+        <div class="mat-underline-track ${st ? 'status-' + st : ''}" id="track_${it.id}">${slots}</div>
+        <div class="mat-underline-rest"></div>
+      </div>
+    `;
+  } else {
+    underlineHtml = `<div class="mat-underline-continuous"></div>`;
+  }
 
   return `
-    <div class="item-row ${kind}" data-id="${it.id}" data-kind="${kind}" data-index="${idx}">
-      <div class="left-gutter">
-        ${isMandatory 
-          ? `<span class="mandatory-dot ${isFilled ? 'filled' : ''}" title="Required Field"></span>`
-          : `<div class="drag-handle" draggable="true" title="Drag to reorder" aria-label="Reorder">
-               <svg width="10" height="14" viewBox="0 0 10 16" fill="currentColor">
-                 <circle cx="2" cy="2" r="1.5"/><circle cx="8" cy="2" r="1.5"/>
-                 <circle cx="2" cy="8" r="1.5"/><circle cx="8" cy="8" r="1.5"/>
-                 <circle cx="2" cy="14" r="1.5"/><circle cx="8" cy="14" r="1.5"/>
-               </svg>
-             </div>`
-        }
-      </div>
-
+    <div class="item-row ${kind}" data-id="${it.id}">
       <div class="field-container">
-        <div class="material-field ${isFilled ? 'has-value' : ''}">
-          <label class="mat-label" for="inp_${it.id}">${it.label}</label>
-          <input type="text" class="mat-input" id="inp_${it.id}" data-id="${it.id}" value="${escapeHtml(val)}" autocomplete="off" spellcheck="false">
-          <span class="mat-underline"></span>
+        <div class="material-field ${isExpanded ? 'expanded' : ''} ${isFilled ? 'has-value' : ''} ${st ? 'status-' + st : ''}">
+          <label class="mat-label" for="inp_${it.id}">
+            ${escapeHtml(it.label)}${isMandatory ? ' <span class="req-mark" title="Required">*</span>' : ''}
+          </label>
+          ${it.len > 0 ? `<span class="field-counter" id="cnt_${it.id}"></span>` : ''}
+          <input type="text" class="mat-input ${it.len > 0 ? 'has-len' : ''}" id="inp_${it.id}" data-id="${it.id}" value="${escapeHtml(val)}" autocomplete="off" spellcheck="false">
+          ${underlineHtml}
         </div>
-        <div class="guide-badge" id="guide_${it.id}"></div>
       </div>
 
-      <button class="paste-btn" data-paste-id="${it.id}" title="Paste from clipboard" aria-label="Paste ${it.label}">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
+      <!-- Pass / Fail Action Icons: Flag ⚑ and Check ✓ -->
+      <div class="status-actions">
+        <button type="button" class="pf-btn fail ${st === 'failed' ? 'active' : ''}" data-status-btn="failed" data-id="${it.id}" title="Flag as Failed" aria-label="Flag ${escapeHtml(it.label)} as Failed">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
+            <line x1="4" y1="22" x2="4" y2="15"/>
+          </svg>
+        </button>
+        <button type="button" class="pf-btn pass ${st === 'passed' ? 'active' : ''}" data-status-btn="passed" data-id="${it.id}" title="Mark as Passed" aria-label="Mark ${escapeHtml(it.label)} as Passed">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m5 12 5 5L20 7"/>
+          </svg>
+        </button>
+      </div>
+
+      <button type="button" class="paste-btn" data-paste-id="${it.id}" title="Paste from clipboard" aria-label="Paste ${escapeHtml(it.label)}">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
       </button>
     </div>
   `;
@@ -1369,12 +1570,14 @@ function escapeHtml(s) {
 
 function syncAllGuides() {
   const t = curType();
+  if (!t) return;
   const allItems = [...t.required, ...t.optional];
   allItems.forEach(it => updateRowGuide(it.id));
 }
 
 function updateRowGuide(itemId) {
   const t = curType();
+  if (!t) return;
   const it = [...t.required, ...t.optional].find(x => x.id === itemId);
   if (!it) return;
 
@@ -1383,43 +1586,70 @@ function updateRowGuide(itemId) {
 
   const input = row.querySelector('.mat-input');
   const fieldBox = row.querySelector('.material-field');
-  const guideEl = row.querySelector(`#guide_${itemId}`);
-  const dot = row.querySelector('.mandatory-dot');
+  const track = row.querySelector(`#track_${itemId}`);
+  const counter = row.querySelector(`#cnt_${itemId}`);
 
   const val = input.value;
-  fieldBox.classList.toggle('has-value', val.length > 0);
-  if (dot) dot.classList.toggle('filled', val.trim().length > 0);
+  const n = val.length;
+  const isFocused = document.activeElement === input;
+  const hasStatus = !!curStatus()[itemId];
 
-  if (it.len > 0) {
-    const { slots, count, match, overflow } = calculateGuide(val, it.len);
-    guideEl.innerHTML = `
-      <span class="guide-slots">${slots}</span>
-      <span class="guide-count ${match ? 'match' : overflow ? 'overflow' : ''}">${count}</span>
-    `;
-  } else {
-    guideEl.innerHTML = '';
+  fieldBox.classList.toggle('has-value', n > 0);
+  fieldBox.classList.toggle('expanded', n > 0 || isFocused || hasStatus);
+
+  // Update segmented underline slots
+  if (track && it.len > 0) {
+    const slots = track.querySelectorAll('.slot');
+    slots.forEach((slot, idx) => {
+      slot.classList.toggle('filled', idx < n);
+      // Only highlight cursor slot if focused and not full, NEVER when empty and blurred!
+      slot.classList.toggle('current', isFocused && idx === n && n < it.len);
+    });
+
+    if (counter) {
+      if (n > 0) {
+        counter.classList.add('visible');
+        counter.textContent = `${n}/${it.len}${n === it.len ? ' ✓' : ''}`;
+        counter.classList.toggle('match', n === it.len);
+        counter.classList.toggle('overflow', n > it.len);
+      } else {
+        counter.classList.remove('visible');
+        counter.textContent = '';
+      }
+    }
   }
 }
 
 /* ==========================================================================
-   Events & Drag-and-Drop Reordering
+   Events & Status Pass / Fail
    ========================================================================== */
 function bindFormEvents() {
-  // Input focus & changes
   mainForm.querySelectorAll('.mat-input').forEach(input => {
     const box = input.closest('.material-field');
+    const id = input.dataset.id;
 
-    input.addEventListener('focus', () => box.classList.add('is-focused'));
-    input.addEventListener('blur', () => box.classList.remove('is-focused'));
+    input.addEventListener('focus', () => {
+      box.classList.add('is-focused', 'expanded');
+      updateRowGuide(id);
+    });
+
+    input.addEventListener('blur', () => {
+      box.classList.remove('is-focused');
+      const val = input.value;
+      const hasStatus = !!curStatus()[id];
+      if (val.length === 0 && !hasStatus) {
+        box.classList.remove('expanded');
+      }
+      updateRowGuide(id);
+    });
 
     input.addEventListener('input', () => {
       stopAutoClear();
-      curValues()[input.dataset.id] = input.value;
-      updateRowGuide(input.dataset.id);
+      curValues()[id] = input.value;
+      updateRowGuide(id);
       syncPreview();
     });
 
-    // Enter to next field
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
@@ -1434,6 +1664,41 @@ function bindFormEvents() {
     });
   });
 
+  // Pass / Fail toggles
+  mainForm.querySelectorAll('[data-status-btn]').forEach(btn => {
+    btn.onclick = () => {
+      const id = btn.dataset.id;
+      const targetStatus = btn.dataset.statusBtn;
+      const cur = curStatus()[id];
+
+      const newStatus = cur === targetStatus ? null : targetStatus;
+      curStatus()[id] = newStatus;
+
+      const row = btn.closest('.item-row');
+      const box = row.querySelector('.material-field');
+      const track = row.querySelector('.mat-underline-track');
+      const input = row.querySelector('.mat-input');
+
+      box.classList.remove('status-passed', 'status-failed');
+      if (track) track.classList.remove('status-passed', 'status-failed');
+
+      if (newStatus) {
+        box.classList.add(`status-${newStatus}`, 'expanded');
+        if (track) track.classList.add(`status-${newStatus}`);
+      } else {
+        if (input && input.value.trim().length === 0 && document.activeElement !== input) {
+          box.classList.remove('expanded');
+        }
+      }
+
+      row.querySelectorAll('.pf-btn').forEach(b => {
+        b.classList.toggle('active', b.dataset.statusBtn === newStatus);
+      });
+
+      syncPreview();
+    };
+  });
+
   // Paste action
   mainForm.querySelectorAll('.paste-btn').forEach(btn => {
     btn.onclick = async () => {
@@ -1445,79 +1710,21 @@ function bindFormEvents() {
         input.value = text;
         curValues()[id] = text;
         stopAutoClear();
+        const box = input.closest('.material-field');
+        if (box) box.classList.add('expanded');
         updateRowGuide(id);
         syncPreview();
         input.focus();
-        showToast('Pasted into field');
+
+        input.style.transition = 'background 0.2s ease';
+        input.style.background = 'var(--saf-emerald-soft)';
+        setTimeout(() => { input.style.background = 'transparent'; }, 400);
       } catch (err) {
-        showToast('Clipboard access denied. Press Ctrl+V directly.', null, null, 3000, 'warn');
+        showToast('Clipboard access denied', null, null, 2500, 'warn');
         input.focus();
       }
     };
   });
-
-  // Drag and Drop for Optional Items
-  let draggedId = null;
-
-  mainForm.querySelectorAll('.item-row.optional').forEach(row => {
-    const handle = row.querySelector('.drag-handle');
-    if (!handle) return;
-
-    handle.addEventListener('dragstart', (e) => {
-      draggedId = row.dataset.id;
-      row.classList.add('dragging');
-      e.dataTransfer.effectAllowed = 'move';
-      e.dataTransfer.setData('text/plain', draggedId);
-    });
-
-    handle.addEventListener('dragend', () => {
-      row.classList.remove('dragging');
-      clearDropIndicators();
-      draggedId = null;
-    });
-
-    row.addEventListener('dragover', (e) => {
-      if (!draggedId || draggedId === row.dataset.id) return;
-      e.preventDefault();
-      clearDropIndicators();
-      const rect = row.getBoundingClientRect();
-      const mid = rect.top + rect.height / 2;
-      if (e.clientY < mid) row.classList.add('drag-over-top');
-      else row.classList.add('drag-over-bottom');
-    });
-
-    row.addEventListener('drop', (e) => {
-      e.preventDefault();
-      if (!draggedId || draggedId === row.dataset.id) return;
-      const rect = row.getBoundingClientRect();
-      const insertAfter = e.clientY >= rect.top + rect.height / 2;
-
-      reorderOptionalItem(draggedId, row.dataset.id, insertAfter);
-      clearDropIndicators();
-    });
-  });
-}
-
-function clearDropIndicators() {
-  mainForm.querySelectorAll('.drag-over-top, .drag-over-bottom').forEach(el => {
-    el.classList.remove('drag-over-top', 'drag-over-bottom');
-  });
-}
-
-function reorderOptionalItem(sourceId, targetId, insertAfter) {
-  const t = curType();
-  const list = t.optional;
-  const fromIdx = list.findIndex(x => x.id === sourceId);
-  if (fromIdx < 0) return;
-
-  const [item] = list.splice(fromIdx, 1);
-  let toIdx = list.findIndex(x => x.id === targetId);
-  if (insertAfter) toIdx++;
-
-  list.splice(toIdx, 0, item);
-  saveTypes();
-  renderForm();
-  showToast('Items reordered');
 }
 
 /* ==========================================================================
@@ -1527,12 +1734,21 @@ const commentInput = document.getElementById('commentInput');
 const commentFieldBox = document.getElementById('commentFieldBox');
 const commentSuggestions = document.getElementById('commentSuggestions');
 
-commentInput.addEventListener('focus', () => commentFieldBox.classList.add('is-focused'));
-commentInput.addEventListener('blur', () => commentFieldBox.classList.remove('is-focused'));
+commentInput.addEventListener('focus', () => {
+  commentFieldBox.classList.add('is-focused', 'expanded');
+});
+commentInput.addEventListener('blur', () => {
+  commentFieldBox.classList.remove('is-focused');
+  if (commentInput.value.trim().length === 0) {
+    commentFieldBox.classList.remove('expanded');
+  }
+});
 commentInput.addEventListener('input', () => {
   stopAutoClear();
   curValues()._comment = commentInput.value;
-  commentFieldBox.classList.toggle('has-value', commentInput.value.length > 0);
+  const hasVal = commentInput.value.length > 0;
+  commentFieldBox.classList.toggle('has-value', hasVal);
+  commentFieldBox.classList.toggle('expanded', hasVal || document.activeElement === commentInput);
   syncPreview();
 });
 commentInput.addEventListener('keydown', (e) => {
@@ -1545,9 +1761,9 @@ commentInput.addEventListener('keydown', (e) => {
 function updateCommentInput() {
   const v = curValues()._comment || '';
   commentInput.value = v;
-  commentFieldBox.classList.toggle('has-value', v.length > 0);
-
-  // Sync suggestions
+  const hasVal = v.length > 0;
+  commentFieldBox.classList.toggle('has-value', hasVal);
+  commentFieldBox.classList.toggle('expanded', hasVal || document.activeElement === commentInput);
   commentSuggestions.innerHTML = savedComments.map(c => `<option value="${escapeHtml(c)}">`).join('');
 }
 
@@ -1576,7 +1792,6 @@ function syncPreview() {
   }
 }
 
-// Copy button
 const btnCopy = document.getElementById('btnCopy');
 const copyBtnText = document.getElementById('copyBtnText');
 
@@ -1594,7 +1809,6 @@ async function doCopy() {
     return;
   }
 
-  // Save comment to history if non-empty
   const c = (curValues()._comment || '').trim();
   if (c && !savedComments.includes(c)) {
     savedComments.unshift(c);
@@ -1603,176 +1817,60 @@ async function doCopy() {
     updateCommentInput();
   }
 
-  // Visual success feedback on button
   btnCopy.classList.add('copied-success');
-  copyBtnText.textContent = 'Copied!';
+  copyBtnText.textContent = 'Copied ✓';
   setTimeout(() => {
     btnCopy.classList.remove('copied-success');
     copyBtnText.textContent = 'Copy';
-  }, 1200);
+  }, 1400);
 
-  // Check missing mandatory fields
-  const missing = t.required.filter(it => !(curValues()[it.id] || '').trim()).length;
-  if (missing > 0) {
-    showToast(`Copied, but ${missing} required ${missing === 1 ? 'field is' : 'fields are'} blank`, null, null, 3000, 'warn');
-  } else {
-    showToast('Copied to clipboard!');
-  }
-
-  // Trigger auto-clear timer if configured
   startAutoClear(t.id);
 }
 btnCopy.onclick = doCopy;
 
-// Clear button with Undo capability
-const btnClear = document.getElementById('btnClear');
-btnClear.onclick = () => {
-  const v = curValues();
-  if (!Object.values(v).some(x => x && x.trim())) {
-    showToast('Already empty');
-    return;
-  }
-
-  // Backup snapshot for Undo
-  const snapshot = Object.assign({}, v);
-  formValues[activeTypeId] = {};
-  stopAutoClear();
-  renderForm();
-  updateCommentInput();
-  syncPreview();
-
-  showToast('Details cleared', 'Undo', () => {
-    formValues[activeTypeId] = snapshot;
-    renderForm();
-    updateCommentInput();
-    syncPreview();
-    showToast('Restored previous details');
-  }, 4500);
-};
-
 /* ==========================================================================
-   Creatable Searchable Select Dropdown
+   Mount CreatableSelect for Vetting Types
    ========================================================================== */
-const typeTrigger = document.getElementById('typeTrigger');
-const dropdownMenu = document.getElementById('dropdownMenu');
-const typeSearchInput = document.getElementById('typeSearchInput');
-const typeOptionsList = document.getElementById('typeOptionsList');
+const typeSelectMount = document.getElementById('typeSelectMount');
+let typeSelectComponent = null;
 
-typeTrigger.onclick = (e) => {
-  e.stopPropagation();
-  toggleDropdown();
-};
-
-function toggleDropdown(forceState = null) {
-  const isOpen = forceState !== null ? forceState : !dropdownMenu.classList.contains('open');
-  if (isOpen) {
-    dropdownMenu.classList.add('open');
-    typeTrigger.setAttribute('aria-expanded', 'true');
-    typeSearchInput.value = '';
-    renderDropdownOptions('');
-    setTimeout(() => typeSearchInput.focus(), 30);
-  } else {
-    dropdownMenu.classList.remove('open');
-    typeTrigger.setAttribute('aria-expanded', 'false');
-  }
-}
-
-document.addEventListener('click', (e) => {
-  if (!e.target.closest('#selectWrapper')) {
-    toggleDropdown(false);
-  }
-});
-
-typeSearchInput.addEventListener('input', () => {
-  renderDropdownOptions(typeSearchInput.value.trim());
-});
-
-typeSearchInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape') {
-    toggleDropdown(false);
-  } else if (e.key === 'Enter') {
-    e.preventDefault();
-    const firstOpt = typeOptionsList.querySelector('.type-opt');
-    if (firstOpt) firstOpt.click();
-  }
-});
-
-function renderDropdownOptions(q) {
-  const lower = q.toLowerCase();
-  const matched = types.filter(t => t.name.toLowerCase().includes(lower));
-
-  let html = '';
-  matched.forEach(t => {
-    const isSelected = t.id === activeTypeId;
-    html += `
-      <div class="type-opt ${isSelected ? 'selected' : ''}" data-type-id="${t.id}">
-        <span>${escapeHtml(t.name)}</span>
-        ${isSelected ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
-      </div>
-    `;
-  });
-
-  // Creatable option if non-empty query doesn't match an existing type
-  if (q && !types.some(t => t.name.toLowerCase() === lower)) {
-    html += `
-      <div class="type-opt create-opt" data-create-name="${escapeHtml(q)}">
-        <span>+ Create "${escapeHtml(q)}"</span>
-      </div>
-    `;
-  }
-
-  // Always show shortcut to create new
-  if (!q) {
-    html += `
-      <div class="type-opt create-opt" data-create-new="true">
-        <span>+ New Vetting Type</span>
-      </div>
-    `;
-  }
-
-  typeOptionsList.innerHTML = html;
-
-  // Bind clicks
-  typeOptionsList.querySelectorAll('.type-opt').forEach(opt => {
-    opt.onclick = () => {
-      if (opt.dataset.typeId) {
-        switchType(opt.dataset.typeId);
-      } else if (opt.dataset.createName) {
-        createNewType(opt.dataset.createName);
-      } else if (opt.dataset.createNew) {
-        createNewType('');
-      }
-      toggleDropdown(false);
-    };
+function initTypeSelect() {
+  typeSelectComponent = new CreatableSelect(typeSelectMount, {
+    options: types.map(t => ({ value: t.id, label: t.name })),
+    value: activeTypeId,
+    placeholder: 'Vetting type...',
+    onChange: (val) => {
+      activeTypeId = val;
+      saveTypes();
+      stopAutoClear();
+      renderForm();
+      updateCommentInput();
+    },
+    onCreate: (opt) => {
+      const newTypeObj = {
+        id: opt.value,
+        name: opt.label,
+        required: [
+          { id: uid(), label: 'Full Name', len: 0 },
+          { id: uid(), label: 'ID Number', len: 8 },
+          { id: uid(), label: 'Line Number', len: 10 }
+        ],
+        optional: []
+      };
+      types.push(newTypeObj);
+      activeTypeId = newTypeObj.id;
+      saveTypes();
+      renderForm();
+      updateCommentInput();
+      openEditView();
+    }
   });
 }
 
-function switchType(typeId) {
-  activeTypeId = typeId;
-  saveTypes();
-  renderForm();
-  updateCommentInput();
-  showToast(`Switched to ${curType().name}`);
-}
-
-function createNewType(name) {
-  const newTypeObj = {
-    id: uid(),
-    name: name || 'Untitled Vetting',
-    required: [
-      { id: uid(), label: 'Full Name', len: 0 },
-      { id: uid(), label: 'ID Number', len: 8 },
-      { id: uid(), label: 'Line Number', len: 10 }
-    ],
-    optional: []
-  };
-  types.push(newTypeObj);
-  activeTypeId = newTypeObj.id;
-  saveTypes();
-  renderForm();
-  updateCommentInput();
-  openEditView();
-  showToast(`Created ${newTypeObj.name}`);
+function refreshTypeSelect() {
+  if (typeSelectComponent) {
+    typeSelectComponent.setOptions(types.map(t => ({ value: t.id, label: t.name })), activeTypeId);
+  }
 }
 
 /* ==========================================================================
@@ -1793,6 +1891,7 @@ function openEditView() {
 function closeEditView() {
   editView.style.display = 'none';
   saveTypes();
+  refreshTypeSelect();
   renderForm();
 }
 
@@ -1800,30 +1899,30 @@ function renderEditView() {
   const t = curType();
   let html = `
     <div class="section-head" style="margin-top:0;">Vetting Type Name</div>
-    <div class="material-field has-value" style="margin-bottom:12px;">
+    <div class="material-field has-value" style="margin-bottom:10px;">
       <input type="text" class="mat-input" id="editTypeName" value="${escapeHtml(t.name)}" placeholder="e.g. SIM Swap">
-      <span class="mat-underline" style="transform:scaleX(1)"></span>
+      <div class="mat-underline-continuous" style="height:2px;background:var(--saf-emerald)"></div>
     </div>
 
     <div class="section-head">
       <span>Required Items</span>
-      <span style="font-size:10px;color:var(--text-dim);">Fixed Order</span>
+      <span style="font-size:9.5px;color:var(--text-dim);">Fixed Order</span>
     </div>
     <div id="editReqList">
       ${t.required.map((it, i) => createEditRowHtml(it, 'required', i, t.required.length)).join('')}
     </div>
-    <button class="btn-action" style="width:100%;margin-top:6px;" id="btnAddReq">+ Add Required Item</button>
+    <button class="btn-action" style="width:100%;margin-top:5px;" id="btnAddReq">+ Add Required Item</button>
 
-    <div class="section-head" style="margin-top:16px;">
+    <div class="section-head" style="margin-top:14px;">
       <span>Optional Items</span>
-      <span style="font-size:10px;color:var(--text-dim);">Reorderable</span>
+      <span style="font-size:9.5px;color:var(--text-dim);">Use ▲▼ or Alt+↑/↓ to Reorder</span>
     </div>
     <div id="editOptList">
       ${t.optional.map((it, i) => createEditRowHtml(it, 'optional', i, t.optional.length)).join('')}
     </div>
-    <button class="btn-action" style="width:100%;margin-top:6px;" id="btnAddOpt">+ Add Optional Item</button>
+    <button class="btn-action" style="width:100%;margin-top:5px;" id="btnAddOpt">+ Add Optional Item</button>
 
-    <button class="btn-action" id="btnDeleteType" style="width:100%;margin-top:24px;color:var(--color-danger);border-color:var(--border-line);">
+    <button class="btn-action" id="btnDeleteType" style="width:100%;margin-top:20px;color:var(--color-danger);border-color:var(--border-line);">
       Delete this Vetting Type
     </button>
   `;
@@ -1836,13 +1935,13 @@ function createEditRowHtml(it, kind, idx, total) {
   return `
     <div class="edit-row" data-id="${it.id}" data-kind="${kind}">
       <div class="arrows-col">
-        <button class="arr-btn" data-move="-1" ${idx === 0 ? 'disabled' : ''}>▲</button>
-        <button class="arr-btn" data-move="1" ${idx === total - 1 ? 'disabled' : ''}>▼</button>
+        <button type="button" class="arr-btn" data-move="-1" title="Move Up (Alt+↑)" aria-label="Move Up" ${idx === 0 ? 'disabled' : ''}>▲</button>
+        <button type="button" class="arr-btn" data-move="1" title="Move Down (Alt+↓)" aria-label="Move Down" ${idx === total - 1 ? 'disabled' : ''}>▼</button>
       </div>
       <input type="text" class="el-label" value="${escapeHtml(it.label)}" placeholder="Label name">
       <input type="number" class="el-len" value="${it.len || ''}" placeholder="len" title="Guide length in characters">
-      <button class="ibtn" data-del="true" title="Remove item" style="width:22px;height:22px;color:var(--color-danger);">
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      <button type="button" class="ibtn" data-del="true" title="Remove item" style="width:20px;height:20px;color:var(--color-danger);">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
       </button>
     </div>
   `;
@@ -1853,11 +1952,10 @@ function bindEditEvents() {
   const nameInput = document.getElementById('editTypeName');
   nameInput.oninput = () => {
     t.name = nameInput.value || 'Untitled';
-    document.getElementById('curTypeLabel').textContent = t.name;
     saveTypes();
+    refreshTypeSelect();
   };
 
-  // Reorder up/down & delete
   editPane.onclick = (e) => {
     const row = e.target.closest('.edit-row');
     if (!row) {
@@ -1875,10 +1973,11 @@ function bindEditEvents() {
         if (confirm(`Delete "${t.name}"?`)) {
           types = types.filter(x => x.id !== t.id);
           delete formValues[t.id];
+          delete itemStatus[t.id];
           activeTypeId = types[0].id;
           saveTypes();
+          refreshTypeSelect();
           closeEditView();
-          showToast('Vetting type deleted');
         }
       }
       return;
@@ -1886,7 +1985,8 @@ function bindEditEvents() {
 
     const kind = row.dataset.kind;
     const list = kind === 'required' ? t.required : t.optional;
-    const idx = list.findIndex(x => x.id === row.dataset.id);
+    const itemId = row.dataset.id;
+    const idx = list.findIndex(x => x.id === itemId);
 
     if (e.target.closest('[data-del]')) {
       list.splice(idx, 1);
@@ -1896,7 +1996,53 @@ function bindEditEvents() {
       const targetIdx = idx + step;
       if (targetIdx >= 0 && targetIdx < list.length) {
         [list[idx], list[targetIdx]] = [list[targetIdx], list[idx]];
+        saveTypes();
         renderEditView();
+        const newRow = editPane.querySelector(`.edit-row[data-id="${itemId}"]`);
+        if (newRow) {
+          const btn = newRow.querySelector(`[data-move="${step}"]`) || newRow.querySelector('.arr-btn');
+          if (btn && !btn.disabled) btn.focus();
+        }
+      }
+    }
+  };
+
+  // Keyboard reordering: Alt+↑ / Alt+↓ anywhere on row, plain ↑ / ↓ on arr-btn
+  editPane.onkeydown = (e) => {
+    const row = e.target.closest('.edit-row');
+    if (!row) return;
+
+    const isAltUp = e.altKey && e.key === 'ArrowUp';
+    const isAltDown = e.altKey && e.key === 'ArrowDown';
+    const isArrBtn = e.target.classList.contains('arr-btn');
+    const isPlainUp = isArrBtn && e.key === 'ArrowUp';
+    const isPlainDown = isArrBtn && e.key === 'ArrowDown';
+
+    if (isAltUp || isAltDown || isPlainUp || isPlainDown) {
+      e.preventDefault();
+      const step = (isAltUp || isPlainUp) ? -1 : 1;
+      const kind = row.dataset.kind;
+      const list = kind === 'required' ? t.required : t.optional;
+      const itemId = row.dataset.id;
+      const idx = list.findIndex(x => x.id === itemId);
+      const targetIdx = idx + step;
+
+      if (targetIdx >= 0 && targetIdx < list.length) {
+        [list[idx], list[targetIdx]] = [list[targetIdx], list[idx]];
+        saveTypes();
+        renderEditView();
+        const newRow = editPane.querySelector(`.edit-row[data-id="${itemId}"]`);
+        if (newRow) {
+          if (isArrBtn) {
+            const btn = newRow.querySelector(`[data-move="${step}"]`) || newRow.querySelector('.arr-btn');
+            if (btn && !btn.disabled) btn.focus();
+          } else {
+            const cls = e.target.className.split(' ')[0];
+            const el = cls ? newRow.querySelector(`.${cls}`) : null;
+            if (el) el.focus();
+            else newRow.querySelector('.el-label')?.focus();
+          }
+        }
       }
     }
   };
@@ -1931,18 +2077,15 @@ btnBackSettings.onclick = () => {
 };
 
 function renderSettingsView() {
-  // Theme chips
   const themeChips = document.getElementById('themeChips');
   themeChips.querySelectorAll('.chip').forEach(c => {
     c.classList.toggle('active', c.dataset.themeVal === settings.theme);
     c.onclick = () => {
       applyTheme(c.dataset.themeVal);
       renderSettingsView();
-      showToast(`Theme set to ${c.textContent}`);
     };
   });
 
-  // Auto-clear chips
   const acChips = document.getElementById('autoClearChips');
   acChips.querySelectorAll('.chip').forEach(c => {
     c.classList.toggle('active', parseInt(c.dataset.ac, 10) === settings.autoClear);
@@ -1950,22 +2093,20 @@ function renderSettingsView() {
       settings.autoClear = parseInt(c.dataset.ac, 10);
       LS.set('vpad.settings', settings);
       renderSettingsView();
-      showToast(`Auto-clear set to ${c.textContent}`);
     };
   });
 
-  // Saved comments list
   const commentList = document.getElementById('savedCommentList');
   document.getElementById('commentCountBadge').textContent = `${savedComments.length} saved`;
 
   if (savedComments.length === 0) {
-    commentList.innerHTML = `<div style="color:var(--text-dim);font-style:italic;font-size:11px;">No saved comments yet</div>`;
+    commentList.innerHTML = `<div style="color:var(--text-dim);font-style:italic;font-size:10.5px;">No saved comments yet</div>`;
   } else {
     commentList.innerHTML = savedComments.map((c, i) => `
       <div class="comment-item">
         <span title="${escapeHtml(c)}">${escapeHtml(c)}</span>
-        <button class="ibtn" data-del-comment="${i}" style="width:20px;height:20px;color:var(--color-danger);" title="Delete comment">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        <button class="ibtn" data-del-comment="${i}" style="width:18px;height:18px;color:var(--color-danger);" title="Delete comment">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
         </button>
       </div>
     `).join('');
@@ -1981,17 +2122,17 @@ function renderSettingsView() {
     });
   }
 
-  // Reset all
   document.getElementById('btnResetAll').onclick = () => {
     if (confirm('Reset all vetting types and configuration to factory defaults?')) {
       types = defaultVettingTypes();
       activeTypeId = types[0].id;
       formValues = {};
+      itemStatus = {};
       saveTypes();
       settingsView.style.display = 'none';
+      refreshTypeSelect();
       renderForm();
       updateCommentInput();
-      showToast('Reset to defaults');
     }
   };
 }
@@ -2000,15 +2141,16 @@ function renderSettingsView() {
    Keyboard Shortcuts
    ========================================================================== */
 document.addEventListener('keydown', (e) => {
-  // Global Ctrl+Enter to Copy
   if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
     e.preventDefault();
     doCopy();
   }
-  // Global Ctrl+K to open searchable type switcher
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
     e.preventDefault();
-    toggleDropdown(true);
+    if (typeSelectComponent) {
+      typeSelectComponent.open();
+      typeSelectComponent.input.focus();
+    }
   }
 });
 
@@ -2027,7 +2169,7 @@ rz.addEventListener('pointerdown', (e) => {
   const startW = win.offsetWidth;
 
   const onMove = (ev) => {
-    const newW = Math.round(Math.max(250, Math.min(460, startW + (startX - ev.clientX))));
+    const newW = Math.round(Math.max(250, Math.min(440, startW + (startX - ev.clientX))));
     win.style.width = newW + 'px';
     wpx.textContent = newW + ' px';
   };
@@ -2040,28 +2182,30 @@ rz.addEventListener('pointerdown', (e) => {
   rz.addEventListener('pointerup', onUp);
 });
 
-// Seed sample customer to make initial preview instant & vivid
+// Seed sample customer
 (function seedPreviewSample() {
   const swap = types.find(t => t.name === 'SIM Swap');
   if (swap) {
     const v = {};
+    const st = {};
     const fullName = swap.required.find(i => i.label === 'Full Name');
     const idNum = swap.required.find(i => i.label === 'ID Number');
     const lineNum = swap.required.find(i => i.label === 'Line Number');
     const topUp = swap.optional.find(i => i.label === 'Last Top-up Amount');
     const contact = swap.optional.find(i => i.label === 'Recent Call Contact');
 
-    if (fullName) v[fullName.id] = 'Amina Otieno';
-    if (idNum) v[idNum.id] = '12345678';
-    if (lineNum) v[lineNum.id] = '0712345678';
-    if (topUp) v[topUp.id] = '100';
-    if (contact) v[contact.id] = '0722000111';
+    if (fullName) { v[fullName.id] = 'Amina Otieno'; st[fullName.id] = 'passed'; }
+    if (idNum) { v[idNum.id] = '12345678'; st[idNum.id] = 'passed'; }
+    if (lineNum) { v[lineNum.id] = '0712345678'; st[lineNum.id] = 'passed'; }
+    if (topUp) { v[topUp.id] = '100'; }
+    if (contact) { v[contact.id] = '0722000'; }
     v._comment = 'Vetted and Line Swapped';
     formValues[swap.id] = v;
+    itemStatus[swap.id] = st;
   }
 })();
 
-// Initial Render
+initTypeSelect();
 renderForm();
 updateCommentInput();
 
