@@ -126,6 +126,7 @@ function applyTheme(theme) {
 }
 
 const saveTypes = () => { Storage.setMultiple({ 'vpad.types': types, 'vpad.active': activeTypeId }); };
+const saveSettings = () => { Storage.set('vpad.settings', settings); };
 const saveComments = () => { Storage.set('vpad.comments', savedComments); };
 
 /* ==========================================================================
@@ -831,7 +832,6 @@ if (commentSuggestionsMenu) {
       if (idx !== -1) {
         savedComments.splice(idx, 1);
         saveComments();
-        renderSavedCommentsList();
         renderCommentSuggestions(commentInput.value);
         showToast('Comment deleted', null, null, 1500, 'info');
       }
@@ -1355,6 +1355,9 @@ function renderSettingsView() {
             activeTypeId = types[0].id;
           }
 
+          formValues = {};
+          itemStatus = {};
+
           saveTypes();
           saveSettings();
           saveComments();
@@ -1367,7 +1370,8 @@ function renderSettingsView() {
 
           showBanner('Configuration imported successfully', null, null, 3000, 'info');
         } catch (err) {
-          showBanner('Import failed: Invalid JSON file', null, null, 3500, 'danger');
+          console.error('Import error:', err);
+          showBanner('Import failed: ' + (err.message || 'Invalid JSON file'), null, null, 3500, 'danger');
         } finally {
           importFileInput.value = '';
         }

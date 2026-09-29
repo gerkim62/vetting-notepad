@@ -1,0 +1,447 @@
+{
+  "app": "vetting-notepad",
+  "version": 2,
+  "exportedAt": "2026-09-29T20:00:00.000Z",
+  "activeTypeId": "swap",
+  "settings": {
+    "theme": "dark",
+    "autoClear": 0
+  },
+  "types": [
+    {
+      "id": "swap",
+      "name": "SIM Swap (Enhanced Vetting)",
+      "required": [
+        {
+          "id": "sw_msisdn",
+          "label": "Line Number to Swap",
+          "len": 10
+        },
+        {
+          "id": "sw_callno",
+          "label": "Calling Number",
+          "len": 10
+        },
+        {
+          "id": "sw_name",
+          "label": "Full Names (View 360)",
+          "len": 0
+        },
+        {
+          "id": "sw_idnum",
+          "label": "ID / Passport Number",
+          "len": 8
+        },
+        {
+          "id": "sw_yob",
+          "label": "Year of Birth (YOB)",
+          "len": 4
+        },
+        {
+          "id": "sw_simex",
+          "label": "New SIMEX Serial Number",
+          "len": 20
+        }
+      ],
+      "optional": [
+        {
+          "id": "sw_fdn1",
+          "label": "FDN 1 (Called/SMSed 2x in 3 mos)",
+          "len": 10
+        },
+        {
+          "id": "sw_fdn2",
+          "label": "FDN 2 (Called/SMSed 2x in 3 mos)",
+          "len": 10
+        },
+        {
+          "id": "sw_mpesa_bal",
+          "label": "M-PESA Balance (Margin of error)",
+          "len": 0
+        },
+        {
+          "id": "sw_airtime_bal",
+          "label": "Airtime Balance",
+          "len": 0
+        },
+        {
+          "id": "sw_mpesa_txn1",
+          "label": "Self-Txn 1 (Amt, Date, Recipient)",
+          "len": 0
+        },
+        {
+          "id": "sw_mpesa_txn2",
+          "label": "Self-Txn 2 (Amt, Date, Recipient)",
+          "len": 0
+        },
+        {
+          "id": "sw_limit",
+          "label": "Fuliza / M-Shwari / KCB Limit",
+          "len": 0
+        },
+        {
+          "id": "sw_regdate",
+          "label": "Reg Date (Month & Year)",
+          "len": 0
+        },
+        {
+          "id": "sw_bundle",
+          "label": "Last Bundle Purchase / Plan",
+          "len": 0
+        },
+        {
+          "id": "sw_altno",
+          "label": "Alternative Contact Number",
+          "len": 10
+        }
+      ]
+    },
+    {
+      "id": "bar",
+      "name": "Line Barring (Lost / Stolen)",
+      "required": [
+        {
+          "id": "bar_msisdn",
+          "label": "Line to Bar",
+          "len": 10
+        },
+        {
+          "id": "bar_callno",
+          "label": "Calling Number",
+          "len": 10
+        },
+        {
+          "id": "bar_reason",
+          "label": "Reason (Misplaced vs Stolen/Robbed)",
+          "len": 0
+        },
+        {
+          "id": "bar_owner_name",
+          "label": "Registered Customer Name",
+          "len": 0
+        },
+        {
+          "id": "bar_owner_id",
+          "label": "Registered Customer ID",
+          "len": 8
+        }
+      ],
+      "optional": [
+        {
+          "id": "bar_caller_name",
+          "label": "Caller Full Name (If 3rd Party)",
+          "len": 0
+        },
+        {
+          "id": "bar_caller_id",
+          "label": "Caller ID Number (If 3rd Party)",
+          "len": 8
+        },
+        {
+          "id": "bar_app_wipe",
+          "label": "Apps Wiped (OneApp/M-PESA/MySaf)",
+          "len": 0
+        },
+        {
+          "id": "bar_hlr_status",
+          "label": "HLR Status (BAOC/BAIC Active)",
+          "len": 0
+        },
+        {
+          "id": "bar_g3_status",
+          "label": "M-PESA G3 Barring Status",
+          "len": 0
+        }
+      ]
+    },
+    {
+      "id": "unbar",
+      "name": "Line Unbarring (Self Only)",
+      "required": [
+        {
+          "id": "unb_msisdn",
+          "label": "Line to Unbar",
+          "len": 10
+        },
+        {
+          "id": "unb_callno",
+          "label": "Calling Number",
+          "len": 10
+        },
+        {
+          "id": "unb_name",
+          "label": "Full Names (View 360)",
+          "len": 0
+        },
+        {
+          "id": "unb_idnum",
+          "label": "ID / Passport Number",
+          "len": 8
+        },
+        {
+          "id": "unb_yob",
+          "label": "Year of Birth (YOB)",
+          "len": 4
+        }
+      ],
+      "optional": [
+        {
+          "id": "unb_check_keycom",
+          "label": "Siebel Key Comment Check (No Fraud)",
+          "len": 0
+        },
+        {
+          "id": "unb_sec_item1",
+          "label": "Secondary Vetting Item 1",
+          "len": 0
+        },
+        {
+          "id": "unb_sec_item2",
+          "label": "Secondary Vetting Item 2",
+          "len": 0
+        },
+        {
+          "id": "unb_hlr_resume",
+          "label": "HLR Unbar Operator Barring Done",
+          "len": 0
+        }
+      ]
+    },
+    {
+      "id": "reversal",
+      "name": "M-PESA & LNM Reversal",
+      "required": [
+        {
+          "id": "rev_tid",
+          "label": "Transaction ID (TID)",
+          "len": 10
+        },
+        {
+          "id": "rev_sender_msisdn",
+          "label": "Sender Number (Party A)",
+          "len": 10
+        },
+        {
+          "id": "rev_sender_name",
+          "label": "Sender Full Name",
+          "len": 0
+        },
+        {
+          "id": "rev_sender_id",
+          "label": "Sender ID Number",
+          "len": 8
+        },
+        {
+          "id": "rev_amount",
+          "label": "Transaction Amount (KES)",
+          "len": 0
+        },
+        {
+          "id": "rev_recipient",
+          "label": "Recipient Number / Till / Paybill",
+          "len": 10
+        },
+        {
+          "id": "rev_date_time",
+          "label": "Date & Time (<30 Days Validated)",
+          "len": 0
+        }
+      ],
+      "optional": [
+        {
+          "id": "rev_type",
+          "label": "Txn Type (P2P / LNM Till / Paybill 200200 / Pochi)",
+          "len": 0
+        },
+        {
+          "id": "rev_aggregator",
+          "label": "Merchant Type (Safaricom HO / Standalone / Kopo Kopo / Bank)",
+          "len": 0
+        },
+        {
+          "id": "rev_acc_no",
+          "label": "Wrong Account / Ref Number Entered",
+          "len": 0
+        },
+        {
+          "id": "rev_correct_acc",
+          "label": "Intended Correct Account Number",
+          "len": 0
+        },
+        {
+          "id": "rev_sr_num",
+          "label": "SR Number (If escalated, 72h SLA)",
+          "len": 0
+        }
+      ]
+    },
+    {
+      "id": "startkey",
+      "name": "M-PESA PIN Unlock / Start Key",
+      "required": [
+        {
+          "id": "sk_msisdn",
+          "label": "Affected M-PESA Number",
+          "len": 10
+        },
+        {
+          "id": "sk_callno",
+          "label": "Calling Number (Active Check)",
+          "len": 10
+        },
+        {
+          "id": "sk_name",
+          "label": "Full Names (View 360 & G2)",
+          "len": 0
+        },
+        {
+          "id": "sk_idnum",
+          "label": "ID Number (Check 7/8 digits)",
+          "len": 8
+        },
+        {
+          "id": "sk_dob_yob",
+          "label": "Year of Birth / DOB",
+          "len": 4
+        }
+      ],
+      "optional": [
+        {
+          "id": "sk_rule_24h_txn",
+          "label": "Authenticated Txn in Last 24h? (Refer Retail if Yes)",
+          "len": 0
+        },
+        {
+          "id": "sk_rule_24h_swap",
+          "label": "SIM Swap within 24h? (Wait 24h / DIY 7 days)",
+          "len": 0
+        },
+        {
+          "id": "sk_mpesa_bal",
+          "label": "M-PESA Balance",
+          "len": 0
+        },
+        {
+          "id": "sk_fsi_limit",
+          "label": "Fuliza / M-Shwari Limit",
+          "len": 0
+        },
+        {
+          "id": "sk_reg_date",
+          "label": "Registration Month & Year",
+          "len": 0
+        }
+      ]
+    },
+    {
+      "id": "puk",
+      "name": "PUK Retrieval",
+      "required": [
+        {
+          "id": "puk_msisdn",
+          "label": "Line Number Needing PUK",
+          "len": 10
+        },
+        {
+          "id": "puk_callno",
+          "label": "Calling Number",
+          "len": 10
+        },
+        {
+          "id": "puk_name",
+          "label": "Full Names",
+          "len": 0
+        },
+        {
+          "id": "puk_idnum",
+          "label": "ID / Passport Number",
+          "len": 8
+        },
+        {
+          "id": "puk_yob",
+          "label": "Year of Birth",
+          "len": 4
+        }
+      ],
+      "optional": [
+        {
+          "id": "puk_altno",
+          "label": "Alternative Contact Number",
+          "len": 10
+        },
+        {
+          "id": "puk_store_till",
+          "label": "Store / Till Number (If Merchant PUK)",
+          "len": 0
+        },
+        {
+          "id": "puk_airtime_bal",
+          "label": "Airtime Balance",
+          "len": 0
+        }
+      ]
+    },
+    {
+      "id": "pooled",
+      "name": "Pooled Number Recreation",
+      "required": [
+        {
+          "id": "pol_msisdn",
+          "label": "Pooled Line Number",
+          "len": 10
+        },
+        {
+          "id": "pol_callno",
+          "label": "Calling Number",
+          "len": 10
+        },
+        {
+          "id": "pol_name",
+          "label": "Full Names (View 360)",
+          "len": 0
+        },
+        {
+          "id": "pol_idnum",
+          "label": "ID Number",
+          "len": 8
+        },
+        {
+          "id": "pol_old_simex",
+          "label": "Old SIMEX Serial (Must Match CRM)",
+          "len": 20
+        }
+      ],
+      "optional": [
+        {
+          "id": "pol_indata_status",
+          "label": "IN-Data Status Checked",
+          "len": 0
+        },
+        {
+          "id": "pol_sr_ticket",
+          "label": "SR Number (If Sync Delays)",
+          "len": 0
+        },
+        {
+          "id": "pol_altno",
+          "label": "Alternative Number",
+          "len": 10
+        }
+      ]
+    }
+  ],
+  "savedComments": [
+    "Customer vetted on primary and secondary details. Line swapped successfully. Educated on M-PESA activation.",
+    "Customer called to report lost handset. Line barred on Siebel & HLR, M-PESA barred on G3, and all linked apps wiped on CRM.",
+    "Phone reported stolen/robbed. Line barred, apps wiped, key comment updated: 'Phone stolen, Refer to Retail for Unbarring'.",
+    "Customer vetted for line unbarring. Resumed on Siebel and HLR cleared. Advised on default barring PIN 0000.",
+    "Third party called to bar line. Captured caller details and vetted registered owner details. Line barred and apps wiped.",
+    "LNM Reversal initiated on M-PESA G3. Transaction verified within 30 days. Advised customer on 72 working hours SLA.",
+    "Bank/Aggregated merchant reversal requested. Reversal cannot be initiated directly; SR raised to LNM Support, advised on 72h SLA.",
+    "Paybill 200200 reversal/posting requested. Full details captured on SR for PostPay Team to post to correct account.",
+    "Customer vetted on primary details. M-PESA PIN unlocked on G2. Customer guided on DIY *334# for PIN management.",
+    "Start Key requested but customer had positive authenticated txn in last 24h. Referred to Retail Center as per fraud matrix.",
+    "Customer failed vetting on 1st attempt. Recorded vetted parameters and advised to confirm details and call back.",
+    "Customer failed vetting on 2nd attempt. Referred to Retail Center / Care Desk with original physical ID."
+  ]
+}
