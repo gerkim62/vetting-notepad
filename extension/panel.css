@@ -26,6 +26,7 @@
   --color-danger: #dc2626;
   --color-danger-soft: #fee2e2;
   --color-warn: #d97706;
+  --color-warn-soft: rgba(217, 119, 6, 0.12);
   --color-ok: var(--saf-emerald);
 
   --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.08);
@@ -526,10 +527,12 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   stroke: var(--color-danger);
 }
 .pf-btn.pass.active {
-  background: var(--saf-emerald);
-  color: #ffffff;
+  background: var(--saf-emerald-soft);
+  color: var(--saf-emerald);
   font-weight: 700;
-  box-shadow: 0 0 5px var(--saf-emerald-glow);
+}
+.pf-btn.pass.active svg {
+  stroke: var(--saf-emerald);
 }
 
 /* Paste Button */
@@ -607,6 +610,12 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   background: var(--color-warn);
   border-color: var(--color-warn);
   color: #fff;
+  font-weight: 700;
+}
+.btn-clear.cleared-success {
+  background: var(--saf-emerald-soft);
+  border-color: var(--saf-emerald);
+  color: var(--saf-emerald);
   font-weight: 700;
 }
 
@@ -710,44 +719,81 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   background: var(--color-danger-soft);
 }
 
-.toast-shelf {
-  position: absolute;
-  top: 38px;
-  left: 6px;
-  right: 6px;
-  z-index: 90;
-  pointer-events: none;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.toast {
-  pointer-events: auto;
+/* Static Topbar Alert / Message Banner with Shake Effect */
+.top-banner {
+  flex: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 6px;
   padding: 5px 8px;
-  background: var(--bg-panel);
-  border: 1px solid var(--border-line);
-  border-left: 3px solid var(--saf-emerald);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md);
+  background: var(--bg-panel-alt);
+  border-bottom: 1px solid var(--border-line);
   font-size: 11px;
   color: var(--text-main);
-  animation: slideDown 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: bannerShake 0.4s ease-in-out;
 }
-.toast.toast-warn { border-left-color: var(--color-warn); }
-.toast.toast-danger { border-left-color: var(--color-danger); }
-.toast-msg { flex: 1; min-width: 0; }
-.toast-btn {
-  font-size: 10.5px;
-  font-weight: 700;
+.top-banner.banner-info {
+  background: var(--saf-emerald-soft);
   color: var(--saf-emerald);
-  padding: 1px 5px;
-  border-radius: 3px;
+  border-bottom-color: var(--saf-emerald);
 }
-.toast-btn:hover { background: var(--saf-emerald-soft); }
+.top-banner.banner-warn {
+  background: var(--color-warn-soft);
+  color: var(--color-warn);
+  border-bottom-color: var(--color-warn);
+}
+.top-banner.banner-danger {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+  border-bottom-color: var(--color-danger);
+}
+.top-banner-msg {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.top-banner-btn {
+  font-size: 10px;
+  font-weight: 700;
+  background: none;
+  border: 1px solid currentColor;
+  border-radius: var(--radius-sm);
+  padding: 1px 6px;
+  color: inherit;
+  cursor: pointer;
+  flex: none;
+}
+.top-banner-btn:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+.top-banner-close {
+  background: none;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  border-radius: 3px;
+  opacity: 0.8;
+  flex: none;
+}
+.top-banner-close:hover {
+  opacity: 1;
+}
+
+@keyframes bannerShake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-4px); }
+  40%, 80% { transform: translateX(4px); }
+}
 
 /* ==========================================================================
    Settings & Edit Sub-views

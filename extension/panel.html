@@ -8,6 +8,15 @@
 </head>
 <body>
   <div id="app">
+    <!-- Static Topbar Alert / Message Banner with Shake Effect -->
+    <div class="top-banner" id="topBanner" style="display:none;" role="alert">
+      <span class="top-banner-msg" id="topBannerMsg"></span>
+      <button type="button" class="top-banner-btn" id="topBannerBtn" style="display:none;"></button>
+      <button type="button" class="top-banner-close" id="topBannerClose" title="Dismiss" aria-label="Dismiss message">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+
     <!-- Top Navigation Bar with Creatable Select -->
     <header class="top-nav">
       <div id="typeSelectMount" class="c-select"></div>
@@ -22,9 +31,6 @@
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
       </button>
     </header>
-
-    <!-- Floating Minimal Toast Shelf -->
-    <div class="toast-shelf" id="toastShelf"></div>
 
     <!-- Main Scrollable Form Area -->
     <div class="scroll-pane" id="mainForm"></div>
@@ -89,13 +95,19 @@
           <button class="chip" data-ac="60">1m</button>
         </div>
 
-        <div class="section-head" style="margin-top:14px;">
-          <span>Saved Comments</span>
-          <span id="commentCountBadge" style="font-size:9.5px;color:var(--text-dim);">0 saved</span>
+        <div class="section-head" style="margin-top:16px;">Configuration & Data</div>
+        <div style="display:flex;gap:6px;margin-bottom:8px;">
+          <button class="btn-action" id="btnExportData" style="flex:1;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export Data
+          </button>
+          <button class="btn-action" id="btnImportData" style="flex:1;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            Import Data
+          </button>
+          <input type="file" id="importFileInput" accept=".json,application/json" style="display:none;">
         </div>
-        <div class="comment-list" id="savedCommentList"></div>
 
-        <div class="section-head" style="margin-top:16px;">Data Management</div>
         <button class="btn-action" id="btnResetAll" style="width:100%;color:var(--color-danger);border-color:var(--border-line);">
           Reset Vetting Types to Defaults
         </button>

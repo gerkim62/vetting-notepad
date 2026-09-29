@@ -33,6 +33,7 @@
   --color-danger: #dc2626;
   --color-danger-soft: #fee2e2;
   --color-warn: #d97706;
+  --color-warn-soft: rgba(217, 119, 6, 0.12);
   --color-ok: var(--saf-emerald);
 
   --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.08);
@@ -629,14 +630,16 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   color: var(--color-danger);
   font-weight: 700;
 }
-.pf-btn.fail.active svg path {
-  fill: var(--color-danger);
+.pf-btn.fail.active svg {
+  stroke: var(--color-danger);
 }
 .pf-btn.pass.active {
-  background: var(--saf-emerald);
-  color: #ffffff;
+  background: var(--saf-emerald-soft);
+  color: var(--saf-emerald);
   font-weight: 700;
-  box-shadow: 0 0 5px var(--saf-emerald-glow);
+}
+.pf-btn.pass.active svg {
+  stroke: var(--saf-emerald);
 }
 
 /* Paste Button */
@@ -716,6 +719,12 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   color: #fff;
   font-weight: 700;
 }
+.btn-clear.cleared-success {
+  background: var(--saf-emerald-soft);
+  border-color: var(--saf-emerald);
+  color: var(--saf-emerald);
+  font-weight: 700;
+}
 
 .btn-copy {
   flex: 1;
@@ -738,7 +747,7 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   border: 1px solid var(--border-line);
   border-radius: var(--radius-md);
   padding: 6px 8px;
-  max-height: 100px;
+  max-height: 122px; /* Fits 6 lines cleanly before scrolling (+1 line) */
   overflow-y: auto;
   display: none;
 }
@@ -751,44 +760,148 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
 }
 .preview-drawer pre.empty { color: var(--text-dim); font-style: italic; }
 
-.toast-shelf {
-  position: absolute;
-  top: 38px;
-  left: 6px;
-  right: 6px;
-  z-index: 90;
-  pointer-events: none;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+/* Comment Suggestions Floating Menu (Searchable Select Style) */
+.comment-container {
+  position: relative;
 }
-.toast {
-  pointer-events: auto;
+
+.comment-suggestions-menu {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 140px;
+  overflow-y: auto;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-line);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  z-index: 80;
+  padding: 3px 0;
+  display: none;
+  list-style: none;
+  margin: 0;
+}
+.comment-suggestions-menu.open {
+  display: block;
+  animation: slideUp 0.15s ease-out;
+}
+.comment-suggestions-menu li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 4px 8px;
+  font-size: 11px;
+  cursor: pointer;
+  color: var(--text-main);
+  transition: background 0.12s ease;
+}
+.comment-suggestions-menu li:hover,
+.comment-suggestions-menu li.active {
+  background: var(--bg-hover);
+}
+.comment-suggestions-menu li .cs-text {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.comment-suggestions-menu li .cs-del {
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 3px;
+  color: var(--text-dim);
+  cursor: pointer;
+  flex: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  transition: all 0.12s ease;
+}
+.comment-suggestions-menu li .cs-del:hover {
+  color: var(--color-danger);
+  background: var(--color-danger-soft);
+}
+
+/* Static Topbar Alert / Message Banner with Shake Effect */
+.top-banner {
+  flex: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 6px;
   padding: 5px 8px;
-  background: var(--bg-panel);
-  border: 1px solid var(--border-line);
-  border-left: 3px solid var(--saf-emerald);
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md);
+  background: var(--bg-panel-alt);
+  border-bottom: 1px solid var(--border-line);
   font-size: 11px;
   color: var(--text-main);
-  animation: slideDown 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: bannerShake 0.4s ease-in-out;
 }
-.toast.toast-warn { border-left-color: var(--color-warn); }
-.toast.toast-danger { border-left-color: var(--color-danger); }
-.toast-msg { flex: 1; min-width: 0; }
-.toast-btn {
-  font-size: 10.5px;
-  font-weight: 700;
+.top-banner.banner-info {
+  background: var(--saf-emerald-soft);
   color: var(--saf-emerald);
-  padding: 1px 5px;
-  border-radius: 3px;
+  border-bottom-color: var(--saf-emerald);
 }
-.toast-btn:hover { background: var(--saf-emerald-soft); }
+.top-banner.banner-warn {
+  background: var(--color-warn-soft);
+  color: var(--color-warn);
+  border-bottom-color: var(--color-warn);
+}
+.top-banner.banner-danger {
+  background: var(--color-danger-soft);
+  color: var(--color-danger);
+  border-bottom-color: var(--color-danger);
+}
+.top-banner-msg {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.top-banner-btn {
+  font-size: 10px;
+  font-weight: 700;
+  background: none;
+  border: 1px solid currentColor;
+  border-radius: var(--radius-sm);
+  padding: 1px 6px;
+  color: inherit;
+  cursor: pointer;
+  flex: none;
+}
+.top-banner-btn:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+.top-banner-close {
+  background: none;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  padding: 0;
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  border-radius: 3px;
+  opacity: 0.8;
+  flex: none;
+}
+.top-banner-close:hover {
+  opacity: 1;
+}
+
+@keyframes bannerShake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-4px); }
+  40%, 80% { transform: translateX(4px); }
+}
 
 /* ==========================================================================
    Settings & Edit Sub-views
@@ -928,6 +1041,15 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
     </div>
 
     <div id="app">
+      <!-- Static Topbar Alert / Message Banner with Shake Effect -->
+      <div class="top-banner" id="topBanner" style="display:none;" role="alert">
+        <span class="top-banner-msg" id="topBannerMsg"></span>
+        <button type="button" class="top-banner-btn" id="topBannerBtn" style="display:none;"></button>
+        <button type="button" class="top-banner-close" id="topBannerClose" title="Dismiss" aria-label="Dismiss message">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+
       <!-- Top Navigation Bar with Creatable Select -->
       <header class="top-nav">
         <div id="typeSelectMount" class="c-select"></div>
@@ -940,9 +1062,6 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         </button>
       </header>
-
-      <!-- Floating Minimal Toast Shelf -->
-      <div class="toast-shelf" id="toastShelf"></div>
 
       <!-- Main Scrollable Form Area -->
       <div class="scroll-pane" id="mainForm"></div>
@@ -960,10 +1079,10 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
             <div class="label-counter-row">
               <label class="mat-label" for="commentInput">Comment (optional)</label>
             </div>
-            <input type="text" class="mat-input" id="commentInput" list="commentSuggestions" autocomplete="off" spellcheck="false">
+            <input type="text" class="mat-input" id="commentInput" autocomplete="off" spellcheck="false">
             <div class="mat-underline-continuous"></div>
           </div>
-          <datalist id="commentSuggestions"></datalist>
+          <ul class="comment-suggestions-menu" id="commentSuggestionsMenu" role="listbox"></ul>
         </div>
 
         <!-- Action Row -->
@@ -1009,13 +1128,19 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
             <button class="chip" data-ac="60">1m</button>
           </div>
 
-          <div class="section-head" style="margin-top:14px;">
-            <span>Saved Comments</span>
-            <span id="commentCountBadge" style="font-size:9.5px;color:var(--text-dim);">0 saved</span>
+          <div class="section-head" style="margin-top:16px;">Configuration & Data</div>
+          <div style="display:flex;gap:6px;margin-bottom:8px;">
+            <button class="btn-action" id="btnExportData" style="flex:1;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export Data
+            </button>
+            <button class="btn-action" id="btnImportData" style="flex:1;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Import Data
+            </button>
+            <input type="file" id="importFileInput" accept=".json,application/json" style="display:none;">
           </div>
-          <div class="comment-list" id="savedCommentList"></div>
 
-          <div class="section-head" style="margin-top:16px;">Data Management</div>
           <button class="btn-action" id="btnResetAll" style="width:100%;color:var(--color-danger);border-color:var(--border-line);">
             Reset Vetting Types to Defaults
           </button>
@@ -1323,45 +1448,64 @@ class CreatableSelect {
 }
 
 /* ==========================================================================
-   Minimal Toast Shelf (Only for Undo / Error)
+   Static Topbar Alert Banner with Shake Effect
    ========================================================================== */
-const toastShelf = document.getElementById('toastShelf');
+const topBanner = document.getElementById('topBanner');
+const topBannerMsg = document.getElementById('topBannerMsg');
+const topBannerBtn = document.getElementById('topBannerBtn');
+const topBannerClose = document.getElementById('topBannerClose');
 
-function showToast(message, actionLabel = null, actionCallback = null, durationMs = 3000, type = 'normal') {
-  const toast = document.createElement('div');
-  toast.className = `toast ${type === 'warn' ? 'toast-warn' : type === 'danger' ? 'toast-danger' : ''}`;
-  
-  const msgEl = document.createElement('div');
-  msgEl.className = 'toast-msg';
-  msgEl.innerHTML = message;
-  toast.appendChild(msgEl);
+let bannerTimer = null;
+
+function showBanner(message, actionLabel = null, actionCallback = null, durationMs = 3500, type = 'info') {
+  if (!topBanner) return;
+  if (bannerTimer) {
+    clearTimeout(bannerTimer);
+    bannerTimer = null;
+  }
+
+  topBanner.className = `top-banner banner-${type}`;
+  topBannerMsg.textContent = message;
 
   if (actionLabel && actionCallback) {
-    const btn = document.createElement('button');
-    btn.className = 'toast-btn';
-    btn.textContent = actionLabel;
-    btn.onclick = (e) => {
+    topBannerBtn.style.display = 'inline-block';
+    topBannerBtn.textContent = actionLabel;
+    topBannerBtn.onclick = (e) => {
       e.stopPropagation();
       actionCallback();
-      toast.remove();
+      hideBanner();
     };
-    toast.appendChild(btn);
+  } else {
+    topBannerBtn.style.display = 'none';
   }
 
-  toastShelf.appendChild(toast);
+  topBanner.style.display = 'flex';
+  topBanner.style.animation = 'none';
+  void topBanner.offsetWidth; // trigger reflow for shake animation
+  topBanner.style.animation = 'bannerShake 0.4s ease-in-out';
 
   if (durationMs > 0) {
-    setTimeout(() => {
-      if (toast.isConnected) {
-        toast.style.transition = 'opacity 0.18s ease, transform 0.18s ease';
-        toast.style.opacity = '0';
-        toast.style.transform = 'translateY(-4px)';
-        setTimeout(() => toast.remove(), 200);
-      }
+    bannerTimer = setTimeout(() => {
+      hideBanner();
     }, durationMs);
   }
-  return toast;
 }
+
+function hideBanner() {
+  if (!topBanner) return;
+  if (bannerTimer) {
+    clearTimeout(bannerTimer);
+    bannerTimer = null;
+  }
+  topBanner.style.display = 'none';
+}
+
+if (topBannerClose) {
+  topBannerClose.onclick = () => hideBanner();
+}
+
+// Alias for backwards compatibility
+const showToast = showBanner;
 
 /* ==========================================================================
    Build Text Output & Copy Operations
@@ -1431,7 +1575,7 @@ function startAutoClear(typeId) {
 
   autoClearSeconds = settings.autoClear;
   btnClear.classList.add('countdown-active');
-  clearBtnText.textContent = `Cancel (${autoClearSeconds}s)`;
+  clearBtnText.textContent = `Clear (${autoClearSeconds}s)`;
 
   autoClearTimer = setInterval(() => {
     autoClearSeconds--;
@@ -1442,41 +1586,54 @@ function startAutoClear(typeId) {
       renderForm();
       updateCommentInput();
       syncPreview();
+      showClearedFeedback();
     } else {
-      clearBtnText.textContent = `Cancel (${autoClearSeconds}s)`;
+      clearBtnText.textContent = `Clear (${autoClearSeconds}s)`;
     }
   }, 1000);
 }
 
 btnClear.onclick = () => {
-  if (autoClearTimer) {
-    stopAutoClear();
-    return;
-  }
+  stopAutoClear();
 
   const v = curValues();
-  if (!Object.values(v).some(x => x && x.trim())) {
+  const st = curStatus();
+  if (!Object.values(v).some(x => x && x.trim()) && !Object.values(st).some(Boolean)) {
     return;
   }
 
   const snapVal = Object.assign({}, v);
-  const snapStatus = Object.assign({}, curStatus());
+  const snapStatus = Object.assign({}, st);
 
   formValues[activeTypeId] = {};
   itemStatus[activeTypeId] = {};
-  stopAutoClear();
   renderForm();
   updateCommentInput();
   syncPreview();
 
-  showToast('Details cleared', 'Undo', () => {
+  showClearedFeedback();
+
+  showBanner('Details cleared', 'Undo', () => {
     formValues[activeTypeId] = snapVal;
     itemStatus[activeTypeId] = snapStatus;
     renderForm();
     updateCommentInput();
     syncPreview();
-  }, 4000);
+  }, 4000, 'info');
 };
+
+function showClearedFeedback() {
+  const originalHtml = btnClear.innerHTML;
+  btnClear.classList.add('cleared-success');
+  btnClear.innerHTML = `
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m5 12 5 5L20 7"/></svg>
+    <span>Cleared</span>
+  `;
+  setTimeout(() => {
+    btnClear.classList.remove('cleared-success');
+    btnClear.innerHTML = originalHtml;
+  }, 1200);
+}
 
 /* ==========================================================================
    Main Form Rendering (Masked Underline Slots)
@@ -1494,7 +1651,7 @@ function renderForm() {
   });
 
   if (t.optional.length > 0) {
-    html += `<div class="subtle-divider">Additional Items</div>`;
+    html += `<div class="subtle-divider">Secondary</div>`;
     t.optional.forEach((it, idx) => {
       html += createRowHtml(it, 'optional', idx);
     });
@@ -1542,12 +1699,12 @@ function createRowHtml(it, kind, idx) {
         </div>
       </div>
 
-      <!-- Pass / Fail Action Icons: Flag ⚑ and Check ✓ -->
+      <!-- Pass / Fail Action Icons: Ban ⊘ and Check ✓ -->
       <div class="status-actions">
-        <button type="button" class="pf-btn fail ${st === 'failed' ? 'active' : ''}" data-status-btn="failed" data-id="${it.id}" title="Flag as Failed" aria-label="Flag ${escapeHtml(it.label)} as Failed">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/>
-            <line x1="4" y1="22" x2="4" y2="15"/>
+        <button type="button" class="pf-btn fail ${st === 'failed' ? 'active' : ''}" data-status-btn="failed" data-id="${it.id}" title="Mark as Failed" aria-label="Mark ${escapeHtml(it.label)} as Failed">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
           </svg>
         </button>
         <button type="button" class="pf-btn pass ${st === 'passed' ? 'active' : ''}" data-status-btn="passed" data-id="${it.id}" title="Mark as Passed" aria-label="Mark ${escapeHtml(it.label)} as Passed">
@@ -1728,35 +1885,185 @@ function bindFormEvents() {
 }
 
 /* ==========================================================================
-   Comment Handling & Datalist Autocomplete
+   Comment Handling & Suggestions Dropdown with Instant Deletion
    ========================================================================== */
 const commentInput = document.getElementById('commentInput');
 const commentFieldBox = document.getElementById('commentFieldBox');
-const commentSuggestions = document.getElementById('commentSuggestions');
+const commentSuggestionsMenu = document.getElementById('commentSuggestionsMenu');
+
+let activeSuggestionIdx = -1;
+let currentFilteredSuggestions = [];
+
+function highlightCommentMatch(text, query) {
+  if (!query) return escapeHtml(text);
+  const lowerText = text.toLowerCase();
+  const lowerQuery = query.toLowerCase();
+  const idx = lowerText.indexOf(lowerQuery);
+  if (idx === -1) return escapeHtml(text);
+  const before = escapeHtml(text.slice(0, idx));
+  const match = escapeHtml(text.slice(idx, idx + query.length));
+  const after = escapeHtml(text.slice(idx + query.length));
+  return `${before}<mark style="background:none;color:var(--saf-emerald);font-weight:700;">${match}</mark>${after}`;
+}
+
+function renderCommentSuggestions(filterQuery = '') {
+  if (!commentSuggestionsMenu) return;
+  const q = filterQuery.trim().toLowerCase();
+  currentFilteredSuggestions = q
+    ? savedComments.filter(c => c.toLowerCase().includes(q))
+    : [...savedComments];
+
+  if (currentFilteredSuggestions.length === 0) {
+    closeCommentSuggestions();
+    return;
+  }
+
+  activeSuggestionIdx = -1;
+  commentSuggestionsMenu.innerHTML = currentFilteredSuggestions.map((c, idx) => `
+    <li role="option" data-idx="${idx}" data-val="${escapeHtml(c)}">
+      <span class="cs-text" title="${escapeHtml(c)}">${highlightCommentMatch(c, filterQuery.trim())}</span>
+      <button type="button" class="cs-del" data-del-comment="${escapeHtml(c)}" title="Remove this suggestion" aria-label="Delete ${escapeHtml(c)}">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </li>
+  `).join('');
+
+  commentSuggestionsMenu.classList.add('open');
+}
+
+function closeCommentSuggestions() {
+  if (!commentSuggestionsMenu) return;
+  commentSuggestionsMenu.classList.remove('open');
+  commentSuggestionsMenu.innerHTML = '';
+  activeSuggestionIdx = -1;
+  currentFilteredSuggestions = [];
+}
+
+// Handle clicks inside suggestion menu (selection vs delete)
+if (commentSuggestionsMenu) {
+  commentSuggestionsMenu.addEventListener('pointerdown', (e) => {
+    const delBtn = e.target.closest('.cs-del');
+    if (delBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      const commentToDelete = delBtn.dataset.delComment;
+      const idx = savedComments.indexOf(commentToDelete);
+      if (idx !== -1) {
+        savedComments.splice(idx, 1);
+        saveComments();
+        renderSavedCommentsList();
+        renderCommentSuggestions(commentInput.value);
+        showToast('Comment deleted', null, null, 1500, 'info');
+      }
+      return;
+    }
+
+    const li = e.target.closest('li[data-val]');
+    if (li) {
+      e.preventDefault();
+      const val = li.dataset.val;
+      commentInput.value = val;
+      curValues()._comment = val;
+      const hasVal = val.length > 0;
+      commentFieldBox.classList.toggle('has-value', hasVal);
+      commentFieldBox.classList.toggle('expanded', hasVal);
+      closeCommentSuggestions();
+      syncPreview();
+      commentInput.focus();
+    }
+  });
+}
+
+// Close suggestion menu if clicking outside
+document.addEventListener('pointerdown', (e) => {
+  if (commentSuggestionsMenu && commentSuggestionsMenu.classList.contains('open')) {
+    if (!commentFieldBox.contains(e.target) && !commentSuggestionsMenu.contains(e.target)) {
+      closeCommentSuggestions();
+    }
+  }
+});
 
 commentInput.addEventListener('focus', () => {
   commentFieldBox.classList.add('is-focused', 'expanded');
+  renderCommentSuggestions(commentInput.value);
 });
+
 commentInput.addEventListener('blur', () => {
   commentFieldBox.classList.remove('is-focused');
   if (commentInput.value.trim().length === 0) {
     commentFieldBox.classList.remove('expanded');
   }
+  setTimeout(() => {
+    if (!commentSuggestionsMenu.matches(':hover')) {
+      closeCommentSuggestions();
+    }
+  }, 120);
 });
+
 commentInput.addEventListener('input', () => {
   stopAutoClear();
   curValues()._comment = commentInput.value;
   const hasVal = commentInput.value.length > 0;
   commentFieldBox.classList.toggle('has-value', hasVal);
   commentFieldBox.classList.toggle('expanded', hasVal || document.activeElement === commentInput);
+  renderCommentSuggestions(commentInput.value);
   syncPreview();
 });
+
 commentInput.addEventListener('keydown', (e) => {
+  if (commentSuggestionsMenu && commentSuggestionsMenu.classList.contains('open') && currentFilteredSuggestions.length > 0) {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      activeSuggestionIdx = (activeSuggestionIdx + 1) % currentFilteredSuggestions.length;
+      updateSuggestionHighlight();
+      return;
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      activeSuggestionIdx = (activeSuggestionIdx - 1 + currentFilteredSuggestions.length) % currentFilteredSuggestions.length;
+      updateSuggestionHighlight();
+      return;
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      closeCommentSuggestions();
+      return;
+    }
+    if (e.key === 'Enter') {
+      if (activeSuggestionIdx >= 0 && activeSuggestionIdx < currentFilteredSuggestions.length) {
+        e.preventDefault();
+        const selectedVal = currentFilteredSuggestions[activeSuggestionIdx];
+        commentInput.value = selectedVal;
+        curValues()._comment = selectedVal;
+        const hasVal = selectedVal.length > 0;
+        commentFieldBox.classList.toggle('has-value', hasVal);
+        commentFieldBox.classList.toggle('expanded', hasVal);
+        closeCommentSuggestions();
+        syncPreview();
+        return;
+      }
+    }
+  }
+
   if (e.key === 'Enter') {
     e.preventDefault();
+    closeCommentSuggestions();
     doCopy();
   }
 });
+
+function updateSuggestionHighlight() {
+  if (!commentSuggestionsMenu) return;
+  const items = commentSuggestionsMenu.querySelectorAll('li[data-idx]');
+  items.forEach((item, idx) => {
+    if (idx === activeSuggestionIdx) {
+      item.classList.add('active');
+      item.scrollIntoView({ block: 'nearest' });
+    } else {
+      item.classList.remove('active');
+    }
+  });
+}
 
 function updateCommentInput() {
   const v = curValues()._comment || '';
@@ -1764,7 +2071,7 @@ function updateCommentInput() {
   const hasVal = v.length > 0;
   commentFieldBox.classList.toggle('has-value', hasVal);
   commentFieldBox.classList.toggle('expanded', hasVal || document.activeElement === commentInput);
-  commentSuggestions.innerHTML = savedComments.map(c => `<option value="${escapeHtml(c)}">`).join('');
+  closeCommentSuggestions();
 }
 
 /* ==========================================================================
@@ -1905,22 +2212,22 @@ function renderEditView() {
     </div>
 
     <div class="section-head">
-      <span>Required Items</span>
+      <span>Primary Items</span>
       <span style="font-size:9.5px;color:var(--text-dim);">Fixed Order</span>
     </div>
     <div id="editReqList">
       ${t.required.map((it, i) => createEditRowHtml(it, 'required', i, t.required.length)).join('')}
     </div>
-    <button class="btn-action" style="width:100%;margin-top:5px;" id="btnAddReq">+ Add Required Item</button>
+    <button class="btn-action" style="width:100%;margin-top:5px;" id="btnAddReq">+ Add Primary Item</button>
 
     <div class="section-head" style="margin-top:14px;">
-      <span>Optional Items</span>
+      <span>Secondary Items</span>
       <span style="font-size:9.5px;color:var(--text-dim);">Use ▲▼ or Alt+↑/↓ to Reorder</span>
     </div>
     <div id="editOptList">
       ${t.optional.map((it, i) => createEditRowHtml(it, 'optional', i, t.optional.length)).join('')}
     </div>
-    <button class="btn-action" style="width:100%;margin-top:5px;" id="btnAddOpt">+ Add Optional Item</button>
+    <button class="btn-action" style="width:100%;margin-top:5px;" id="btnAddOpt">+ Add Secondary Item</button>
 
     <button class="btn-action" id="btnDeleteType" style="width:100%;margin-top:20px;color:var(--color-danger);border-color:var(--border-line);">
       Delete this Vetting Type
@@ -2096,30 +2403,94 @@ function renderSettingsView() {
     };
   });
 
-  const commentList = document.getElementById('savedCommentList');
-  document.getElementById('commentCountBadge').textContent = `${savedComments.length} saved`;
-
-  if (savedComments.length === 0) {
-    commentList.innerHTML = `<div style="color:var(--text-dim);font-style:italic;font-size:10.5px;">No saved comments yet</div>`;
-  } else {
-    commentList.innerHTML = savedComments.map((c, i) => `
-      <div class="comment-item">
-        <span title="${escapeHtml(c)}">${escapeHtml(c)}</span>
-        <button class="ibtn" data-del-comment="${i}" style="width:18px;height:18px;color:var(--color-danger);" title="Delete comment">
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
-        </button>
-      </div>
-    `).join('');
-
-    commentList.querySelectorAll('[data-del-comment]').forEach(btn => {
-      btn.onclick = () => {
-        const idx = parseInt(btn.dataset.delComment, 10);
-        savedComments.splice(idx, 1);
-        saveComments();
-        renderSettingsView();
-        updateCommentInput();
+  // Export Configuration & Data
+  const btnExportData = document.getElementById('btnExportData');
+  if (btnExportData) {
+    btnExportData.onclick = () => {
+      const payload = {
+        app: 'vetting-notepad',
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        types,
+        settings,
+        savedComments,
+        activeTypeId
       };
-    });
+      const jsonStr = JSON.stringify(payload, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `vetting_notepad_config_${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showBanner('Configuration exported', null, null, 2500, 'info');
+    };
+  }
+
+  // Import Configuration & Data
+  const btnImportData = document.getElementById('btnImportData');
+  const importFileInput = document.getElementById('importFileInput');
+  if (btnImportData && importFileInput) {
+    btnImportData.onclick = () => {
+      importFileInput.click();
+    };
+
+    importFileInput.onchange = (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+
+      const confirmed = window.confirm(
+        'Warning: Importing data will overwrite your current vetting types and configuration.\n\nDo you want to continue?'
+      );
+      if (!confirmed) {
+        importFileInput.value = '';
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = async (evt) => {
+        try {
+          const raw = evt.target.result;
+          const data = JSON.parse(raw);
+          if (!data || !Array.isArray(data.types) || data.types.length === 0) {
+            throw new Error('Invalid format: types array missing');
+          }
+
+          types = data.types;
+          if (data.settings && typeof data.settings === 'object') {
+            settings = Object.assign(settings, data.settings);
+          }
+          if (Array.isArray(data.savedComments)) {
+            savedComments = data.savedComments;
+          }
+          if (data.activeTypeId && types.some(t => t.id === data.activeTypeId)) {
+            activeTypeId = data.activeTypeId;
+          } else {
+            activeTypeId = types[0].id;
+          }
+
+          saveTypes();
+          saveSettings();
+          saveComments();
+
+          applyTheme(settings.theme || 'auto');
+          refreshTypeSelect();
+          renderForm();
+          updateCommentInput();
+          renderSettingsView();
+
+          showBanner('Configuration imported successfully', null, null, 3000, 'info');
+        } catch (err) {
+          showBanner('Import failed: Invalid JSON file', null, null, 3500, 'danger');
+        } finally {
+          importFileInput.value = '';
+        }
+      };
+      reader.readAsText(file);
+    };
   }
 
   document.getElementById('btnResetAll').onclick = () => {
@@ -2184,8 +2555,12 @@ rz.addEventListener('pointerdown', (e) => {
 
 // Seed sample customer
 (function seedPreviewSample() {
+  const savedActive = LS.get('vpad.active', null);
+  if (savedActive && types.some(t => t.id === savedActive)) {
+    activeTypeId = savedActive;
+  }
   const swap = types.find(t => t.name === 'SIM Swap');
-  if (swap) {
+  if (swap && !formValues[swap.id]) {
     const v = {};
     const st = {};
     const fullName = swap.required.find(i => i.label === 'Full Name');

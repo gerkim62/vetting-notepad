@@ -311,45 +311,64 @@ class CreatableSelect {
 }
 
 /* ==========================================================================
-   Minimal Toast Shelf
+   Static Topbar Alert Banner with Shake Effect
    ========================================================================== */
-const toastShelf = document.getElementById('toastShelf');
+const topBanner = document.getElementById('topBanner');
+const topBannerMsg = document.getElementById('topBannerMsg');
+const topBannerBtn = document.getElementById('topBannerBtn');
+const topBannerClose = document.getElementById('topBannerClose');
 
-function showToast(message, actionLabel = null, actionCallback = null, durationMs = 3000, type = 'normal') {
-  const toast = document.createElement('div');
-  toast.className = `toast ${type === 'warn' ? 'toast-warn' : type === 'danger' ? 'toast-danger' : ''}`;
-  
-  const msgEl = document.createElement('div');
-  msgEl.className = 'toast-msg';
-  msgEl.innerHTML = message;
-  toast.appendChild(msgEl);
+let bannerTimer = null;
+
+function showBanner(message, actionLabel = null, actionCallback = null, durationMs = 3500, type = 'info') {
+  if (!topBanner) return;
+  if (bannerTimer) {
+    clearTimeout(bannerTimer);
+    bannerTimer = null;
+  }
+
+  topBanner.className = `top-banner banner-${type}`;
+  topBannerMsg.textContent = message;
 
   if (actionLabel && actionCallback) {
-    const btn = document.createElement('button');
-    btn.className = 'toast-btn';
-    btn.textContent = actionLabel;
-    btn.onclick = (e) => {
+    topBannerBtn.style.display = 'inline-block';
+    topBannerBtn.textContent = actionLabel;
+    topBannerBtn.onclick = (e) => {
       e.stopPropagation();
       actionCallback();
-      toast.remove();
+      hideBanner();
     };
-    toast.appendChild(btn);
+  } else {
+    topBannerBtn.style.display = 'none';
   }
 
-  toastShelf.appendChild(toast);
+  topBanner.style.display = 'flex';
+  topBanner.style.animation = 'none';
+  void topBanner.offsetWidth; // trigger reflow for shake animation
+  topBanner.style.animation = 'bannerShake 0.4s ease-in-out';
 
   if (durationMs > 0) {
-    setTimeout(() => {
-      if (toast.isConnected) {
-        toast.style.transition = 'opacity 0.18s ease, transform 0.18s ease';
-        toast.style.opacity = '0';
-        toast.style.transform = 'translateY(-4px)';
-        setTimeout(() => toast.remove(), 200);
-      }
+    bannerTimer = setTimeout(() => {
+      hideBanner();
     }, durationMs);
   }
-  return toast;
 }
+
+function hideBanner() {
+  if (!topBanner) return;
+  if (bannerTimer) {
+    clearTimeout(bannerTimer);
+    bannerTimer = null;
+  }
+  topBanner.style.display = 'none';
+}
+
+if (topBannerClose) {
+  topBannerClose.onclick = () => hideBanner();
+}
+
+// Alias for backwards compatibility
+const showToast = showBanner;
 
 /* ==========================================================================
    Build Text Output & Copy Operations
@@ -419,7 +438,7 @@ function startAutoClear(typeId) {
 
   autoClearSeconds = settings.autoClear;
   btnClear.classList.add('countdown-active');
-  clearBtnText.textContent = `Cancel (${autoClearSeconds}s)`;
+  clearBtnText.textContent = `Clear (${autoClearSeconds}s)`;
 
   autoClearTimer = setInterval(() => {
     autoClearSeconds--;
@@ -430,41 +449,54 @@ function startAutoClear(typeId) {
       renderForm();
       updateCommentInput();
       syncPreview();
+      showClearedFeedback();
     } else {
-      clearBtnText.textContent = `Cancel (${autoClearSeconds}s)`;
+      clearBtnText.textContent = `Clear (${autoClearSeconds}s)`;
     }
   }, 1000);
 }
 
 btnClear.onclick = () => {
-  if (autoClearTimer) {
-    stopAutoClear();
-    return;
-  }
+  stopAutoClear();
 
   const v = curValues();
-  if (!Object.values(v).some(x => x && x.trim())) {
+  const st = curStatus();
+  if (!Object.values(v).some(x => x && x.trim()) && !Object.values(st).some(Boolean)) {
     return;
   }
 
   const snapVal = Object.assign({}, v);
-  const snapStatus = Object.assign({}, curStatus());
+  const snapStatus = Object.assign({}, st);
 
   formValues[activeTypeId] = {};
   itemStatus[activeTypeId] = {};
-  stopAutoClear();
   renderForm();
   updateCommentInput();
   syncPreview();
 
-  showToast('Details cleared', 'Undo', () => {
+  showClearedFeedback();
+
+  showBanner('Details cleared', 'Undo', () => {
     formValues[activeTypeId] = snapVal;
     itemStatus[activeTypeId] = snapStatus;
     renderForm();
     updateCommentInput();
     syncPreview();
-  }, 4000);
+  }, 4000, 'info');
 };
+
+function showClearedFeedback() {
+  const originalHtml = btnClear.innerHTML;
+  btnClear.classList.add('cleared-success');
+  btnClear.innerHTML = `
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m5 12 5 5L20 7"/></svg>
+    <span>Cleared</span>
+  `;
+  setTimeout(() => {
+    btnClear.classList.remove('cleared-success');
+    btnClear.innerHTML = originalHtml;
+  }, 1200);
+}
 
 /* ==========================================================================
    Main Form Rendering (Masked Underline Slots)
@@ -482,7 +514,7 @@ function renderForm() {
   });
 
   if (t.optional.length > 0) {
-    html += `<div class="subtle-divider">Additional Items</div>`;
+    html += `<div class="subtle-divider">Secondary</div>`;
     t.optional.forEach((it, idx) => {
       html += createRowHtml(it, 'optional', idx);
     });
@@ -713,35 +745,187 @@ function bindFormEvents() {
 }
 
 /* ==========================================================================
-   Comment Handling & Datalist Autocomplete
+   Comment Handling & Suggestions Dropdown with Instant Deletion
    ========================================================================== */
 const commentInput = document.getElementById('commentInput');
 const commentFieldBox = document.getElementById('commentFieldBox');
-const commentSuggestions = document.getElementById('commentSuggestions');
+const commentSuggestionsMenu = document.getElementById('commentSuggestionsMenu');
+
+let activeSuggestionIdx = -1;
+let currentFilteredSuggestions = [];
+
+function highlightCommentMatch(text, query) {
+  if (!query) return escapeHtml(text);
+  const lowerText = text.toLowerCase();
+  const lowerQuery = query.toLowerCase();
+  const idx = lowerText.indexOf(lowerQuery);
+  if (idx === -1) return escapeHtml(text);
+  const before = escapeHtml(text.slice(0, idx));
+  const match = escapeHtml(text.slice(idx, idx + query.length));
+  const after = escapeHtml(text.slice(idx + query.length));
+  return `${before}<mark style="background:none;color:var(--saf-emerald);font-weight:700;">${match}</mark>${after}`;
+}
+
+function renderCommentSuggestions(filterQuery = '') {
+  if (!commentSuggestionsMenu) return;
+  const q = filterQuery.trim().toLowerCase();
+  currentFilteredSuggestions = q
+    ? savedComments.filter(c => c.toLowerCase().includes(q))
+    : [...savedComments];
+
+  if (currentFilteredSuggestions.length === 0) {
+    closeCommentSuggestions();
+    return;
+  }
+
+  activeSuggestionIdx = -1;
+  commentSuggestionsMenu.innerHTML = currentFilteredSuggestions.map((c, idx) => `
+    <li role="option" data-idx="${idx}" data-val="${escapeHtml(c)}">
+      <span class="cs-text" title="${escapeHtml(c)}">${highlightCommentMatch(c, filterQuery.trim())}</span>
+      <button type="button" class="cs-del" data-del-comment="${escapeHtml(c)}" title="Remove this suggestion" aria-label="Delete ${escapeHtml(c)}">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </li>
+  `).join('');
+
+  commentSuggestionsMenu.classList.add('open');
+}
+
+function closeCommentSuggestions() {
+  if (!commentSuggestionsMenu) return;
+  commentSuggestionsMenu.classList.remove('open');
+  commentSuggestionsMenu.innerHTML = '';
+  activeSuggestionIdx = -1;
+  currentFilteredSuggestions = [];
+}
+
+// Handle clicks inside suggestion menu (selection vs delete)
+if (commentSuggestionsMenu) {
+  // Use pointerdown to intercept before commentInput blur
+  commentSuggestionsMenu.addEventListener('pointerdown', (e) => {
+    const delBtn = e.target.closest('.cs-del');
+    if (delBtn) {
+      e.preventDefault();
+      e.stopPropagation();
+      const commentToDelete = delBtn.dataset.delComment;
+      const idx = savedComments.indexOf(commentToDelete);
+      if (idx !== -1) {
+        savedComments.splice(idx, 1);
+        saveComments();
+        renderSavedCommentsList();
+        renderCommentSuggestions(commentInput.value);
+        showToast('Comment deleted', null, null, 1500, 'info');
+      }
+      return;
+    }
+
+    const li = e.target.closest('li[data-val]');
+    if (li) {
+      e.preventDefault();
+      const val = li.dataset.val;
+      commentInput.value = val;
+      curValues()._comment = val;
+      const hasVal = val.length > 0;
+      commentFieldBox.classList.toggle('has-value', hasVal);
+      commentFieldBox.classList.toggle('expanded', hasVal);
+      closeCommentSuggestions();
+      syncPreview();
+      commentInput.focus();
+    }
+  });
+}
+
+// Close suggestion menu if clicking outside
+document.addEventListener('pointerdown', (e) => {
+  if (commentSuggestionsMenu && commentSuggestionsMenu.classList.contains('open')) {
+    if (!commentFieldBox.contains(e.target) && !commentSuggestionsMenu.contains(e.target)) {
+      closeCommentSuggestions();
+    }
+  }
+});
 
 commentInput.addEventListener('focus', () => {
   commentFieldBox.classList.add('is-focused', 'expanded');
+  renderCommentSuggestions(commentInput.value);
 });
+
 commentInput.addEventListener('blur', () => {
   commentFieldBox.classList.remove('is-focused');
   if (commentInput.value.trim().length === 0) {
     commentFieldBox.classList.remove('expanded');
   }
+  // Delay close to allow pointer events on menu to resolve
+  setTimeout(() => {
+    if (!commentSuggestionsMenu.matches(':hover')) {
+      closeCommentSuggestions();
+    }
+  }, 120);
 });
+
 commentInput.addEventListener('input', () => {
   stopAutoClear();
   curValues()._comment = commentInput.value;
   const hasVal = commentInput.value.length > 0;
   commentFieldBox.classList.toggle('has-value', hasVal);
   commentFieldBox.classList.toggle('expanded', hasVal || document.activeElement === commentInput);
+  renderCommentSuggestions(commentInput.value);
   syncPreview();
 });
+
 commentInput.addEventListener('keydown', (e) => {
+  if (commentSuggestionsMenu && commentSuggestionsMenu.classList.contains('open') && currentFilteredSuggestions.length > 0) {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      activeSuggestionIdx = (activeSuggestionIdx + 1) % currentFilteredSuggestions.length;
+      updateSuggestionHighlight();
+      return;
+    }
+    if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      activeSuggestionIdx = (activeSuggestionIdx - 1 + currentFilteredSuggestions.length) % currentFilteredSuggestions.length;
+      updateSuggestionHighlight();
+      return;
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      closeCommentSuggestions();
+      return;
+    }
+    if (e.key === 'Enter') {
+      if (activeSuggestionIdx >= 0 && activeSuggestionIdx < currentFilteredSuggestions.length) {
+        e.preventDefault();
+        const selectedVal = currentFilteredSuggestions[activeSuggestionIdx];
+        commentInput.value = selectedVal;
+        curValues()._comment = selectedVal;
+        const hasVal = selectedVal.length > 0;
+        commentFieldBox.classList.toggle('has-value', hasVal);
+        commentFieldBox.classList.toggle('expanded', hasVal);
+        closeCommentSuggestions();
+        syncPreview();
+        return;
+      }
+    }
+  }
+
   if (e.key === 'Enter') {
     e.preventDefault();
+    closeCommentSuggestions();
     doCopy();
   }
 });
+
+function updateSuggestionHighlight() {
+  if (!commentSuggestionsMenu) return;
+  const items = commentSuggestionsMenu.querySelectorAll('li[data-idx]');
+  items.forEach((item, idx) => {
+    if (idx === activeSuggestionIdx) {
+      item.classList.add('active');
+      item.scrollIntoView({ block: 'nearest' });
+    } else {
+      item.classList.remove('active');
+    }
+  });
+}
 
 function updateCommentInput() {
   const v = curValues()._comment || '';
@@ -749,7 +933,7 @@ function updateCommentInput() {
   const hasVal = v.length > 0;
   commentFieldBox.classList.toggle('has-value', hasVal);
   commentFieldBox.classList.toggle('expanded', hasVal || document.activeElement === commentInput);
-  commentSuggestions.innerHTML = savedComments.map(c => `<option value="${escapeHtml(c)}">`).join('');
+  closeCommentSuggestions();
 }
 
 /* ==========================================================================
@@ -890,22 +1074,22 @@ function renderEditView() {
     </div>
 
     <div class="section-head">
-      <span>Required Items</span>
+      <span>Primary Items</span>
       <span style="font-size:9.5px;color:var(--text-dim);">Fixed Order</span>
     </div>
     <div id="editReqList">
       ${t.required.map((it, i) => createEditRowHtml(it, 'required', i, t.required.length)).join('')}
     </div>
-    <button class="btn-action" style="width:100%;margin-top:5px;" id="btnAddReq">+ Add Required Item</button>
+    <button class="btn-action" style="width:100%;margin-top:5px;" id="btnAddReq">+ Add Primary Item</button>
 
     <div class="section-head" style="margin-top:14px;">
-      <span>Optional Items</span>
+      <span>Secondary Items</span>
       <span style="font-size:9.5px;color:var(--text-dim);">Use ▲▼ or Alt+↑/↓ to Reorder</span>
     </div>
     <div id="editOptList">
       ${t.optional.map((it, i) => createEditRowHtml(it, 'optional', i, t.optional.length)).join('')}
     </div>
-    <button class="btn-action" style="width:100%;margin-top:5px;" id="btnAddOpt">+ Add Optional Item</button>
+    <button class="btn-action" style="width:100%;margin-top:5px;" id="btnAddOpt">+ Add Secondary Item</button>
 
     <button class="btn-action" id="btnDeleteType" style="width:100%;margin-top:20px;color:var(--color-danger);border-color:var(--border-line);">
       Delete this Vetting Type
@@ -1081,30 +1265,94 @@ function renderSettingsView() {
     };
   });
 
-  const commentList = document.getElementById('savedCommentList');
-  document.getElementById('commentCountBadge').textContent = `${savedComments.length} saved`;
-
-  if (savedComments.length === 0) {
-    commentList.innerHTML = `<div style="color:var(--text-dim);font-style:italic;font-size:10.5px;">No saved comments yet</div>`;
-  } else {
-    commentList.innerHTML = savedComments.map((c, i) => `
-      <div class="comment-item">
-        <span title="${escapeHtml(c)}">${escapeHtml(c)}</span>
-        <button class="ibtn" data-del-comment="${i}" style="width:18px;height:18px;color:var(--color-danger);" title="Delete comment">
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
-        </button>
-      </div>
-    `).join('');
-
-    commentList.querySelectorAll('[data-del-comment]').forEach(btn => {
-      btn.onclick = () => {
-        const idx = parseInt(btn.dataset.delComment, 10);
-        savedComments.splice(idx, 1);
-        saveComments();
-        renderSettingsView();
-        updateCommentInput();
+  // Export Configuration & Data
+  const btnExportData = document.getElementById('btnExportData');
+  if (btnExportData) {
+    btnExportData.onclick = () => {
+      const payload = {
+        app: 'vetting-notepad',
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        types,
+        settings,
+        savedComments,
+        activeTypeId
       };
-    });
+      const jsonStr = JSON.stringify(payload, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `vetting_notepad_config_${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showBanner('Configuration exported', null, null, 2500, 'info');
+    };
+  }
+
+  // Import Configuration & Data
+  const btnImportData = document.getElementById('btnImportData');
+  const importFileInput = document.getElementById('importFileInput');
+  if (btnImportData && importFileInput) {
+    btnImportData.onclick = () => {
+      importFileInput.click();
+    };
+
+    importFileInput.onchange = (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (!file) return;
+
+      const confirmed = window.confirm(
+        'Warning: Importing data will overwrite your current vetting types and configuration.\n\nDo you want to continue?'
+      );
+      if (!confirmed) {
+        importFileInput.value = '';
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = async (evt) => {
+        try {
+          const raw = evt.target.result;
+          const data = JSON.parse(raw);
+          if (!data || !Array.isArray(data.types) || data.types.length === 0) {
+            throw new Error('Invalid format: types array missing');
+          }
+
+          types = data.types;
+          if (data.settings && typeof data.settings === 'object') {
+            settings = Object.assign(settings, data.settings);
+          }
+          if (Array.isArray(data.savedComments)) {
+            savedComments = data.savedComments;
+          }
+          if (data.activeTypeId && types.some(t => t.id === data.activeTypeId)) {
+            activeTypeId = data.activeTypeId;
+          } else {
+            activeTypeId = types[0].id;
+          }
+
+          saveTypes();
+          saveSettings();
+          saveComments();
+
+          applyTheme(settings.theme || 'auto');
+          refreshTypeSelect();
+          renderForm();
+          updateCommentInput();
+          renderSettingsView();
+
+          showBanner('Configuration imported successfully', null, null, 3000, 'info');
+        } catch (err) {
+          showBanner('Import failed: Invalid JSON file', null, null, 3500, 'danger');
+        } finally {
+          importFileInput.value = '';
+        }
+      };
+      reader.readAsText(file);
+    };
   }
 
   document.getElementById('btnResetAll').onclick = () => {
