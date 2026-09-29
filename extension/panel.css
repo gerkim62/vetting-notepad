@@ -383,6 +383,15 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   margin-left: 2px;
 }
 
+/* Reference hint in label (e.g. // If 3rd Party) */
+.mat-label .mat-label-hint {
+  opacity: 0.65;
+  font-style: italic;
+  font-weight: 400;
+  font-size: 0.88em;
+  margin-left: 3px;
+}
+
 /* Counter */
 .field-counter {
   position: absolute;

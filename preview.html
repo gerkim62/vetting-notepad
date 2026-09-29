@@ -489,6 +489,15 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   margin-left: 2px;
 }
 
+/* Reference hint in label (e.g. // If 3rd Party) */
+.mat-label .mat-label-hint {
+  opacity: 0.65;
+  font-style: italic;
+  font-weight: 400;
+  font-size: 0.88em;
+  margin-left: 3px;
+}
+
 /* Counter */
 .field-counter {
   position: absolute;
@@ -1545,6 +1554,20 @@ if (topBannerClose) {
 const showToast = showBanner;
 
 /* ==========================================================================
+   Label Parser (Separates Clean Label from Reference Hint marked with //)
+   ========================================================================== */
+function parseLabel(raw) {
+  const str = String(raw || '');
+  const idx = str.indexOf('//');
+  if (idx === -1) {
+    return { main: str.trim(), hint: '', copy: str.trim() };
+  }
+  const main = str.slice(0, idx).trim();
+  const hint = str.slice(idx + 2).trim();
+  return { main, hint, copy: main || str.trim() };
+}
+
+/* ==========================================================================
    Build Text Output & Copy Operations
    ========================================================================== */
 function buildCopyText(t) {
@@ -1559,7 +1582,8 @@ function buildCopyText(t) {
   for (const it of allItems) {
     const val = (v[it.id] || '').trim();
     if (val) {
-      let line = `${it.label}: ${val}`;
+      const { copy: copyLabel } = parseLabel(it.label);
+      let line = `${copyLabel}: ${val}`;
       if (st[it.id] === 'passed') line += ' (Passed)';
       else if (st[it.id] === 'failed') line += ' (Failed)';
       lines.push(line);
@@ -1735,12 +1759,18 @@ function createRowHtml(it, kind, idx) {
     underlineHtml = `<div class="mat-underline-continuous"></div>`;
   }
 
+  const { main: lblMain, hint: lblHint } = parseLabel(it.label);
+  const lblDisplay = lblHint
+    ? `${escapeHtml(lblMain)} <span class="mat-label-hint">(${escapeHtml(lblHint)})</span>`
+    : escapeHtml(lblMain);
+  const lblTitle = lblHint ? `${lblMain} (${lblHint})` : lblMain;
+
   return `
     <div class="item-row ${kind}" data-id="${it.id}">
       <div class="field-container">
         <div class="material-field ${isExpanded ? 'expanded' : ''} ${isFilled ? 'has-value' : ''} ${st ? 'status-' + st : ''}">
-          <label class="mat-label" for="inp_${it.id}">
-            ${escapeHtml(it.label)}${isMandatory ? ' <span class="req-mark" title="Required">*</span>' : ''}
+          <label class="mat-label" for="inp_${it.id}" title="${escapeHtml(lblTitle)}">
+            ${lblDisplay}${isMandatory ? ' <span class="req-mark" title="Required">*</span>' : ''}
           </label>
           ${it.len > 0 ? `<span class="field-counter" id="cnt_${it.id}"></span>` : ''}
           <input type="text" class="mat-input ${it.len > 0 ? 'has-len' : ''}" id="inp_${it.id}" data-id="${it.id}" value="${escapeHtml(val)}" autocomplete="off" spellcheck="false">
@@ -1750,20 +1780,20 @@ function createRowHtml(it, kind, idx) {
 
       <!-- Pass / Fail Action Icons: Ban ⊘ and Check ✓ -->
       <div class="status-actions">
-        <button type="button" class="pf-btn fail ${st === 'failed' ? 'active' : ''}" data-status-btn="failed" data-id="${it.id}" title="Mark as Failed" aria-label="Mark ${escapeHtml(it.label)} as Failed">
+        <button type="button" class="pf-btn fail ${st === 'failed' ? 'active' : ''}" data-status-btn="failed" data-id="${it.id}" title="Mark as Failed" aria-label="Mark ${escapeHtml(lblMain)} as Failed">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="10"/>
             <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
           </svg>
         </button>
-        <button type="button" class="pf-btn pass ${st === 'passed' ? 'active' : ''}" data-status-btn="passed" data-id="${it.id}" title="Mark as Passed" aria-label="Mark ${escapeHtml(it.label)} as Passed">
+        <button type="button" class="pf-btn pass ${st === 'passed' ? 'active' : ''}" data-status-btn="passed" data-id="${it.id}" title="Mark as Passed" aria-label="Mark ${escapeHtml(lblMain)} as Passed">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="m5 12 5 5L20 7"/>
           </svg>
         </button>
       </div>
 
-      <button type="button" class="paste-btn" data-paste-id="${it.id}" title="Paste from clipboard" aria-label="Paste ${escapeHtml(it.label)}">
+      <button type="button" class="paste-btn" data-paste-id="${it.id}" title="Paste from clipboard" aria-label="Paste ${escapeHtml(lblMain)}">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
       </button>
     </div>
@@ -2296,7 +2326,7 @@ function createEditRowHtml(it, kind, idx, total) {
         <button type="button" class="arr-btn" data-move="-1" title="Move Up (Alt+↑)" aria-label="Move Up" ${idx === 0 ? 'disabled' : ''}>▲</button>
         <button type="button" class="arr-btn" data-move="1" title="Move Down (Alt+↓)" aria-label="Move Down" ${idx === total - 1 ? 'disabled' : ''}>▼</button>
       </div>
-      <input type="text" class="el-label" value="${escapeHtml(it.label)}" placeholder="Label name">
+      <input type="text" class="el-label" value="${escapeHtml(it.label)}" placeholder="Label // hint" title="Label name (use // for uncopied hint, e.g. Name // If 3rd Party)">
       <input type="number" class="el-len" value="${it.len || ''}" placeholder="len" title="Guide length in characters">
       <button type="button" class="ibtn" data-del="true" title="Remove item" style="width:20px;height:20px;color:var(--color-danger);">
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
