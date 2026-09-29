@@ -364,7 +364,13 @@ function hideBanner() {
 }
 
 if (topBannerClose) {
-  topBannerClose.onclick = () => hideBanner();
+  topBannerClose.onclick = () => {
+    if (autoClearTimer) {
+      stopAutoClear();
+    } else {
+      hideBanner();
+    }
+  };
 }
 
 // Alias for backwards compatibility
@@ -423,6 +429,7 @@ const btnClear = document.getElementById('btnClear');
 const clearBtnText = document.getElementById('clearBtnText');
 
 function stopAutoClear() {
+  const wasActive = !!autoClearTimer;
   if (autoClearTimer) {
     clearInterval(autoClearTimer);
     autoClearTimer = null;
@@ -430,6 +437,9 @@ function stopAutoClear() {
   autoClearSeconds = 0;
   btnClear.classList.remove('countdown-active');
   clearBtnText.textContent = 'Clear';
+  if (wasActive) {
+    hideBanner();
+  }
 }
 
 function startAutoClear(typeId) {
@@ -439,6 +449,11 @@ function startAutoClear(typeId) {
   autoClearSeconds = settings.autoClear;
   btnClear.classList.add('countdown-active');
   clearBtnText.textContent = `Clear (${autoClearSeconds}s)`;
+
+  // Display top banner with countdown and Cancel button (type 'warn', non-expiring until countdown or cancel)
+  showBanner(`Clearing in ${autoClearSeconds}s...`, 'Cancel', () => {
+    stopAutoClear();
+  }, 0, 'warn');
 
   autoClearTimer = setInterval(() => {
     autoClearSeconds--;
@@ -452,6 +467,9 @@ function startAutoClear(typeId) {
       showClearedFeedback();
     } else {
       clearBtnText.textContent = `Clear (${autoClearSeconds}s)`;
+      if (topBannerMsg) {
+        topBannerMsg.textContent = `Clearing in ${autoClearSeconds}s...`;
+      }
     }
   }, 1000);
 }
@@ -685,6 +703,7 @@ function bindFormEvents() {
 
   mainForm.querySelectorAll('[data-status-btn]').forEach(btn => {
     btn.onclick = () => {
+      stopAutoClear();
       const id = btn.dataset.id;
       const targetStatus = btn.dataset.statusBtn;
       const cur = curStatus()[id];
@@ -822,6 +841,7 @@ if (commentSuggestionsMenu) {
     const li = e.target.closest('li[data-val]');
     if (li) {
       e.preventDefault();
+      stopAutoClear();
       const val = li.dataset.val;
       commentInput.value = val;
       curValues()._comment = val;
@@ -894,6 +914,7 @@ commentInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       if (activeSuggestionIdx >= 0 && activeSuggestionIdx < currentFilteredSuggestions.length) {
         e.preventDefault();
+        stopAutoClear();
         const selectedVal = currentFilteredSuggestions[activeSuggestionIdx];
         commentInput.value = selectedVal;
         curValues()._comment = selectedVal;

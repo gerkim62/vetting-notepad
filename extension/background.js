@@ -1,5 +1,6 @@
 // Background Service Worker for Vetting Notepad
 // Opens the notepad in its own dedicated, resizable window (type: 'popup')
+// Defaults to left-most position (left: 0, top: 0, width: 250) and remembers position & dimensions
 let vettingWindowId = null;
 
 chrome.action.onClicked.addListener(async () => {
@@ -26,30 +27,43 @@ chrome.action.onClicked.addListener(async () => {
     }
   } catch (e) {}
 
-  // Position docked to the right edge of the user's active window
-  let top = 50;
-  let left = 100;
+  // Load remembered position & dimensions from local storage
+  let savedBounds = null;
+  try {
+    const storageRes = await chrome.storage.local.get('vpad.windowBounds');
+    savedBounds = storageRes && storageRes['vpad.windowBounds'];
+  } catch (e) {}
+
+  // Determine initial coordinates (default: left-most edge at 0, top 0, width 250px)
+  let left = 0;
+  let top = 0;
+  let width = 250;
   let height = 750;
 
-  try {
-    const currentWin = await chrome.windows.getCurrent();
-    if (currentWin && currentWin.height) {
-      height = Math.max(500, currentWin.height);
-      top = currentWin.top || 0;
-      if (currentWin.left !== undefined && currentWin.width !== undefined) {
-        left = Math.max(0, currentWin.left + currentWin.width - 320);
+  if (savedBounds && typeof savedBounds === 'object') {
+    if (typeof savedBounds.left === 'number') left = Math.max(0, savedBounds.left);
+    if (typeof savedBounds.top === 'number') top = Math.max(0, savedBounds.top);
+    if (typeof savedBounds.width === 'number') width = Math.max(250, savedBounds.width);
+    if (typeof savedBounds.height === 'number') height = Math.max(400, savedBounds.height);
+  } else {
+    // If no saved bounds, match current window height if available
+    try {
+      const currentWin = await chrome.windows.getCurrent();
+      if (currentWin && currentWin.height) {
+        height = Math.max(500, currentWin.height);
+        if (typeof currentWin.top === 'number') top = currentWin.top;
       }
-    }
-  } catch (e) {}
+    } catch (e) {}
+  }
 
   try {
     const win = await chrome.windows.create({
       url: chrome.runtime.getURL('panel.html'),
       type: 'popup',
-      width: 300,
-      height: height,
-      top: top,
-      left: left,
+      width,
+      height,
+      top,
+      left,
       focused: true
     });
     vettingWindowId = win.id;
@@ -57,11 +71,24 @@ chrome.action.onClicked.addListener(async () => {
     // Fallback if popup type fails
     const win = await chrome.windows.create({
       url: chrome.runtime.getURL('panel.html'),
-      width: 300,
-      height: height,
+      width,
+      height,
       focused: true
     });
     vettingWindowId = win.id;
+  }
+});
+
+// Continuously remember window position and dimensions as user moves or resizes
+chrome.windows.onBoundsChanged.addListener((win) => {
+  if (win.id === vettingWindowId && win.state === 'normal') {
+    const bounds = {
+      left: win.left,
+      top: win.top,
+      width: Math.max(250, win.width),
+      height: win.height
+    };
+    chrome.storage.local.set({ 'vpad.windowBounds': bounds });
   }
 });
 
