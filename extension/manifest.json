@@ -7,8 +7,10 @@
     "storage",
     "clipboardWrite"
   ],
+  "background": {
+    "service_worker": "background.js"
+  },
   "action": {
-    "default_popup": "panel.html",
     "default_title": "Vetting Notepad",
     "default_icon": {
       "16": "icons/icon16.png",
