@@ -888,7 +888,8 @@ function renderForm() {
 
 function createRowHtml(it, kind, idx) {
   let val = curValues()[it.id];
-  if (val === undefined) {
+  const hasStatus = !!curStatus()[it.id];
+  if ((val === undefined || (val === '' && it.defaultValue && !hasStatus))) {
     val = it.defaultValue || '';
     curValues()[it.id] = val;
   }
@@ -1493,6 +1494,16 @@ function closeEditView() {
   editView.style.display = 'none';
   saveTypes();
   refreshTypeSelect();
+  // Scrub '' entries for items that now have a defaultValue so renderForm re-applies defaults
+  const t = curType();
+  if (t) {
+    const v = curValues();
+    [...(t.required || []), ...(t.optional || [])].forEach(it => {
+      if (it.defaultValue && (v[it.id] === '' || v[it.id] === undefined)) {
+        delete v[it.id];
+      }
+    });
+  }
   renderForm();
 }
 
@@ -1832,6 +1843,12 @@ function bindEditEvents() {
     }
     else if (e.target.classList.contains('el-default')) {
       item.defaultValue = e.target.value.trim() || undefined;
+      // Immediately apply to the live form value if the field hasn't been filled yet
+      const liveVal = curValues()[item.id];
+      if (liveVal === '' || liveVal === undefined) {
+        if (item.defaultValue) curValues()[item.id] = item.defaultValue;
+        else delete curValues()[item.id]; // allow createRowHtml to re-init as ''
+      }
       const btn = group.querySelector('.btn-toggle-drawer');
       if (btn) btn.classList.toggle('has-rich', !!(item.article || item.info || item.v360 || item.defaultValue));
     }
