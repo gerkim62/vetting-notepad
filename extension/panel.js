@@ -126,12 +126,14 @@ function defaultVettingTypes() {
         "id": "sw_mpesa_txn1",
         "label": "Self-Txn 1 // Last 30d",
         "len": 0,
+        "group": "self_txn",
         "info": "[SAKA VMDA-0001]\nSelf-initiated M-PESA transaction from customer account in last 30 days. Must provide Amount, Date/Time, and Recipient name. (2 txns count as 1 pass)."
       },
       {
         "id": "sw_mpesa_txn2",
         "label": "Self-Txn 2 // Last 30d",
         "len": 0,
+        "group": "self_txn",
         "info": "[SAKA VMDA-0001]\nSecond self-initiated M-PESA transaction in last 30 days."
       },
       {
@@ -485,10 +487,18 @@ function defaultVettingTypes() {
         "info": "[SAKA VMDA-0001]\nAirtime balance on CBS IN-Data."
       },
       {
-        "id": "unb_mpesa_txn",
-        "label": "Self-Txn // Last 30d",
+        "id": "unb_mpesa_txn1",
+        "label": "Self-Txn 1 // Last 30d",
         "len": 0,
-        "info": "[SAKA VMDA-0001]\nSelf-initiated M-PESA transaction in last 30 days."
+        "group": "self_txn",
+        "info": "[SAKA BADD-0003 / VMDA-0001]\nSelf-initiated M-PESA transaction from customer account in last 30 days. Must provide Amount, Date/Time, and Recipient name. (2 txns count as 1 pass)."
+      },
+      {
+        "id": "unb_mpesa_txn2",
+        "label": "Self-Txn 2 // Last 30d",
+        "len": 0,
+        "group": "self_txn",
+        "info": "[SAKA BADD-0003 / VMDA-0001]\nSecond self-initiated M-PESA transaction in last 30 days."
       },
       {
         "id": "unb_limit",
@@ -652,6 +662,20 @@ function defaultVettingTypes() {
         "label": "Airtime Balance",
         "len": 0,
         "info": "[SAKA VMDA-0001]\nCurrent airtime balance."
+      },
+      {
+        "id": "sk_mpesa_txn1",
+        "label": "Self-Txn 1 // Last 30d",
+        "len": 0,
+        "group": "self_txn",
+        "info": "[SAKA SKKI-0001 / VMDA-0001]\nSelf-initiated M-PESA transaction from customer account in last 30 days. Must provide Amount, Date/Time, and Recipient name. (2 txns count as 1 pass)."
+      },
+      {
+        "id": "sk_mpesa_txn2",
+        "label": "Self-Txn 2 // Last 30d",
+        "len": 0,
+        "group": "self_txn",
+        "info": "[SAKA SKKI-0001 / VMDA-0001]\nSecond self-initiated M-PESA transaction in last 30 days."
       },
       {
         "id": "sk_limit",
@@ -1020,10 +1044,18 @@ function defaultVettingTypes() {
         "info": "[SAKA VMDA-0001]\nCurrent airtime balance."
       },
       {
-        "id": "mpu_self_txn",
-        "label": "Self-Txn // Last 30d",
+        "id": "mpu_self_txn1",
+        "label": "Self-Txn 1 // Last 30d",
         "len": 0,
-        "info": "[SAKA VMDA-0001]\nSelf-initiated M-PESA transaction in last 30 days."
+        "group": "self_txn",
+        "info": "[SAKA VMDA-0001]\nSelf-initiated M-PESA transaction from customer account in last 30 days. Must provide Amount, Date/Time, and Recipient name. (2 txns count as 1 pass)."
+      },
+      {
+        "id": "mpu_self_txn2",
+        "label": "Self-Txn 2 // Last 30d",
+        "len": 0,
+        "group": "self_txn",
+        "info": "[SAKA VMDA-0001]\nSecond self-initiated M-PESA transaction in last 30 days."
       },
       {
         "id": "mpu_limit",
