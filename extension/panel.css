@@ -1159,6 +1159,7 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
 .arr-btn:hover { color: var(--saf-emerald); }
 
 .btn-toggle-drawer {
+  position: relative;
   width: 20px;
   height: 20px;
   color: var(--text-dim);
@@ -1173,8 +1174,24 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   color: var(--saf-emerald);
   background: var(--saf-emerald-soft);
 }
+.drawer-chevron-icon {
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.btn-toggle-drawer.active .drawer-chevron-icon {
+  transform: rotate(180deg);
+}
 .btn-toggle-drawer.has-rich {
   color: var(--saf-emerald);
+}
+.btn-toggle-drawer.has-rich::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--saf-emerald);
 }
 
 .btn-tie-pair {
@@ -1188,16 +1205,16 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   justify-content: center;
 }
 .btn-tie-pair:hover {
-  color: var(--saf-emerald);
-  background: var(--saf-emerald-soft);
+  color: var(--text-main);
+  background: var(--bg-hover);
 }
 .btn-tie-pair.is-tied {
   color: var(--saf-emerald);
-  background: var(--saf-emerald-soft);
+  background: rgba(16, 185, 129, 0.12);
 }
 
 .edit-item-group.is-tied {
-  border-left: 2px solid var(--saf-emerald);
+  border-left: 2px solid rgba(16, 185, 129, 0.45);
   padding-left: 3px;
   border-radius: 2px 0 0 2px;
 }
@@ -1226,6 +1243,20 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
+}
+.el-v360 {
+  width: 100%;
+  padding: 3px 5px;
+  font-size: 10.5px;
+  border: 1px solid var(--border-line);
+  border-radius: var(--radius-sm);
+  background: var(--bg-panel);
+  color: var(--text-main);
+  outline: none;
+  cursor: pointer;
+}
+.el-v360:focus {
+  border-color: var(--saf-emerald);
 }
 .el-article {
   width: 100%;

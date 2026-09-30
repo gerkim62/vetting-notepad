@@ -30,19 +30,22 @@
           "id": "sw_name",
           "label": "Full Names // View 360",
           "len": 0,
-          "info": "[SAKA VMDA-0001]\nFull names as registered on View 360. Must completely match registration."
+          "info": "[SAKA VMDA-0001]\nFull names as registered on View 360. Must completely match registration.",
+          "v360": "fullName"
         },
         {
           "id": "sw_idnum",
           "label": "ID Number",
           "len": 8,
-          "info": "[SAKA VMDA-0001]\nOriginal registered document number. Leading zeros do not invalidate ID."
+          "info": "[SAKA VMDA-0001]\nOriginal registered document number. Leading zeros do not invalidate ID.",
+          "v360": "idNumber"
         },
         {
           "id": "sw_yob",
           "label": "Year of Birth",
           "len": 4,
-          "info": "[SAKA VMDA-0001]\nYear of birth as per View 360 & Siebel records."
+          "info": "[SAKA VMDA-0001]\nYear of birth as per View 360 & Siebel records.",
+          "v360": "yob"
         },
         {
           "id": "sw_simex",
@@ -70,7 +73,7 @@
           "id": "sw_mpesa_bal",
           "label": "M-PESA Balance // SAKA Margins",
           "len": 0,
-          "info": "[SAKA VMDA-0001]\nAllowed margins:\n\u2022 1 \u2013 100: \u00b110\n\u2022 101 \u2013 1,000: \u00b150\n\u2022 1,001 \u2013 10,000: \u00b1100\n\u2022 > 10,001: \u00b110%"
+          "info": "[SAKA VMDA-0001]\nAllowed margins:\n• 1 – 100: ±10\n• 101 – 1,000: ±50\n• 1,001 – 10,000: ±100\n• > 10,001: ±10%"
         },
         {
           "id": "sw_airtime_bal",
@@ -239,19 +242,22 @@
           "id": "bar_name",
           "label": "Full Names // View 360",
           "len": 0,
-          "info": "[SAKA VMDA-0001]\nFull names as registered on View 360."
+          "info": "[SAKA VMDA-0001]\nFull names as registered on View 360.",
+          "v360": "fullName"
         },
         {
           "id": "bar_idnum",
           "label": "ID Number",
           "len": 8,
-          "info": "[SAKA VMDA-0001]\nOriginal registered document number."
+          "info": "[SAKA VMDA-0001]\nOriginal registered document number.",
+          "v360": "idNumber"
         },
         {
           "id": "bar_yob",
           "label": "Year of Birth",
           "len": 4,
-          "info": "[SAKA VMDA-0001]\nYear of birth of the registered owner."
+          "info": "[SAKA VMDA-0001]\nYear of birth of the registered owner.",
+          "v360": "yob"
         }
       ],
       "optional": [
@@ -259,7 +265,7 @@
           "id": "bar_siebel_suspend",
           "label": "Siebel Status // Suspended",
           "len": 0,
-          "info": "[SAKA BADD-0003]\nSet Siebel status to \"Suspended\" > Action reason \"Suspend \u2013 Handset Lost/Stolen\" or \"Suspend All Customer request\"."
+          "info": "[SAKA BADD-0003]\nSet Siebel status to \"Suspended\" > Action reason \"Suspend – Handset Lost/Stolen\" or \"Suspend All Customer request\"."
         },
         {
           "id": "bar_hlr_sawa",
@@ -313,7 +319,8 @@
           "id": "bar3_caller_id",
           "label": "Caller ID",
           "len": 8,
-          "info": "[SAKA VMDA-0001]\nNational ID or passport number of the third party."
+          "info": "[SAKA VMDA-0001]\nNational ID or passport number of the third party.",
+          "v360": "idNumber"
         },
         {
           "id": "bar3_msisdn",
@@ -331,13 +338,15 @@
           "id": "bar3_owner_names",
           "label": "Owner Name // 2 Names",
           "len": 0,
-          "info": "[SAKA VMDA-0001]\nRequest registered customer's 2 names (e.g. first and last name)."
+          "info": "[SAKA VMDA-0001]\nRequest registered customer's 2 names (e.g. first and last name).",
+          "v360": "fullName"
         },
         {
           "id": "bar3_owner_id",
           "label": "Owner ID",
           "len": 8,
-          "info": "[SAKA VMDA-0001]\nRegistered customer's ID number. (Note: Owner Year of Birth is NOT requested from 3rd party)."
+          "info": "[SAKA VMDA-0001]\nRegistered customer's ID number. (Note: Owner Year of Birth is NOT requested from 3rd party).",
+          "v360": "idNumber"
         }
       ],
       "optional": [
@@ -394,19 +403,22 @@
           "id": "unb_name",
           "label": "Full Names // View 360",
           "len": 0,
-          "info": "[SAKA VMDA-0001]\nFull names as registered on View 360."
+          "info": "[SAKA VMDA-0001]\nFull names as registered on View 360.",
+          "v360": "fullName"
         },
         {
           "id": "unb_idnum",
           "label": "ID Number",
           "len": 8,
-          "info": "[SAKA VMDA-0001]\nOriginal registered document number."
+          "info": "[SAKA VMDA-0001]\nOriginal registered document number.",
+          "v360": "idNumber"
         },
         {
           "id": "unb_yob",
           "label": "Year of Birth",
           "len": 4,
-          "info": "[SAKA VMDA-0001]\nYear of birth of line owner."
+          "info": "[SAKA VMDA-0001]\nYear of birth of line owner.",
+          "v360": "yob"
         }
       ],
       "optional": [
@@ -434,7 +446,7 @@
           "id": "unb_mpesa_bal",
           "label": "M-PESA Balance // SAKA Margins",
           "len": 0,
-          "info": "[SAKA VMDA-0001]\nAllowed margins:\n\u2022 1 \u2013 100: \u00b110\n\u2022 101 \u2013 1,000: \u00b150\n\u2022 1,001 \u2013 10,000: \u00b1100\n\u2022 > 10,001: \u00b110%"
+          "info": "[SAKA VMDA-0001]\nAllowed margins:\n• 1 – 100: ±10\n• 101 – 1,000: ±50\n• 1,001 – 10,000: ±100\n• > 10,001: ±10%"
         },
         {
           "id": "unb_airtime_bal",
@@ -502,19 +514,22 @@
           "id": "pinu_name",
           "label": "Full Names // View 360",
           "len": 0,
-          "info": "[SAKA SKKI-0001]\nFull names must tally on View 360 and M-PESA G3. If mismatch, refer to Retail."
+          "info": "[SAKA SKKI-0001]\nFull names must tally on View 360 and M-PESA G3. If mismatch, refer to Retail.",
+          "v360": "fullName"
         },
         {
           "id": "pinu_idnum",
           "label": "ID Number",
           "len": 8,
-          "info": "[SAKA SKKI-0001]\nDocument ID used to register M-PESA. If 7-digit ID, assist and advise how ID appears on G3."
+          "info": "[SAKA SKKI-0001]\nDocument ID used to register M-PESA. If 7-digit ID, assist and advise how ID appears on G3.",
+          "v360": "idNumber"
         },
         {
           "id": "pinu_yob",
           "label": "Year of Birth",
           "len": 4,
-          "info": "[SAKA VMDA-0001]\nYear of birth."
+          "info": "[SAKA VMDA-0001]\nYear of birth.",
+          "v360": "yob"
         }
       ],
       "optional": [
@@ -565,19 +580,22 @@
           "id": "sk_name",
           "label": "Full Names // View 360",
           "len": 0,
-          "info": "[SAKA SKKI-0001]\nFull names as registered on View 360 & G3."
+          "info": "[SAKA SKKI-0001]\nFull names as registered on View 360 & G3.",
+          "v360": "fullName"
         },
         {
           "id": "sk_idnum",
           "label": "ID Number",
           "len": 8,
-          "info": "[SAKA SKKI-0001]\nDocument number of registration."
+          "info": "[SAKA SKKI-0001]\nDocument number of registration.",
+          "v360": "idNumber"
         },
         {
           "id": "sk_yob",
           "label": "Year of Birth",
           "len": 4,
-          "info": "[SAKA VMDA-0001]\nYear of birth."
+          "info": "[SAKA VMDA-0001]\nYear of birth.",
+          "v360": "yob"
         }
       ],
       "optional": [
@@ -611,7 +629,7 @@
           "id": "sk_mpesa_bal",
           "label": "M-PESA Balance // SAKA Margins",
           "len": 0,
-          "info": "[SAKA VMDA-0001]\nAllowed margins:\n\u2022 1 \u2013 100: \u00b110\n\u2022 101 \u2013 1,000: \u00b150\n\u2022 1,001 \u2013 10,000: \u00b1100\n\u2022 > 10,001: \u00b110%"
+          "info": "[SAKA VMDA-0001]\nAllowed margins:\n• 1 – 100: ±10\n• 101 – 1,000: ±50\n• 1,001 – 10,000: ±100\n• > 10,001: ±10%"
         },
         {
           "id": "sk_airtime_bal",
@@ -680,19 +698,22 @@
           "id": "puk_name",
           "label": "Full Names // View 360",
           "len": 0,
-          "info": "[SAKA VMDA-0001]\nFull names as registered on View 360."
+          "info": "[SAKA VMDA-0001]\nFull names as registered on View 360.",
+          "v360": "fullName"
         },
         {
           "id": "puk_idnum",
           "label": "ID Number",
           "len": 8,
-          "info": "[SAKA VMDA-0001]\nOriginal registered document ID number."
+          "info": "[SAKA VMDA-0001]\nOriginal registered document ID number.",
+          "v360": "idNumber"
         },
         {
           "id": "puk_yob",
           "label": "Year of Birth",
           "len": 4,
-          "info": "[SAKA VMDA-0001]\nYear of birth."
+          "info": "[SAKA VMDA-0001]\nYear of birth.",
+          "v360": "yob"
         }
       ],
       "optional": [
@@ -742,19 +763,22 @@
           "id": "upg_name",
           "label": "Full Names // View 360",
           "len": 0,
-          "info": "[SAKA VMDA-0001]\nFull names as registered on View 360."
+          "info": "[SAKA VMDA-0001]\nFull names as registered on View 360.",
+          "v360": "fullName"
         },
         {
           "id": "upg_idnum",
           "label": "ID Number",
           "len": 8,
-          "info": "[SAKA VMDA-0001]\nRegistered document number."
+          "info": "[SAKA VMDA-0001]\nRegistered document number.",
+          "v360": "idNumber"
         },
         {
           "id": "upg_yob",
           "label": "Year of Birth",
           "len": 4,
-          "info": "[SAKA VMDA-0001]\nYear of birth."
+          "info": "[SAKA VMDA-0001]\nYear of birth.",
+          "v360": "yob"
         },
         {
           "id": "upg_simex",
@@ -809,19 +833,22 @@
           "id": "pol_name",
           "label": "Full Names // View 360",
           "len": 0,
-          "info": "[SAKA SRFB-0005]\nFull names as per View 360. CEE can accept 2 correct names."
+          "info": "[SAKA SRFB-0005]\nFull names as per View 360. CEE can accept 2 correct names.",
+          "v360": "fullName"
         },
         {
           "id": "pol_idnum",
           "label": "ID Number",
           "len": 8,
-          "info": "[SAKA SRFB-0005]\nID document number of the registered previous owner."
+          "info": "[SAKA SRFB-0005]\nID document number of the registered previous owner.",
+          "v360": "idNumber"
         },
         {
           "id": "pol_yob",
           "label": "Year of Birth",
           "len": 4,
-          "info": "[SAKA VMDA-0001]\nYear of birth as registered."
+          "info": "[SAKA VMDA-0001]\nYear of birth as registered.",
+          "v360": "yob"
         },
         {
           "id": "pol_old_simex",
@@ -889,19 +916,22 @@
           "id": "mps_name",
           "label": "Full Names // View 360",
           "len": 0,
-          "info": "[SAKA VMDA-0001]\nFull names as registered."
+          "info": "[SAKA VMDA-0001]\nFull names as registered.",
+          "v360": "fullName"
         },
         {
           "id": "mps_idnum",
           "label": "ID Number",
           "len": 8,
-          "info": "[SAKA VMDA-0001]\nRegistered ID document number."
+          "info": "[SAKA VMDA-0001]\nRegistered ID document number.",
+          "v360": "idNumber"
         },
         {
           "id": "mps_yob",
           "label": "Year of Birth",
           "len": 4,
-          "info": "[SAKA VMDA-0001]\nYear of birth."
+          "info": "[SAKA VMDA-0001]\nYear of birth.",
+          "v360": "yob"
         }
       ],
       "optional": [
@@ -951,19 +981,22 @@
           "id": "mpu_name",
           "label": "Full Names // View 360",
           "len": 0,
-          "info": "[SAKA VMDA-0001]\nFull names as registered on View 360 & G3."
+          "info": "[SAKA VMDA-0001]\nFull names as registered on View 360 & G3.",
+          "v360": "fullName"
         },
         {
           "id": "mpu_idnum",
           "label": "ID Number",
           "len": 8,
-          "info": "[SAKA VMDA-0001]\nDocument ID used to register M-PESA."
+          "info": "[SAKA VMDA-0001]\nDocument ID used to register M-PESA.",
+          "v360": "idNumber"
         },
         {
           "id": "mpu_yob",
           "label": "Year of Birth",
           "len": 4,
-          "info": "[SAKA VMDA-0001]\nYear of birth."
+          "info": "[SAKA VMDA-0001]\nYear of birth.",
+          "v360": "yob"
         }
       ],
       "optional": [
@@ -991,7 +1024,7 @@
           "id": "mpu_mpesa_bal",
           "label": "M-PESA Balance // SAKA Margins",
           "len": 0,
-          "info": "[SAKA VMDA-0001]\nAllowed margins:\n\u2022 1 \u2013 100: \u00b110\n\u2022 101 \u2013 1,000: \u00b150\n\u2022 1,001 \u2013 10,000: \u00b1100\n\u2022 > 10,001: \u00b110%"
+          "info": "[SAKA VMDA-0001]\nAllowed margins:\n• 1 – 100: ±10\n• 101 – 1,000: ±50\n• 1,001 – 10,000: ±100\n• > 10,001: ±10%"
         },
         {
           "id": "mpu_airtime_bal",
@@ -1072,19 +1105,22 @@
           "id": "gen_name",
           "label": "Full Names // View 360",
           "len": 0,
-          "info": "[SAKA IDPA-0001]\nIf inquiry touches account details, confirm registered names."
+          "info": "[SAKA IDPA-0001]\nIf inquiry touches account details, confirm registered names.",
+          "v360": "fullName"
         },
         {
           "id": "gen_idnum",
           "label": "ID Number",
           "len": 8,
-          "info": "[SAKA VMDA-0001]\nID document number if account data requested."
+          "info": "[SAKA VMDA-0001]\nID document number if account data requested.",
+          "v360": "idNumber"
         },
         {
           "id": "gen_yob",
           "label": "Year of Birth",
           "len": 4,
-          "info": "[SAKA VMDA-0001]\nYear of birth if primary vetting needed."
+          "info": "[SAKA VMDA-0001]\nYear of birth if primary vetting needed.",
+          "v360": "yob"
         },
         {
           "id": "gen_acct_check",

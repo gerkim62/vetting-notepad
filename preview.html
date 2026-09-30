@@ -1166,6 +1166,7 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
 .arr-btn:hover { color: var(--saf-emerald); }
 
 .btn-toggle-drawer {
+  position: relative;
   width: 20px;
   height: 20px;
   color: var(--text-dim);
@@ -1180,8 +1181,24 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   color: var(--saf-emerald);
   background: var(--saf-emerald-soft);
 }
+.drawer-chevron-icon {
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.btn-toggle-drawer.active .drawer-chevron-icon {
+  transform: rotate(180deg);
+}
 .btn-toggle-drawer.has-rich {
   color: var(--saf-emerald);
+}
+.btn-toggle-drawer.has-rich::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--saf-emerald);
 }
 
 .btn-tie-pair {
@@ -1195,16 +1212,16 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   justify-content: center;
 }
 .btn-tie-pair:hover {
-  color: var(--saf-emerald);
-  background: var(--saf-emerald-soft);
+  color: var(--text-main);
+  background: var(--bg-hover);
 }
 .btn-tie-pair.is-tied {
   color: var(--saf-emerald);
-  background: var(--saf-emerald-soft);
+  background: rgba(16, 185, 129, 0.12);
 }
 
 .edit-item-group.is-tied {
-  border-left: 2px solid var(--saf-emerald);
+  border-left: 2px solid rgba(16, 185, 129, 0.45);
   padding-left: 3px;
   border-radius: 2px 0 0 2px;
 }
@@ -1233,6 +1250,20 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
+}
+.el-v360 {
+  width: 100%;
+  padding: 3px 5px;
+  font-size: 10.5px;
+  border: 1px solid var(--border-line);
+  border-radius: var(--radius-sm);
+  background: var(--bg-panel);
+  color: var(--text-main);
+  outline: none;
+  cursor: pointer;
+}
+.el-v360:focus {
+  border-color: var(--saf-emerald);
 }
 .el-article {
   width: 100%;
@@ -1272,7 +1303,6 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
 }
-
 
 /* ==========================================================================
    Preview Stage Simulation (Docked Window & Resizer)
@@ -1544,13 +1574,12 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   </aside>
 </div>
 
-<script>
+<script type="module">
 /**
  * Vetting Notepad — Chrome Extension Controller
  * Ultra-compact, fast, KISS, lightweight.
  */
-(() => {
-'use strict';
+import defaultConfig from './extension/safaricom-vetting-config.json' with { type: 'json' };
 
 const uid = () => Math.random().toString(36).slice(2, 8);
 
@@ -1598,1124 +1627,7 @@ const Storage = {
 };
 
 function defaultVettingTypes() {
-  return [
-  {
-    "id": "swap",
-    "name": "SIM Swap (Enhanced Vetting)",
-    "article": "SSCB-0006",
-    "minSecondary": 2,
-    "required": [
-      {
-        "id": "sw_callno",
-        "label": "Calling Number",
-        "len": 10,
-        "info": "[SAKA SCEK-0002 / SSCB-0006]\nCalling number must be active on IN-Data. Maximum 2 swap requests per 24 hours."
-      },
-      {
-        "id": "sw_msisdn",
-        "label": "Line to Swap",
-        "len": 10,
-        "info": "[SAKA SSCB-0006]\nMust be active on CBS, not pooled/deleted, not self-whitelisted (*100*100#). Line must be off or verified."
-      },
-      {
-        "id": "sw_name",
-        "label": "Full Names // View 360",
-        "len": 0,
-        "info": "[SAKA VMDA-0001]\nFull names as registered on View 360. Must completely match registration."
-      },
-      {
-        "id": "sw_idnum",
-        "label": "ID Number",
-        "len": 8,
-        "info": "[SAKA VMDA-0001]\nOriginal registered document number. Leading zeros do not invalidate ID."
-      },
-      {
-        "id": "sw_yob",
-        "label": "Year of Birth",
-        "len": 4,
-        "info": "[SAKA VMDA-0001]\nYear of birth as per View 360 & Siebel records."
-      },
-      {
-        "id": "sw_simex",
-        "label": "New SIMEX Serial",
-        "len": 20,
-        "info": "[SAKA SSCB-0006]\n20-digit serial number from replacement SIM card retailing at KES 100."
-      }
-    ],
-    "optional": [
-      {
-        "id": "sw_fdn1",
-        "label": "FDN 1 // 2x in 3 mos",
-        "len": 10,
-        "group": "fdn",
-        "info": "[SAKA VMDA-0001]\nFrequently Dialled Number: Must be Mobile Originated (MO) call or SMS at least twice in the last 3 months. FDN 1 & 2 together count as 1 pass."
-      },
-      {
-        "id": "sw_fdn2",
-        "label": "FDN 2 // 2x in 3 mos",
-        "len": 10,
-        "group": "fdn",
-        "info": "[SAKA VMDA-0001]\nSecond Frequently Dialled Number. Together with FDN 1 counts as 1 secondary pass."
-      },
-      {
-        "id": "sw_mpesa_bal",
-        "label": "M-PESA Balance // SAKA Margins",
-        "len": 0,
-        "info": "[SAKA VMDA-0001]\nAllowed margins:\n\u2022 1 \u2013 100: \u00b110\n\u2022 101 \u2013 1,000: \u00b150\n\u2022 1,001 \u2013 10,000: \u00b1100\n\u2022 > 10,001: \u00b110%"
-      },
-      {
-        "id": "sw_airtime_bal",
-        "label": "Airtime Balance",
-        "len": 0,
-        "info": "[SAKA VMDA-0001]\nCurrent airtime balance on CBS IN-Data."
-      },
-      {
-        "id": "sw_mpesa_txn1",
-        "label": "Self-Txn 1 // Last 30d",
-        "len": 0,
-        "group": "self_txn",
-        "info": "[SAKA VMDA-0001]\nSelf-initiated M-PESA transaction from customer account in last 30 days. Must provide Amount, Date/Time, and Recipient name. (2 txns count as 1 pass)."
-      },
-      {
-        "id": "sw_mpesa_txn2",
-        "label": "Self-Txn 2 // Last 30d",
-        "len": 0,
-        "group": "self_txn",
-        "info": "[SAKA VMDA-0001]\nSecond self-initiated M-PESA transaction in last 30 days."
-      },
-      {
-        "id": "sw_limit",
-        "label": "Loan Limit // Fuliza & M-Shwari",
-        "len": 0,
-        "info": "[SAKA VMDA-0001]\nAccurate loan/overdraft limit required. Do NOT use if customer has not opted in."
-      },
-      {
-        "id": "sw_regdate",
-        "label": "Registration Date // Month & Year",
-        "len": 0,
-        "info": "[SAKA VMDA-0001]\nMonth and Year of Line registration or M-PESA registration."
-      },
-      {
-        "id": "sw_bundle",
-        "label": "Last Bundle Purchase",
-        "len": 0,
-        "info": "[SAKA VMDA-0001]\nCustomer to provide bundle name or price purchased."
-      },
-      {
-        "id": "sw_altno",
-        "label": "Alternative Number",
-        "len": 10,
-        "info": "[SAKA SSCB-0006]\n10-digit alternative contact number."
-      }
-    ],
-    "comments": [
-      "Customer vetted on primary and secondary details. Line swapped successfully. Educated on M-PESA activation.",
-      "Customer failed secondary vetting. Advised to verify account details and call back.",
-      "Line self-whitelisted (*100*100#). Advised customer to visit Retail Center with original ID.",
-      "Line swapped in last 72 hours. Declined and referred to Retail as per policy."
-    ]
-  },
-  {
-    "id": "reversal",
-    "name": "M-PESA & Airtime Reversal",
-    "article": "MRMM-0003",
-    "required": [
-      {
-        "id": "rev_callno",
-        "label": "Calling Number",
-        "len": 10,
-        "info": "[SAKA MRMM-0003]\nMandatory calling number. If calling on behalf, capture caller number on interaction."
-      },
-      {
-        "id": "rev_tid",
-        "label": "Transaction ID",
-        "len": 10,
-        "info": "[SAKA MRMM-0003]\n10-character alphanumeric transaction reference (e.g. TGI7...)."
-      },
-      {
-        "id": "rev_sender_msisdn",
-        "label": "Sender Number",
-        "len": 10,
-        "info": "[SAKA MRMM-0003]\nMSISDN of the person who initiated the transaction."
-      },
-      {
-        "id": "rev_sender_name",
-        "label": "Sender Name // 2 Names",
-        "len": 0,
-        "info": "[SAKA MRMM-0003]\nConfirm ownership using Customer Name as per M-PESA G3. Accept if customer gives 2 correct names. (No ID/YOB required for P2P reversal)."
-      },
-      {
-        "id": "rev_amount",
-        "label": "Amount",
-        "len": 0,
-        "info": "[SAKA MRMM-0003]\nExact amount sent in the transaction."
-      },
-      {
-        "id": "rev_recipient",
-        "label": "Recipient Number / Till",
-        "len": 10,
-        "info": "[SAKA MRMM-0003 / LBCF-0003]\nParty B phone number, Buy Goods Till number, or Paybill business number."
-      },
-      {
-        "id": "rev_date_time",
-        "label": "Date & Time // <30 days",
-        "len": 0,
-        "info": "[SAKA MRMM-0003 / MALP-0001]\nTransaction must be within last 30 days for M-PESA P2P, or within 48h for M-PESA airtime reversal. If >30 days, advise customer to liaise with recipient/police."
-      }
-    ],
-    "optional": [
-      {
-        "id": "rev_type",
-        "label": "Reversal Type",
-        "len": 0,
-        "info": "[SAKA MRMM-0003]\nSpecify transaction type: P2P, LNM Till, Paybill 200200, Pochi la Biashara, or Airtime Purchase."
-      },
-      {
-        "id": "rev_wrong_acc",
-        "label": "Wrong Account / Ref",
-        "len": 0,
-        "info": "[SAKA LBCF-0003]\nWrong account or reference number keyed in (for Paybill/LNM)."
-      },
-      {
-        "id": "rev_correct_acc",
-        "label": "Correct Account",
-        "len": 0,
-        "info": "[SAKA LBCF-0003]\nIntended correct account or phone number."
-      },
-      {
-        "id": "rev_recipient_airtime",
-        "label": "Recipient Airtime Bal",
-        "len": 0,
-        "info": "[SAKA MALP-0001]\nFor airtime reversal: Recipient must have sufficient balance equal to or greater than amount purchased. Partial airtime reversal not possible."
-      },
-      {
-        "id": "rev_sr_num",
-        "label": "SR Number // 72h SLA",
-        "len": 0,
-        "info": "[SAKA LBCF-0003 / LPPP-0014]\nService Request number if escalated to LNM/Aggregator/Postpay team (72h SLA). Normal P2P SLA is 2 hours."
-      }
-    ],
-    "comments": [
-      "P2P reversal initiated on G3. Verified sender names and transaction within 30 days. Advised on 2h SLA.",
-      "LNM Reversal requested. Verified transaction details. Escalated to LNM Support via SR, advised on 72h SLA.",
-      "Airtime reversal processed on CRM. Recipient airtime balance verified. Advised customer.",
-      "Transaction older than 30 days. Advised customer to liaise directly with recipient or police.",
-      "Funds already utilized by recipient. Advised sender to engage recipient or report to police."
-    ]
-  },
-  {
-    "id": "bar_self",
-    "name": "Line Barring (Owner Calling)",
-    "article": "BADD-0003",
-    "required": [
-      {
-        "id": "bar_callno",
-        "label": "Calling Number",
-        "len": 10,
-        "info": "[SAKA BADD-0003]\nCalling number must be captured on interactions."
-      },
-      {
-        "id": "bar_msisdn",
-        "label": "Line to Bar",
-        "len": 10,
-        "info": "[SAKA BADD-0003]\nMobile number to be suspended/barred."
-      },
-      {
-        "id": "bar_reason",
-        "label": "Reason // Misplaced/Stolen",
-        "len": 0,
-        "info": "[SAKA BADD-0003]\nClarify if phone is misplaced or stolen. If stolen, categorized as fraud: Siebel Key Comment MUST be updated: \"Phone stolen, Refer to Retail for Unbarring\"."
-      },
-      {
-        "id": "bar_name",
-        "label": "Full Names // View 360",
-        "len": 0,
-        "info": "[SAKA VMDA-0001]\nFull names as registered on View 360."
-      },
-      {
-        "id": "bar_idnum",
-        "label": "ID Number",
-        "len": 8,
-        "info": "[SAKA VMDA-0001]\nOriginal registered document number."
-      },
-      {
-        "id": "bar_yob",
-        "label": "Year of Birth",
-        "len": 4,
-        "info": "[SAKA VMDA-0001]\nYear of birth of the registered owner."
-      }
-    ],
-    "optional": [
-      {
-        "id": "bar_siebel_suspend",
-        "label": "Siebel Status // Suspended",
-        "len": 0,
-        "info": "[SAKA BADD-0003]\nSet Siebel status to \"Suspended\" > Action reason \"Suspend \u2013 Handset Lost/Stolen\" or \"Suspend All Customer request\"."
-      },
-      {
-        "id": "bar_hlr_sawa",
-        "label": "HLR Status // BAOC/BAIC",
-        "len": 0,
-        "info": "[SAKA BADD-0003]\nConfirm BAOC reads OC and BAIC reads IC. If not successful, suspend on HLR under supplementary services > BAR Lost line."
-      },
-      {
-        "id": "bar_g3_status",
-        "label": "M-PESA G3 Status // Barred",
-        "len": 0,
-        "info": "[SAKA BADD-0003]\nBar on M-PESA G3 to secure money in customer wallet."
-      },
-      {
-        "id": "bar_apps_wiped",
-        "label": "Apps Wiped // CRM",
-        "len": 0,
-        "info": "[SAKA BADD-0003]\nCEE must wipe out mySafaricom App, MyOne App, and M-PESA Apps on CRM."
-      },
-      {
-        "id": "bar_altno",
-        "label": "Alternative Number",
-        "len": 10,
-        "info": "[SAKA BADD-0003]\nAlternative reachable number."
-      }
-    ],
-    "comments": [
-      "Phone reported misplaced. Line suspended on Siebel & HLR, M-PESA barred on G3, apps wiped on CRM.",
-      "Phone reported stolen. Line barred, apps wiped, key comment added: \"Phone stolen, Refer to Retail for Unbarring\".",
-      "Customer vetted on primary details. Temporary barring placed at customer request."
-    ]
-  },
-  {
-    "id": "bar_thirdparty",
-    "name": "Line Barring (3rd Party Calling)",
-    "article": "BADD-0003",
-    "required": [
-      {
-        "id": "bar3_callno",
-        "label": "Calling Number",
-        "len": 10,
-        "info": "[SAKA IDPA-0001 / BADD-0003]\nCapture interaction on third-party number with action \"Calling on Customer Behalf\", and log second interaction on affected line."
-      },
-      {
-        "id": "bar3_caller_name",
-        "label": "Caller Name",
-        "len": 0,
-        "info": "[SAKA VMDA-0001]\nFull names of the person calling on behalf of the owner."
-      },
-      {
-        "id": "bar3_caller_id",
-        "label": "Caller ID",
-        "len": 8,
-        "info": "[SAKA VMDA-0001]\nNational ID or passport number of the third party."
-      },
-      {
-        "id": "bar3_msisdn",
-        "label": "Line to Bar",
-        "len": 10,
-        "info": "[SAKA BADD-0003]\nMobile number of the lost/stolen line to be barred."
-      },
-      {
-        "id": "bar3_reason",
-        "label": "Reason // Misplaced/Stolen",
-        "len": 0,
-        "info": "[SAKA BADD-0003]\nReason line is being barred. If stolen, must add key comment \"Phone stolen, Refer to Retail for Unbarring\"."
-      },
-      {
-        "id": "bar3_owner_names",
-        "label": "Owner Name // 2 Names",
-        "len": 0,
-        "info": "[SAKA VMDA-0001]\nRequest registered customer's 2 names (e.g. first and last name)."
-      },
-      {
-        "id": "bar3_owner_id",
-        "label": "Owner ID",
-        "len": 8,
-        "info": "[SAKA VMDA-0001]\nRegistered customer's ID number. (Note: Owner Year of Birth is NOT requested from 3rd party)."
-      }
-    ],
-    "optional": [
-      {
-        "id": "bar3_siebel_suspend",
-        "label": "Siebel Status // Suspended",
-        "len": 0,
-        "info": "[SAKA BADD-0003]\nSuspend on Siebel & CRM."
-      },
-      {
-        "id": "bar3_hlr_sawa",
-        "label": "HLR Status // BAOC/BAIC",
-        "len": 0,
-        "info": "[SAKA BADD-0003]\nConfirm outgoing & incoming calls barred on HLR."
-      },
-      {
-        "id": "bar3_g3_status",
-        "label": "M-PESA G3 Status // Barred",
-        "len": 0,
-        "info": "[SAKA BADD-0003]\nBar M-PESA wallet on G3."
-      },
-      {
-        "id": "bar3_apps_wiped",
-        "label": "Apps Wiped // CRM",
-        "len": 0,
-        "info": "[SAKA BADD-0003]\nWipe all linked apps on CRM."
-      }
-    ],
-    "comments": [
-      "Third party called to report lost phone. Captured caller details and vetted registered owner. Line barred, apps wiped.",
-      "Third party reported stolen phone. Line barred, apps wiped, key comment updated: \"Phone stolen, Refer to Retail for Unbarring\".",
-      "Third party failed owner verification details. Barring declined; advised owner to call or visit shop."
-    ]
-  },
-  {
-    "id": "unbar",
-    "name": "Line Unbarring (Self Only)",
-    "article": "BADD-0003",
-    "minSecondary": 2,
-    "required": [
-      {
-        "id": "unb_callno",
-        "label": "Calling Number",
-        "len": 10,
-        "info": "[SAKA BADD-0003]\nCalling number must be active on IN-Data."
-      },
-      {
-        "id": "unb_msisdn",
-        "label": "Line to Unbar",
-        "len": 10,
-        "info": "[SAKA BADD-0003]\nLine to be resumed/unbarred. Self only! Third parties cannot unbar a line."
-      },
-      {
-        "id": "unb_name",
-        "label": "Full Names // View 360",
-        "len": 0,
-        "info": "[SAKA VMDA-0001]\nFull names as registered on View 360."
-      },
-      {
-        "id": "unb_idnum",
-        "label": "ID Number",
-        "len": 8,
-        "info": "[SAKA VMDA-0001]\nOriginal registered document number."
-      },
-      {
-        "id": "unb_yob",
-        "label": "Year of Birth",
-        "len": 4,
-        "info": "[SAKA VMDA-0001]\nYear of birth of line owner."
-      }
-    ],
-    "optional": [
-      {
-        "id": "unb_check_keycom",
-        "label": "Siebel Comments // Clean Tag",
-        "len": 0,
-        "info": "[SAKA BADD-0003]\nCRITICAL PRE-CHECK: Check Siebel key comments. If comment reads \"Phone stolen, Refer to Retail for Unbarring\", line can ONLY be unbarred at Retail. Do NOT unbar at Call Center!"
-      },
-      {
-        "id": "unb_fdn1",
-        "label": "FDN 1 // 2x in 3 mos",
-        "len": 10,
-        "group": "fdn",
-        "info": "[SAKA VMDA-0001]\nFrequently Dialled Number: MO call/SMS 2x in last 3 months."
-      },
-      {
-        "id": "unb_fdn2",
-        "label": "FDN 2 // 2x in 3 mos",
-        "len": 10,
-        "group": "fdn",
-        "info": "[SAKA VMDA-0001]\nSecond FDN. FDN 1 & 2 together count as 1 pass."
-      },
-      {
-        "id": "unb_mpesa_bal",
-        "label": "M-PESA Balance // SAKA Margins",
-        "len": 0,
-        "info": "[SAKA VMDA-0001]\nAllowed margins:\n\u2022 1 \u2013 100: \u00b110\n\u2022 101 \u2013 1,000: \u00b150\n\u2022 1,001 \u2013 10,000: \u00b1100\n\u2022 > 10,001: \u00b110%"
-      },
-      {
-        "id": "unb_airtime_bal",
-        "label": "Airtime Balance",
-        "len": 0,
-        "info": "[SAKA VMDA-0001]\nAirtime balance on CBS IN-Data."
-      },
-      {
-        "id": "unb_mpesa_txn1",
-        "label": "Self-Txn 1 // Last 30d",
-        "len": 0,
-        "group": "self_txn",
-        "info": "[SAKA BADD-0003 / VMDA-0001]\nSelf-initiated M-PESA transaction from customer account in last 30 days. Must provide Amount, Date/Time, and Recipient name. (2 txns count as 1 pass)."
-      },
-      {
-        "id": "unb_mpesa_txn2",
-        "label": "Self-Txn 2 // Last 30d",
-        "len": 0,
-        "group": "self_txn",
-        "info": "[SAKA BADD-0003 / VMDA-0001]\nSecond self-initiated M-PESA transaction in last 30 days."
-      },
-      {
-        "id": "unb_limit",
-        "label": "Loan Limit // Fuliza & M-Shwari",
-        "len": 0,
-        "info": "[SAKA VMDA-0001]\nOpted-in FSI limit."
-      },
-      {
-        "id": "unb_regdate",
-        "label": "Registration Date // Month & Year",
-        "len": 0,
-        "info": "[SAKA VMDA-0001]\nMonth and Year of registration."
-      },
-      {
-        "id": "unb_hlr_resume",
-        "label": "HLR & Siebel Resumed // PIN 0000",
-        "len": 0,
-        "info": "[SAKA BADD-0003]\nLine resumed on Siebel & HLR operator barring cleared. Advise customer on default barring PIN 0000."
-      }
-    ],
-    "comments": [
-      "Vetted for line unbarring. Siebel checked (no fraud tag), line resumed and HLR cleared. Advised on PIN 0000.",
-      "Siebel key comment reads \"Phone stolen\". Advised customer line can only be unbarred at Retail with original ID.",
-      "Customer failed secondary vetting for unbarring. Advised to confirm account details and call back."
-    ]
-  },
-  {
-    "id": "pin_unlock",
-    "name": "M-PESA PIN Unlock (Locked PIN)",
-    "article": "SKKI-0001",
-    "required": [
-      {
-        "id": "pinu_callno",
-        "label": "Calling Number // Active IN",
-        "len": 10,
-        "info": "[SAKA SKKI-0001]\nProceed only if calling number is a Safaricom number in Active or Expiry state on IN-Data."
-      },
-      {
-        "id": "pinu_msisdn",
-        "label": "Affected M-PESA Line",
-        "len": 10,
-        "info": "[SAKA SKKI-0001]\nM-PESA account locked due to wrong PIN attempts."
-      },
-      {
-        "id": "pinu_name",
-        "label": "Full Names // View 360",
-        "len": 0,
-        "info": "[SAKA SKKI-0001]\nFull names must tally on View 360 and M-PESA G3. If mismatch, refer to Retail."
-      },
-      {
-        "id": "pinu_idnum",
-        "label": "ID Number",
-        "len": 8,
-        "info": "[SAKA SKKI-0001]\nDocument ID used to register M-PESA. If 7-digit ID, assist and advise how ID appears on G3."
-      },
-      {
-        "id": "pinu_yob",
-        "label": "Year of Birth",
-        "len": 4,
-        "info": "[SAKA VMDA-0001]\nYear of birth."
-      }
-    ],
-    "optional": [
-      {
-        "id": "pinu_g3_action",
-        "label": "Unlock Action // G3",
-        "len": 0,
-        "info": "[SAKA SKKI-0001]\nGo to Customer Info page on G3 > click \"Unlock PIN\" icon > enter reason & vetting details > submit & confirm. Advise customer to use correct PIN."
-      },
-      {
-        "id": "pinu_diy_advice",
-        "label": "DIY Education // *334#",
-        "len": 0,
-        "info": "[SAKA SKKI-0001]\nEducate on DIY: *334# > My Account > Unlock M-PESA PIN, or M-PESA App, or IVR 100."
-      },
-      {
-        "id": "pinu_altno",
-        "label": "Alternative Number",
-        "len": 10,
-        "info": "[SAKA SKKI-0001]\nAlternative reachable number."
-      }
-    ],
-    "comments": [
-      "Customer vetted on primary details. M-PESA PIN unlocked on G3. Guided on DIY *334# for self-service.",
-      "Account unlocked on G3. Advised customer to wait for SMS and use correct PIN to transact.",
-      "Customer failed primary vetting. Advised to confirm registration details and call back or visit shop."
-    ]
-  },
-  {
-    "id": "startkey",
-    "name": "M-PESA Start Key / Forgotten PIN",
-    "article": "SKKI-0001",
-    "minSecondary": 2,
-    "required": [
-      {
-        "id": "sk_callno",
-        "label": "Calling Number // Active IN",
-        "len": 10,
-        "info": "[SAKA SKKI-0001]\nMust be a Safaricom number active on IN-Data. Calling on behalf: CEE can only give Start Key DIY."
-      },
-      {
-        "id": "sk_msisdn",
-        "label": "Affected M-PESA Line",
-        "len": 10,
-        "info": "[SAKA SKKI-0001]\nCustomer forgot M-PESA PIN and needs Start Key to reset."
-      },
-      {
-        "id": "sk_name",
-        "label": "Full Names // View 360",
-        "len": 0,
-        "info": "[SAKA SKKI-0001]\nFull names as registered on View 360 & G3."
-      },
-      {
-        "id": "sk_idnum",
-        "label": "ID Number",
-        "len": 8,
-        "info": "[SAKA SKKI-0001]\nDocument number of registration."
-      },
-      {
-        "id": "sk_yob",
-        "label": "Year of Birth",
-        "len": 4,
-        "info": "[SAKA VMDA-0001]\nYear of birth."
-      }
-    ],
-    "optional": [
-      {
-        "id": "sk_rule_24h_txn",
-        "label": "24h Auth Txn // Retail if Yes",
-        "len": 0,
-        "info": "[SAKA SKKI-0001]\nCRITICAL FRAUD CHECK: Check if customer had a positive PIN-authenticated transaction in last 24h (Send Money, Paybill, Airtime, Bal Check). If YES, REFER CUSTOMER TO RETAIL! Do not issue Start Key at Contact Center."
-      },
-      {
-        "id": "sk_rule_24h_swap",
-        "label": "24h Swap Check // 24h Policy",
-        "len": 0,
-        "info": "[SAKA SKKI-0001]\nIf SIM replacement was done within 24h, customer must wait until 24h elapses or visit shop. (Note: DIY PIN reset after SIM swap is available after 7 days, not 24h)."
-      },
-      {
-        "id": "sk_fdn1",
-        "label": "FDN 1 // 2x in 3 mos",
-        "len": 10,
-        "group": "fdn",
-        "info": "[SAKA VMDA-0001]\nFrequently Dialled Number: MO call/SMS 2x in last 3 months."
-      },
-      {
-        "id": "sk_fdn2",
-        "label": "FDN 2 // 2x in 3 mos",
-        "len": 10,
-        "group": "fdn",
-        "info": "[SAKA VMDA-0001]\nSecond FDN."
-      },
-      {
-        "id": "sk_mpesa_bal",
-        "label": "M-PESA Balance // SAKA Margins",
-        "len": 0,
-        "info": "[SAKA VMDA-0001]\nAllowed margins:\n\u2022 1 \u2013 100: \u00b110\n\u2022 101 \u2013 1,000: \u00b150\n\u2022 1,001 \u2013 10,000: \u00b1100\n\u2022 > 10,001: \u00b110%"
-      },
-      {
-        "id": "sk_airtime_bal",
-        "label": "Airtime Balance",
-        "len": 0,
-        "info": "[SAKA VMDA-0001]\nCurrent airtime balance."
-      },
-      {
-        "id": "sk_mpesa_txn1",
-        "label": "Self-Txn 1 // Last 30d",
-        "len": 0,
-        "group": "self_txn",
-        "info": "[SAKA SKKI-0001 / VMDA-0001]\nSelf-initiated M-PESA transaction from customer account in last 30 days. Must provide Amount, Date/Time, and Recipient name. (2 txns count as 1 pass)."
-      },
-      {
-        "id": "sk_mpesa_txn2",
-        "label": "Self-Txn 2 // Last 30d",
-        "len": 0,
-        "group": "self_txn",
-        "info": "[SAKA SKKI-0001 / VMDA-0001]\nSecond self-initiated M-PESA transaction in last 30 days."
-      },
-      {
-        "id": "sk_limit",
-        "label": "Loan Limit // Fuliza & M-Shwari",
-        "len": 0,
-        "info": "[SAKA VMDA-0001]\nOpted-in FSI limit."
-      },
-      {
-        "id": "sk_regdate",
-        "label": "Registration Date // Month & Year",
-        "len": 0,
-        "info": "[SAKA VMDA-0001]\nMonth and Year of M-PESA or line registration."
-      },
-      {
-        "id": "sk_sec_questions",
-        "label": "Security Questions Guided",
-        "len": 0,
-        "info": "[SAKA SKKI-0001]\nEducate customer to set security questions: *334# > My Account > M-PESA PIN Manager > Set Security Questions."
-      }
-    ],
-    "comments": [
-      "Vetted on primary and secondary details. Start Key issued on G3. Educated on *334# PIN reset.",
-      "Positive authenticated PIN txn in last 24h. Referred customer to Retail Center as per fraud policy.",
-      "SIM replacement done within 24h. Advised customer to call back after 24h or visit shop.",
-      "Educated customer on setting M-PESA security questions on *334# for future DIY PIN resets."
-    ]
-  },
-  {
-    "id": "puk",
-    "name": "PUK Retrieval",
-    "article": "PUDA-0004",
-    "required": [
-      {
-        "id": "puk_callno",
-        "label": "Calling Number",
-        "len": 10,
-        "info": "[SAKA PUDA-0004]\nCalling number querying PUK."
-      },
-      {
-        "id": "puk_msisdn",
-        "label": "Line Needing PUK",
-        "len": 10,
-        "info": "[SAKA PUDA-0004]\nBlocked MSISDN requiring PUK1 or PUK2."
-      },
-      {
-        "id": "puk_name",
-        "label": "Full Names // View 360",
-        "len": 0,
-        "info": "[SAKA VMDA-0001]\nFull names as registered on View 360."
-      },
-      {
-        "id": "puk_idnum",
-        "label": "ID Number",
-        "len": 8,
-        "info": "[SAKA VMDA-0001]\nOriginal registered document ID number."
-      },
-      {
-        "id": "puk_yob",
-        "label": "Year of Birth",
-        "len": 4,
-        "info": "[SAKA VMDA-0001]\nYear of birth."
-      }
-    ],
-    "optional": [
-      {
-        "id": "puk_crm_sms",
-        "label": "PUK Sent via SMS // With consent",
-        "len": 0,
-        "info": "[SAKA PUDA-0004]\nCEE must send SMS with PUK to the calling number via CRM SMS tool at end of call after obtaining customer consent."
-      },
-      {
-        "id": "puk_sim_serial",
-        "label": "SIM Serial Check",
-        "len": 0,
-        "info": "[SAKA PUDA-0004]\nRepeat caller check: If customer says PUK is not working, verify physical SIM serial against CRM. If mismatch, advise on SIM replacement."
-      },
-      {
-        "id": "puk_diy_sms",
-        "label": "DIY Education // *100#",
-        "len": 0,
-        "info": "[SAKA PUDA-0004]\nAdvise on DIY: Dial *100# from another line or visit safaricomapp.page.link/get-puk."
-      },
-      {
-        "id": "puk_altno",
-        "label": "Alternative Number",
-        "len": 10,
-        "info": "[SAKA PUDA-0004]\nAlternative contact number."
-      }
-    ],
-    "comments": [
-      "PUK issued after primary vetting. Sent PUK via CRM SMS with customer consent. Educated on DIY *100#.",
-      "Repeat caller for PUK not working. SIM serial verified on CRM. Advised customer to test on another handset or swap.",
-      "SIM damaged after 10 incorrect PUK attempts. Advised customer on SIM replacement at shop."
-    ]
-  },
-  {
-    "id": "sim_upgrade",
-    "name": "SIM Upgrade (Calling from Line)",
-    "article": "VMDA-0001",
-    "required": [
-      {
-        "id": "upg_callno",
-        "label": "Calling Number",
-        "len": 10,
-        "info": "[SAKA VMDA-0001 / SCEK-0002]\nCustomer is calling directly from the active line being upgraded to 4G/5G. SAKA VMDA-0001: Basic Vetting only!"
-      },
-      {
-        "id": "upg_name",
-        "label": "Full Names // View 360",
-        "len": 0,
-        "info": "[SAKA VMDA-0001]\nFull names as registered on View 360."
-      },
-      {
-        "id": "upg_idnum",
-        "label": "ID Number",
-        "len": 8,
-        "info": "[SAKA VMDA-0001]\nRegistered document number."
-      },
-      {
-        "id": "upg_yob",
-        "label": "Year of Birth",
-        "len": 4,
-        "info": "[SAKA VMDA-0001]\nYear of birth."
-      },
-      {
-        "id": "upg_simex",
-        "label": "New SIMEX Serial",
-        "len": 20,
-        "info": "[SAKA SSCB-0006]\n20-digit serial number from the new 4G/5G upgrade SIM card."
-      }
-    ],
-    "optional": [
-      {
-        "id": "upg_call_drop",
-        "label": "Call Drop Advised",
-        "len": 0,
-        "info": "[SAKA SSCB-0006]\nAdvise customer that the active call will drop immediately once the SIM upgrade order is submitted on View 360."
-      },
-      {
-        "id": "upg_mpesa_reactivate",
-        "label": "M-PESA Activation Advised",
-        "len": 0,
-        "info": "[SAKA MABN-0001]\nAdvise customer on M-PESA activation process after inserting new SIM."
-      },
-      {
-        "id": "upg_altno",
-        "label": "Alternative Number",
-        "len": 10,
-        "info": "[SAKA SSCB-0006]\nAlternative number in case follow-up is needed."
-      }
-    ],
-    "comments": [
-      "SIM upgrade processed for active line. Customer advised on call drop and M-PESA reactivation.",
-      "Customer vetted for SIM upgrade (4G/5G). Order submitted on View 360 with new SIMEX serial."
-    ]
-  },
-  {
-    "id": "pooled",
-    "name": "Pooled Number Recreation",
-    "article": "SRFB-0005",
-    "required": [
-      {
-        "id": "pol_callno",
-        "label": "Calling Number",
-        "len": 10,
-        "info": "[SAKA SRFB-0005]\nCalling number of the previous owner."
-      },
-      {
-        "id": "pol_msisdn",
-        "label": "Pooled Line Number",
-        "len": 10,
-        "info": "[SAKA SRFB-0005]\nIndividual normal line in pool (not golden lines; golden lines refer to Retail). Only previous owner can recreate."
-      },
-      {
-        "id": "pol_name",
-        "label": "Full Names // View 360",
-        "len": 0,
-        "info": "[SAKA SRFB-0005]\nFull names as per View 360. CEE can accept 2 correct names."
-      },
-      {
-        "id": "pol_idnum",
-        "label": "ID Number",
-        "len": 8,
-        "info": "[SAKA SRFB-0005]\nID document number of the registered previous owner."
-      },
-      {
-        "id": "pol_yob",
-        "label": "Year of Birth",
-        "len": 4,
-        "info": "[SAKA VMDA-0001]\nYear of birth as registered."
-      },
-      {
-        "id": "pol_old_simex",
-        "label": "Old SIMEX Serial // Match CRM",
-        "len": 20,
-        "info": "[SAKA SRFB-0005]\nMandatory: Customer must provide the old SIM serial that was attached to the line; must match CRM records."
-      }
-    ],
-    "optional": [
-      {
-        "id": "pol_indata_check",
-        "label": "IN-Data Status // Pooled",
-        "len": 0,
-        "info": "[SAKA SRFB-0005]\nCheck IN-Data on CRM to confirm status is Pooled. If no details on View 360 but on CRM & G3, refer to Retail."
-      },
-      {
-        "id": "pol_new_simex",
-        "label": "New SIMEX Serial",
-        "len": 20,
-        "info": "[SAKA SRFB-0005]\nNew SIM replacement card serial if doing immediate swap."
-      },
-      {
-        "id": "pol_sr_ticket",
-        "label": "SR Number",
-        "len": 0,
-        "info": "[SAKA SRFB-0005]\nService Request number if line recreation requires back-office sync."
-      },
-      {
-        "id": "pol_altno",
-        "label": "Alternative Number",
-        "len": 10,
-        "info": "[SAKA SRFB-0005]\nAlternative reachable number."
-      }
-    ],
-    "comments": [
-      "Pooled line recreation vetted and processed on CRM. Old SIMEX serial matched system records.",
-      "Line status confirmed pooled on IN-Data. Order submitted and escalated via SR for sync.",
-      "Special number recreation requested. Advised customer that special and golden numbers are handled at Retail."
-    ]
-  },
-  {
-    "id": "mpesa_suspend",
-    "name": "M-PESA Account Suspend",
-    "article": "VMDA-0001",
-    "required": [
-      {
-        "id": "mps_callno",
-        "label": "Calling Number",
-        "len": 10,
-        "info": "[SAKA VMDA-0001]\nCalling number requesting suspension."
-      },
-      {
-        "id": "mps_msisdn",
-        "label": "M-PESA Line to Suspend",
-        "len": 10,
-        "info": "[SAKA VMDA-0001]\nM-PESA account to be suspended."
-      },
-      {
-        "id": "mps_reason",
-        "label": "Reason for Suspension",
-        "len": 0,
-        "info": "[SAKA VMDA-0001]\nLost phone, suspected fraud, customer request, or dispute."
-      },
-      {
-        "id": "mps_name",
-        "label": "Full Names // View 360",
-        "len": 0,
-        "info": "[SAKA VMDA-0001]\nFull names as registered."
-      },
-      {
-        "id": "mps_idnum",
-        "label": "ID Number",
-        "len": 8,
-        "info": "[SAKA VMDA-0001]\nRegistered ID document number."
-      },
-      {
-        "id": "mps_yob",
-        "label": "Year of Birth",
-        "len": 4,
-        "info": "[SAKA VMDA-0001]\nYear of birth."
-      }
-    ],
-    "optional": [
-      {
-        "id": "mps_g2_status",
-        "label": "G3 Status // Suspended",
-        "len": 0,
-        "info": "[SAKA VMDA-0001]\nSuspend account on M-PESA G3."
-      },
-      {
-        "id": "mps_state_tag",
-        "label": "State Tag Applied",
-        "len": 0,
-        "info": "[SAKA VMDA-0001]\nApply state tag if required by fraud guidelines."
-      },
-      {
-        "id": "mps_altno",
-        "label": "Alternative Number",
-        "len": 10,
-        "info": "[SAKA VMDA-0001]\nAlternative contact number."
-      }
-    ],
-    "comments": [
-      "M-PESA account suspended on G3 at customer request following lost device.",
-      "Suspected fraud reported. M-PESA account suspended and fraud state tag applied."
-    ]
-  },
-  {
-    "id": "mpesa_unsuspend",
-    "name": "M-PESA Account Unsuspend",
-    "article": "VMDA-0001",
-    "minSecondary": 2,
-    "required": [
-      {
-        "id": "mpu_callno",
-        "label": "Calling Number",
-        "len": 10,
-        "info": "[SAKA VMDA-0001]\nCalling number requesting unsuspension."
-      },
-      {
-        "id": "mpu_msisdn",
-        "label": "M-PESA Line to Unsuspend",
-        "len": 10,
-        "info": "[SAKA VMDA-0001]\nCustomer had requested suspension and now wants it lifted."
-      },
-      {
-        "id": "mpu_name",
-        "label": "Full Names // View 360",
-        "len": 0,
-        "info": "[SAKA VMDA-0001]\nFull names as registered on View 360 & G3."
-      },
-      {
-        "id": "mpu_idnum",
-        "label": "ID Number",
-        "len": 8,
-        "info": "[SAKA VMDA-0001]\nDocument ID used to register M-PESA."
-      },
-      {
-        "id": "mpu_yob",
-        "label": "Year of Birth",
-        "len": 4,
-        "info": "[SAKA VMDA-0001]\nYear of birth."
-      }
-    ],
-    "optional": [
-      {
-        "id": "mpu_fraud_tag_check",
-        "label": "Fraud Tag Check // No fraud tag",
-        "len": 0,
-        "info": "[SAKA VMDA-0001]\nLines suspended due to fraud tag or civil court cases CANNOT be unsuspended at Call Center. Refer to Safaricom Risk HQ1."
-      },
-      {
-        "id": "mpu_fdn1",
-        "label": "FDN 1 // 2x in 3 mos",
-        "len": 10,
-        "group": "fdn",
-        "info": "[SAKA VMDA-0001]\nFrequently Dialled Number: MO call/SMS 2x in last 3 months."
-      },
-      {
-        "id": "mpu_fdn2",
-        "label": "FDN 2 // 2x in 3 mos",
-        "len": 10,
-        "group": "fdn",
-        "info": "[SAKA VMDA-0001]\nSecond FDN."
-      },
-      {
-        "id": "mpu_mpesa_bal",
-        "label": "M-PESA Balance // SAKA Margins",
-        "len": 0,
-        "info": "[SAKA VMDA-0001]\nAllowed margins:\n\u2022 1 \u2013 100: \u00b110\n\u2022 101 \u2013 1,000: \u00b150\n\u2022 1,001 \u2013 10,000: \u00b1100\n\u2022 > 10,001: \u00b110%"
-      },
-      {
-        "id": "mpu_airtime_bal",
-        "label": "Airtime Balance",
-        "len": 0,
-        "info": "[SAKA VMDA-0001]\nCurrent airtime balance."
-      },
-      {
-        "id": "mpu_self_txn1",
-        "label": "Self-Txn 1 // Last 30d",
-        "len": 0,
-        "group": "self_txn",
-        "info": "[SAKA VMDA-0001]\nSelf-initiated M-PESA transaction from customer account in last 30 days. Must provide Amount, Date/Time, and Recipient name. (2 txns count as 1 pass)."
-      },
-      {
-        "id": "mpu_self_txn2",
-        "label": "Self-Txn 2 // Last 30d",
-        "len": 0,
-        "group": "self_txn",
-        "info": "[SAKA VMDA-0001]\nSecond self-initiated M-PESA transaction in last 30 days."
-      },
-      {
-        "id": "mpu_limit",
-        "label": "Loan Limit // Fuliza & M-Shwari",
-        "len": 0,
-        "info": "[SAKA VMDA-0001]\nOpted-in FSI limit."
-      },
-      {
-        "id": "mpu_regdate",
-        "label": "Registration Date // Month & Year",
-        "len": 0,
-        "info": "[SAKA VMDA-0001]\nMonth and Year of registration."
-      },
-      {
-        "id": "mpu_g3_resumed",
-        "label": "M-PESA G3 Resumed // Active",
-        "len": 0,
-        "info": "[SAKA VMDA-0001]\nAccount unsuspended on G3."
-      }
-    ],
-    "comments": [
-      "Vetted on primary and secondary details. Account unsuspended on G3. Advised customer.",
-      "Account has active fraud tag from Risk Department. Advised customer to visit Safaricom HQ1 Waiyaki Way."
-    ]
-  },
-  {
-    "id": "general",
-    "name": "General Enquiry / Account Query",
-    "article": "IDPA-0001",
-    "required": [
-      {
-        "id": "gen_callno",
-        "label": "Calling Number",
-        "len": 10,
-        "info": "[SAKA IDPA-0001]\nMandatory calling number as per SAKA IDPA-0001."
-      },
-      {
-        "id": "gen_msisdn",
-        "label": "Customer Line Number",
-        "len": 10,
-        "info": "[SAKA IDPA-0001]\nThe subject MSISDN the customer is calling about."
-      },
-      {
-        "id": "gen_query",
-        "label": "Customer Query",
-        "len": 0,
-        "info": "[SAKA IDPA-0001]\nMain issue or enquiry (Tariff, Network, Bundles, Statement, Roaming, Billing, etc.)."
-      },
-      {
-        "id": "gen_resolution",
-        "label": "Resolution Given",
-        "len": 0,
-        "info": "[SAKA IDPA-0001]\nResolution, guidance, troubleshooting steps, or advice provided."
-      }
-    ],
-    "optional": [
-      {
-        "id": "gen_name",
-        "label": "Full Names // View 360",
-        "len": 0,
-        "info": "[SAKA IDPA-0001]\nIf inquiry touches account details, confirm registered names."
-      },
-      {
-        "id": "gen_idnum",
-        "label": "ID Number",
-        "len": 8,
-        "info": "[SAKA VMDA-0001]\nID document number if account data requested."
-      },
-      {
-        "id": "gen_yob",
-        "label": "Year of Birth",
-        "len": 4,
-        "info": "[SAKA VMDA-0001]\nYear of birth if primary vetting needed."
-      },
-      {
-        "id": "gen_acct_check",
-        "label": "Account Checked",
-        "len": 0,
-        "info": "[SAKA IDPA-0001]\nDetails of account check performed (Airtime, Data, M-PESA statement)."
-      },
-      {
-        "id": "gen_on_behalf",
-        "label": "Calling on Behalf",
-        "len": 10,
-        "info": "[SAKA IDPA-0001]\nIf customer is calling on behalf of another person, capture 3rd party line here."
-      },
-      {
-        "id": "gen_repeat",
-        "label": "Repeat Caller",
-        "len": 0,
-        "info": "[SAKA IDPA-0001]\nSelect \"Repeat Caller\" if customer called previously on same unresolved issue."
-      },
-      {
-        "id": "gen_sr_ticket",
-        "label": "SR Number",
-        "len": 0,
-        "info": "[SAKA IDPA-0001]\nCRM Service Request ticket number if escalated."
-      },
-      {
-        "id": "gen_sla",
-        "label": "SLA Given",
-        "len": 0,
-        "info": "[SAKA IDPA-0001]\nSLA communicated to customer (e.g. 2 hours, 24 hours, 72 hours)."
-      }
-    ],
-    "comments": [
-      "Customer inquired on account details. Vetted and provided requested information.",
-      "Customer called regarding tariff and bundles. Guided on *544# options. Query resolved.",
-      "Network issue reported. Troubleshooting conducted on line; escalated to Network Team via SR.",
-      "Repeat caller on pending issue. Referenced previous interactions and escalated to team leader."
-    ]
-  }
-];
+  return JSON.parse(JSON.stringify(defaultConfig?.types || []));
 }
 
 let types = [];
@@ -2938,6 +1850,9 @@ const topBannerBtn = document.getElementById('topBannerBtn');
 const topBannerClose = document.getElementById('topBannerClose');
 
 let bannerTimer = null;
+let bannerRemainingMs = 0;
+let bannerStartTime = 0;
+let isBannerHovered = false;
 
 function showBanner(message, actionLabel = null, actionCallback = null, durationMs = 3500, type = 'info') {
   if (!topBanner) return;
@@ -2945,6 +1860,9 @@ function showBanner(message, actionLabel = null, actionCallback = null, duration
     clearTimeout(bannerTimer);
     bannerTimer = null;
   }
+
+  bannerRemainingMs = durationMs;
+  bannerStartTime = Date.now();
 
   topBanner.className = `top-banner banner-${type}`;
   topBannerMsg.textContent = message;
@@ -2966,7 +1884,7 @@ function showBanner(message, actionLabel = null, actionCallback = null, duration
   void topBanner.offsetWidth; // trigger reflow for shake animation
   topBanner.style.animation = 'bannerShake 0.4s ease-in-out';
 
-  if (durationMs > 0) {
+  if (durationMs > 0 && !isBannerHovered) {
     bannerTimer = setTimeout(() => {
       hideBanner();
     }, durationMs);
@@ -2979,7 +1897,31 @@ function hideBanner() {
     clearTimeout(bannerTimer);
     bannerTimer = null;
   }
+  bannerRemainingMs = 0;
   topBanner.style.display = 'none';
+}
+
+if (topBanner) {
+  topBanner.addEventListener('mouseenter', () => {
+    isBannerHovered = true;
+    if (bannerTimer && bannerRemainingMs > 0) {
+      const elapsed = Date.now() - bannerStartTime;
+      bannerRemainingMs = Math.max(0, bannerRemainingMs - elapsed);
+      clearTimeout(bannerTimer);
+      bannerTimer = null;
+    }
+  });
+
+  topBanner.addEventListener('mouseleave', () => {
+    isBannerHovered = false;
+    if (topBanner.style.display !== 'none' && bannerRemainingMs > 0) {
+      bannerStartTime = Date.now();
+      const resumeMs = Math.max(1000, bannerRemainingMs);
+      bannerTimer = setTimeout(() => {
+        hideBanner();
+      }, resumeMs);
+    }
+  });
 }
 
 if (topBannerClose) {
@@ -2994,6 +1936,86 @@ if (topBannerClose) {
 
 // Alias for backwards compatibility
 const showToast = showBanner;
+
+/* ==========================================================================
+   View 360 Bio-Card Clipboard Parser
+   ========================================================================== */
+function parseView360Text(rawText) {
+  if (!rawText || typeof rawText !== 'string') return null;
+  const text = rawText.trim();
+  if (!text) return null;
+
+  const labelDefs = [
+    { key: 'firstName', regex: /^f?irst\s*name$/i, colonRegex: /^f?irst\s*name[:\t]\s*(.*)$/i },
+    { key: 'middleName', regex: /^(?:middle|second)\s*name$/i, colonRegex: /^(?:middle|second)\s*name[:\t]\s*(.*)$/i },
+    { key: 'lastName', regex: /^(?:(?:last|third)\s*name|surname)$/i, colonRegex: /^(?:(?:last|third)\s*name|surname)[:\t]\s*(.*)$/i },
+    { key: 'gender', regex: /^(?:gender|sex)$/i, colonRegex: /^(?:gender|sex)[:\t]\s*(.*)$/i },
+    { key: 'dob', regex: /^(?:d\.?o\.?b\.?|date\s*of\s*birth)$/i, colonRegex: /^(?:d\.?o\.?b\.?|date\s*of\s*birth)[:\t]\s*(.*)$/i },
+    { key: 'docType', regex: /^(?:document\s*type|doc\s*type|id\s*type)$/i, colonRegex: /^(?:document\s*type|doc\s*type|id\s*type)[:\t]\s*(.*)$/i },
+    { key: 'idNumber', regex: /^(?:id\s*number|id\s*no\.?|document\s*number)$/i, colonRegex: /^(?:id\s*number|id\s*no\.?|document\s*number)[:\t]\s*(.*)$/i },
+    { key: 'ageOnNetwork', regex: /^(?:age\s*on\s*(?:the\s*)?network|tenure)$/i, colonRegex: /^(?:age\s*on\s*(?:the\s*)?network|tenure)[:\t]\s*(.*)$/i }
+  ];
+
+  const isLabel = (str) => labelDefs.some(d => d.regex.test(str) || d.colonRegex.test(str));
+
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const data = {};
+  let matchCount = 0;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Check colon/tab delimiter on same line
+    let foundSameLine = false;
+    for (const def of labelDefs) {
+      const cm = line.match(def.colonRegex);
+      if (cm) {
+        data[def.key] = (cm[1] || '').trim();
+        matchCount++;
+        foundSameLine = true;
+        break;
+      }
+    }
+    if (foundSameLine) continue;
+
+    // Check alternating lines (label on line i, value on line i+1)
+    const def = labelDefs.find(d => d.regex.test(line));
+    if (def) {
+      matchCount++;
+      if (i + 1 < lines.length && !isLabel(lines[i + 1])) {
+        data[def.key] = lines[i + 1];
+        i++; // consume value line
+      } else {
+        data[def.key] = '';
+      }
+    }
+  }
+
+  // Must have matched at least one genuine View 360 label line
+  if (matchCount === 0) return null;
+
+  let yob = '';
+  if (data.dob) {
+    const yMatch = data.dob.match(/\b(19\d\d|20\d\d)\b/);
+    if (yMatch) yob = yMatch[1];
+  }
+
+  const nameParts = [data.firstName, data.middleName, data.lastName].filter(p => p && p !== '-' && p.toLowerCase() !== 'n/a');
+  const fullName = nameParts.join(' ');
+
+  return {
+    firstName: data.firstName || '',
+    middleName: data.middleName || '',
+    lastName: data.lastName || '',
+    fullName: fullName,
+    gender: data.gender || '',
+    dob: data.dob || '',
+    yob: yob,
+    docType: data.docType || '',
+    idNumber: data.idNumber || '',
+    ageOnNetwork: data.ageOnNetwork || ''
+  };
+}
 
 /* ==========================================================================
    Label Parser (Separates Clean Label from Reference Hint marked with //)
@@ -3648,9 +2670,30 @@ function bindFormEvents() {
       const input = mainForm.querySelector(`.mat-input[data-id="${id}"]`);
       if (!input) return;
       try {
-        const text = (await navigator.clipboard.readText()).replace(/\s*[\r\n]+\s*/g, ' ').trim();
-        input.value = text;
-        curValues()[id] = text;
+        const rawClipboard = await navigator.clipboard.readText();
+        const t = curType();
+        const allItems = t ? [...(t.required || []), ...(t.optional || [])] : [];
+        const item = allItems.find(x => x.id === id);
+        const parsedV360 = parseView360Text(rawClipboard);
+
+        let textToPaste = '';
+        let showUnmappedWarning = false;
+        const previousVal = input.value;
+
+        if (parsedV360) {
+          const mapping = item ? item.v360 : null;
+          if (mapping && parsedV360[mapping] !== undefined) {
+            textToPaste = parsedV360[mapping] || '';
+          } else {
+            textToPaste = rawClipboard.replace(/\s*[\r\n]+\s*/g, ' ').trim();
+            showUnmappedWarning = true;
+          }
+        } else {
+          textToPaste = rawClipboard.replace(/\s*[\r\n]+\s*/g, ' ').trim();
+        }
+
+        input.value = textToPaste;
+        curValues()[id] = textToPaste;
         stopAutoClear();
         const box = input.closest('.material-field');
         if (box) box.classList.add('expanded');
@@ -3661,6 +2704,25 @@ function bindFormEvents() {
         input.style.transition = 'background 0.2s ease';
         input.style.background = 'var(--saf-emerald-soft)';
         setTimeout(() => { input.style.background = 'transparent'; }, 400);
+
+        if (showUnmappedWarning) {
+          showBanner(
+            'Pasted raw text (no View 360 mapping for this field)',
+            'Undo',
+            () => {
+              input.value = previousVal;
+              curValues()[id] = previousVal;
+              if (box && previousVal.length === 0 && !curStatus()[id]) {
+                box.classList.remove('expanded');
+              }
+              updateRowGuide(id);
+              syncPreview();
+              input.focus();
+            },
+            4000,
+            'warn'
+          );
+        }
       } catch (err) {
         showToast('Clipboard access denied', null, null, 2500, 'warn');
         input.focus();
@@ -4013,7 +3075,7 @@ function renderEditView() {
 
     <div class="section-head">
       <span>Primary Items</span>
-      <span style="font-size:9.5px;color:var(--text-dim);">Fixed Order</span>
+      <span style="font-size:9.5px;color:var(--text-dim);">Use ▲▼ to Reorder</span>
     </div>
     <div id="editReqList">
       ${t.required.map((it, i) => createEditRowHtml(it, 'required', i, t.required.length, t.required)).join('')}
@@ -4039,7 +3101,7 @@ function renderEditView() {
 }
 
 function createEditRowHtml(it, kind, idx, total, list) {
-  const hasRich = !!(it.article || it.info);
+  const hasRich = !!(it.article || it.info || it.v360);
   const isTied = !!it.group;
   let canMoveUp = idx > 0;
   let canMoveDown = idx < total - 1;
@@ -4062,13 +3124,14 @@ function createEditRowHtml(it, kind, idx, total, list) {
         </div>
         <input type="text" class="el-label" value="${escapeHtml(it.label)}" placeholder="Label // hint" title="Label name (use // for uncopied hint, e.g. Name // If 3rd Party)">
         <input type="number" class="el-len" value="${it.len || ''}" placeholder="len" title="Guide length in characters">
-        <button type="button" class="ibtn btn-toggle-drawer ${hasRich ? 'has-rich' : ''}" data-drawer-btn="${it.id}" title="Edit SAKA Article & Guidelines" aria-label="Edit SAKA info">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        <button type="button" class="ibtn btn-toggle-drawer ${hasRich ? 'has-rich' : ''}" data-drawer-btn="${it.id}" title="Details & View 360 mapping" aria-label="Field details">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="drawer-chevron-icon"><polyline points="6 9 12 15 18 9"/></svg>
         </button>
         <button type="button" class="ibtn btn-tie-pair ${isTied ? 'is-tied' : ''}" data-tie-id="${it.id}" title="${isTied ? 'Tied pair (counts as 1 pass). Click to unlink.' : 'Click to tie with adjacent item as 1 pass count'}" aria-label="Tie pair">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M15 4h-4a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h4"/>
+            <circle cx="8" cy="8" r="1.5" fill="currentColor"/>
+            <circle cx="8" cy="16" r="1.5" fill="currentColor"/>
           </svg>
         </button>
         <button type="button" class="ibtn" data-del="true" title="Remove item" style="width:20px;height:20px;color:var(--color-danger);">
@@ -4076,6 +3139,21 @@ function createEditRowHtml(it, kind, idx, total, list) {
         </button>
       </div>
       <div class="edit-item-drawer" id="drawer_${it.id}" style="display:none;">
+        <div class="drawer-field">
+          <span class="drawer-label">View 360 Auto-fill:</span>
+          <select class="el-v360">
+            <option value="" ${!it.v360 ? 'selected' : ''}>-- None (Manual) --</option>
+            <option value="fullName" ${it.v360 === 'fullName' ? 'selected' : ''}>Full Name (First + Middle + Last)</option>
+            <option value="firstName" ${it.v360 === 'firstName' ? 'selected' : ''}>First Name</option>
+            <option value="middleName" ${it.v360 === 'middleName' ? 'selected' : ''}>Second / Middle Name</option>
+            <option value="lastName" ${it.v360 === 'lastName' ? 'selected' : ''}>Third / Last Name</option>
+            <option value="idNumber" ${it.v360 === 'idNumber' ? 'selected' : ''}>ID Number</option>
+            <option value="yob" ${it.v360 === 'yob' ? 'selected' : ''}>Year of Birth (YOB)</option>
+            <option value="dob" ${it.v360 === 'dob' ? 'selected' : ''}>Date of Birth (Full D.O.B)</option>
+            <option value="gender" ${it.v360 === 'gender' ? 'selected' : ''}>Gender</option>
+            <option value="docType" ${it.v360 === 'docType' ? 'selected' : ''}>Document Type</option>
+          </select>
+        </div>
         <div class="drawer-field">
           <span class="drawer-label">SAKA Article:</span>
           <input type="text" class="el-article" value="${escapeHtml(it.article || '')}" placeholder="e.g. VMDA-0001">
@@ -4284,13 +3362,37 @@ function bindEditEvents() {
 
     if (e.target.classList.contains('el-label')) item.label = e.target.value;
     else if (e.target.classList.contains('el-len')) item.len = Math.max(0, parseInt(e.target.value, 10) || 0);
-    else if (e.target.classList.contains('el-article')) item.article = e.target.value.trim();
+    else if (e.target.classList.contains('el-article')) {
+      item.article = e.target.value.trim();
+      const btn = group.querySelector('.btn-toggle-drawer');
+      if (btn) btn.classList.toggle('has-rich', !!(item.article || item.info || item.v360));
+    }
     else if (e.target.classList.contains('el-info')) {
       item.info = e.target.value;
       const btn = group.querySelector('.btn-toggle-drawer');
-      if (btn) btn.classList.toggle('has-rich', !!(item.article || item.info));
+      if (btn) btn.classList.toggle('has-rich', !!(item.article || item.info || item.v360));
+    }
+    else if (e.target.classList.contains('el-v360')) {
+      item.v360 = e.target.value || null;
+      const btn = group.querySelector('.btn-toggle-drawer');
+      if (btn) btn.classList.toggle('has-rich', !!(item.article || item.info || item.v360));
     }
     saveTypes();
+  };
+
+  editPane.onchange = (e) => {
+    if (e.target.classList.contains('el-v360')) {
+      const group = e.target.closest('.edit-item-group');
+      if (!group) return;
+      const kind = group.dataset.kind;
+      const list = kind === 'required' ? t.required : t.optional;
+      const item = list.find(x => x.id === group.dataset.id);
+      if (!item) return;
+      item.v360 = e.target.value || null;
+      const btn = group.querySelector('.btn-toggle-drawer');
+      if (btn) btn.classList.toggle('has-rich', !!(item.article || item.info || item.v360));
+      saveTypes();
+    }
   };
 }
 
@@ -4491,11 +3593,29 @@ async function init() {
   const configVer = await Storage.get('vpad.config_version', 0);
   const loadedTypes = await Storage.get('vpad.types', null);
 
-  if (configVer < 7 || !Array.isArray(loadedTypes) || loadedTypes.length < 13) {
-    types = defaultVettingTypes();
+  if (configVer < 8 || !Array.isArray(loadedTypes) || loadedTypes.length < 13) {
+    if (configVer >= 7 && Array.isArray(loadedTypes) && loadedTypes.length >= 13) {
+      types = loadedTypes;
+      types.forEach(t => {
+        [...(t.required || []), ...(t.optional || [])].forEach(it => {
+          if (it.v360 !== undefined) return;
+          const id = (it.id || '').toLowerCase();
+          const lbl = (it.label || '').toLowerCase();
+          if (id.includes('name') || lbl.includes('full name') || lbl.includes('owner name') || lbl.includes('sender name')) {
+            it.v360 = 'fullName';
+          } else if (id.includes('idnum') || id.includes('owner_id') || lbl.includes('id number') || lbl.includes('owner id')) {
+            it.v360 = 'idNumber';
+          } else if (id.includes('yob') || lbl.includes('year of birth')) {
+            it.v360 = 'yob';
+          }
+        });
+      });
+    } else {
+      types = defaultVettingTypes();
+    }
     Storage.setMultiple({
       'vpad.types': types,
-      'vpad.config_version': 7
+      'vpad.config_version': 8
     });
   } else {
     types = loadedTypes;
