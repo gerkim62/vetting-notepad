@@ -56,12 +56,14 @@
           "id": "sw_fdn1",
           "label": "FDN 1 // 2x in 3 mos",
           "len": 10,
+          "group": "fdn",
           "info": "[SAKA VMDA-0001]\nFrequently Dialled Number: Must be Mobile Originated (MO) call or SMS at least twice in the last 3 months. FDN 1 & 2 together count as 1 pass."
         },
         {
           "id": "sw_fdn2",
           "label": "FDN 2 // 2x in 3 mos",
           "len": 10,
+          "group": "fdn",
           "info": "[SAKA VMDA-0001]\nSecond Frequently Dialled Number. Together with FDN 1 counts as 1 secondary pass."
         },
         {
@@ -416,12 +418,14 @@
           "id": "unb_fdn1",
           "label": "FDN 1 // 2x in 3 mos",
           "len": 10,
+          "group": "fdn",
           "info": "[SAKA VMDA-0001]\nFrequently Dialled Number: MO call/SMS 2x in last 3 months."
         },
         {
           "id": "unb_fdn2",
           "label": "FDN 2 // 2x in 3 mos",
           "len": 10,
+          "group": "fdn",
           "info": "[SAKA VMDA-0001]\nSecond FDN. FDN 1 & 2 together count as 1 pass."
         },
         {
@@ -583,12 +587,14 @@
           "id": "sk_fdn1",
           "label": "FDN 1 // 2x in 3 mos",
           "len": 10,
+          "group": "fdn",
           "info": "[SAKA VMDA-0001]\nFrequently Dialled Number: MO call/SMS 2x in last 3 months."
         },
         {
           "id": "sk_fdn2",
           "label": "FDN 2 // 2x in 3 mos",
           "len": 10,
+          "group": "fdn",
           "info": "[SAKA VMDA-0001]\nSecond FDN."
         },
         {
@@ -947,12 +953,14 @@
           "id": "mpu_fdn1",
           "label": "FDN 1 // 2x in 3 mos",
           "len": 10,
+          "group": "fdn",
           "info": "[SAKA VMDA-0001]\nFrequently Dialled Number: MO call/SMS 2x in last 3 months."
         },
         {
           "id": "mpu_fdn2",
           "label": "FDN 2 // 2x in 3 mos",
           "len": 10,
+          "group": "fdn",
           "info": "[SAKA VMDA-0001]\nSecond FDN."
         },
         {

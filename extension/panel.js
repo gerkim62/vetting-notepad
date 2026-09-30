@@ -100,12 +100,14 @@ function defaultVettingTypes() {
         "id": "sw_fdn1",
         "label": "FDN 1 // 2x in 3 mos",
         "len": 10,
+        "group": "fdn",
         "info": "[SAKA VMDA-0001]\nFrequently Dialled Number: Must be Mobile Originated (MO) call or SMS at least twice in the last 3 months. FDN 1 & 2 together count as 1 pass."
       },
       {
         "id": "sw_fdn2",
         "label": "FDN 2 // 2x in 3 mos",
         "len": 10,
+        "group": "fdn",
         "info": "[SAKA VMDA-0001]\nSecond Frequently Dialled Number. Together with FDN 1 counts as 1 secondary pass."
       },
       {
@@ -460,12 +462,14 @@ function defaultVettingTypes() {
         "id": "unb_fdn1",
         "label": "FDN 1 // 2x in 3 mos",
         "len": 10,
+        "group": "fdn",
         "info": "[SAKA VMDA-0001]\nFrequently Dialled Number: MO call/SMS 2x in last 3 months."
       },
       {
         "id": "unb_fdn2",
         "label": "FDN 2 // 2x in 3 mos",
         "len": 10,
+        "group": "fdn",
         "info": "[SAKA VMDA-0001]\nSecond FDN. FDN 1 & 2 together count as 1 pass."
       },
       {
@@ -627,12 +631,14 @@ function defaultVettingTypes() {
         "id": "sk_fdn1",
         "label": "FDN 1 // 2x in 3 mos",
         "len": 10,
+        "group": "fdn",
         "info": "[SAKA VMDA-0001]\nFrequently Dialled Number: MO call/SMS 2x in last 3 months."
       },
       {
         "id": "sk_fdn2",
         "label": "FDN 2 // 2x in 3 mos",
         "len": 10,
+        "group": "fdn",
         "info": "[SAKA VMDA-0001]\nSecond FDN."
       },
       {
@@ -991,12 +997,14 @@ function defaultVettingTypes() {
         "id": "mpu_fdn1",
         "label": "FDN 1 // 2x in 3 mos",
         "len": 10,
+        "group": "fdn",
         "info": "[SAKA VMDA-0001]\nFrequently Dialled Number: MO call/SMS 2x in last 3 months."
       },
       {
         "id": "mpu_fdn2",
         "label": "FDN 2 // 2x in 3 mos",
         "len": 10,
+        "group": "fdn",
         "info": "[SAKA VMDA-0001]\nSecond FDN."
       },
       {
@@ -1434,14 +1442,37 @@ function buildCopyText(t) {
   if (c) lines.push(c);
 
   const allItems = [...t.required, ...t.optional];
+  const seenGroups = new Set();
+
   for (const it of allItems) {
-    const val = (v[it.id] || '').trim();
-    if (val) {
-      const { copy: copyLabel } = parseLabel(it.label);
-      let line = `${copyLabel}: ${val}`;
-      if (st[it.id] === 'passed') line += ' (Passed)';
-      else if (st[it.id] === 'failed') line += ' (Failed)';
-      lines.push(line);
+    if (it.group) {
+      if (seenGroups.has(it.group)) continue;
+      seenGroups.add(it.group);
+
+      const groupItems = allItems.filter(x => x.group === it.group);
+      const parts = [];
+      for (const git of groupItems) {
+        const val = (v[git.id] || '').trim();
+        if (val) {
+          const { copy: copyLabel } = parseLabel(git.label);
+          let str = `${copyLabel}: ${val}`;
+          if (st[git.id] === 'passed') str += ' (Passed)';
+          else if (st[git.id] === 'failed') str += ' (Failed)';
+          parts.push(str);
+        }
+      }
+      if (parts.length > 0) {
+        lines.push(parts.join(', '));
+      }
+    } else {
+      const val = (v[it.id] || '').trim();
+      if (val) {
+        const { copy: copyLabel } = parseLabel(it.label);
+        let line = `${copyLabel}: ${val}`;
+        if (st[it.id] === 'passed') line += ' (Passed)';
+        else if (st[it.id] === 'failed') line += ' (Failed)';
+        lines.push(line);
+      }
     }
   }
 
@@ -1687,6 +1718,34 @@ function setupInfoPopovers() {
   });
 }
 
+function getGroupStatus(grpItems, st) {
+  if (!grpItems || grpItems.length === 0) return null;
+  const statuses = grpItems.map(it => st[it.id] || '');
+  if (statuses.some(s => s === 'failed')) return 'failed';
+  if (statuses.every(s => s === 'passed')) return 'passed';
+  if (statuses.some(s => s === 'passed')) return 'partial';
+  return null;
+}
+
+function updateTiedGroupBrackets() {
+  const t = curType();
+  if (!t) return;
+  const st = curStatus();
+  const allItems = [...t.required, ...t.optional];
+
+  mainForm.querySelectorAll('.tied-group-wrap').forEach(wrap => {
+    const grpId = wrap.dataset.group;
+    if (!grpId) return;
+    const grpItems = allItems.filter(x => x.group === grpId);
+    const grpStatus = getGroupStatus(grpItems, st);
+
+    wrap.classList.remove('status-passed', 'status-partial', 'status-failed');
+    if (grpStatus) {
+      wrap.classList.add(`status-${grpStatus}`);
+    }
+  });
+}
+
 function updateSecondaryCounter() {
   const t = curType();
   const pill = document.getElementById('secCounterPill');
@@ -1703,9 +1762,19 @@ function updateSecondaryCounter() {
   let passedCount = 0;
   let failedCount = 0;
 
+  const processedGroups = new Set();
   t.optional.forEach(it => {
-    if (st[it.id] === 'passed') passedCount++;
-    if (st[it.id] === 'failed') failedCount++;
+    if (it.group) {
+      if (processedGroups.has(it.group)) return;
+      processedGroups.add(it.group);
+      const grpItems = t.optional.filter(x => x.group === it.group);
+      const grpStatus = getGroupStatus(grpItems, st);
+      if (grpStatus === 'passed') passedCount++;
+      else if (grpStatus === 'failed') failedCount++;
+    } else {
+      if (st[it.id] === 'passed') passedCount++;
+      if (st[it.id] === 'failed') failedCount++;
+    }
   });
 
   pill.textContent = `${passedCount}/${minSec}${passedCount >= minSec ? ' ✓' : ''}`;
@@ -1720,15 +1789,46 @@ function updateSecondaryCounter() {
   }
 }
 
+function renderItemList(items, kind, st) {
+  let html = '';
+  let i = 0;
+  while (i < items.length) {
+    const it = items[i];
+    if (it.group) {
+      const grpId = it.group;
+      const grpItems = [];
+      let j = i;
+      while (j < items.length && items[j].group === grpId) {
+        grpItems.push(items[j]);
+        j++;
+      }
+      const grpStatus = getGroupStatus(grpItems, st);
+      const statusClass = grpStatus ? ` status-${grpStatus}` : '';
+      html += `<div class="tied-group-wrap${statusClass}" data-group="${escapeHtml(grpId)}">`;
+      html += `<div class="tied-bracket" title="Tied group: counts as 1 secondary point"></div>`;
+      html += `<div class="tied-items-col">`;
+      grpItems.forEach((gIt, gIdx) => {
+        html += createRowHtml(gIt, kind, i + gIdx);
+      });
+      html += `</div>`;
+      html += `</div>`;
+      i = j;
+    } else {
+      html += createRowHtml(it, kind, i);
+      i++;
+    }
+  }
+  return html;
+}
+
 function renderForm() {
   const t = curType();
   if (!t) return;
+  const st = curStatus();
 
   let html = '';
 
-  t.required.forEach((it, idx) => {
-    html += createRowHtml(it, 'mandatory', idx);
-  });
+  html += renderItemList(t.required, 'mandatory', st);
 
   if (t.optional.length > 0) {
     const minSec = t.minSecondary || 0;
@@ -1740,14 +1840,13 @@ function renderForm() {
         ${pillHtml}
       </div>
     `;
-    t.optional.forEach((it, idx) => {
-      html += createRowHtml(it, 'optional', idx);
-    });
+    html += renderItemList(t.optional, 'optional', st);
   }
 
   mainForm.innerHTML = html;
   bindFormEvents();
   syncAllGuides();
+  updateTiedGroupBrackets();
   updateSecondaryCounter();
   setupInfoPopovers();
   syncPreview();
@@ -1958,6 +2057,7 @@ function bindFormEvents() {
         b.classList.toggle('active', b.dataset.statusBtn === newStatus);
       });
 
+      updateTiedGroupBrackets();
       syncPreview();
       updateSecondaryCounter();
     };
@@ -2337,7 +2437,7 @@ function renderEditView() {
       <span style="font-size:9.5px;color:var(--text-dim);">Fixed Order</span>
     </div>
     <div id="editReqList">
-      ${t.required.map((it, i) => createEditRowHtml(it, 'required', i, t.required.length)).join('')}
+      ${t.required.map((it, i) => createEditRowHtml(it, 'required', i, t.required.length, t.required)).join('')}
     </div>
     <button class="btn-action" style="width:100%;margin-top:5px;" id="btnAddReq">+ Add Primary Item</button>
 
@@ -2346,7 +2446,7 @@ function renderEditView() {
       <span style="font-size:9.5px;color:var(--text-dim);">Use ▲▼ or Alt+↑/↓ to Reorder</span>
     </div>
     <div id="editOptList">
-      ${t.optional.map((it, i) => createEditRowHtml(it, 'optional', i, t.optional.length)).join('')}
+      ${t.optional.map((it, i) => createEditRowHtml(it, 'optional', i, t.optional.length, t.optional)).join('')}
     </div>
     <button class="btn-action" style="width:100%;margin-top:5px;" id="btnAddOpt">+ Add Secondary Item</button>
 
@@ -2359,19 +2459,38 @@ function renderEditView() {
   bindEditEvents();
 }
 
-function createEditRowHtml(it, kind, idx, total) {
+function createEditRowHtml(it, kind, idx, total, list) {
   const hasRich = !!(it.article || it.info);
+  const isTied = !!it.group;
+  let canMoveUp = idx > 0;
+  let canMoveDown = idx < total - 1;
+
+  if (isTied && list) {
+    let startIdx = idx;
+    while (startIdx > 0 && list[startIdx - 1].group === it.group) startIdx--;
+    let endIdx = idx;
+    while (endIdx < list.length - 1 && list[endIdx + 1].group === it.group) endIdx++;
+    canMoveUp = startIdx > 0;
+    canMoveDown = endIdx < list.length - 1;
+  }
+
   return `
-    <div class="edit-item-group" data-id="${it.id}" data-kind="${kind}">
+    <div class="edit-item-group ${isTied ? 'is-tied' : ''}" data-id="${it.id}" data-kind="${kind}">
       <div class="edit-row">
         <div class="arrows-col">
-          <button type="button" class="arr-btn" data-move="-1" title="Move Up (Alt+↑)" aria-label="Move Up" ${idx === 0 ? 'disabled' : ''}>▲</button>
-          <button type="button" class="arr-btn" data-move="1" title="Move Down (Alt+↓)" aria-label="Move Down" ${idx === total - 1 ? 'disabled' : ''}>▼</button>
+          <button type="button" class="arr-btn" data-move="-1" title="Move Up (Alt+↑)" aria-label="Move Up" ${canMoveUp ? '' : 'disabled'}>▲</button>
+          <button type="button" class="arr-btn" data-move="1" title="Move Down (Alt+↓)" aria-label="Move Down" ${canMoveDown ? '' : 'disabled'}>▼</button>
         </div>
         <input type="text" class="el-label" value="${escapeHtml(it.label)}" placeholder="Label // hint" title="Label name (use // for uncopied hint, e.g. Name // If 3rd Party)">
         <input type="number" class="el-len" value="${it.len || ''}" placeholder="len" title="Guide length in characters">
         <button type="button" class="ibtn btn-toggle-drawer ${hasRich ? 'has-rich' : ''}" data-drawer-btn="${it.id}" title="Edit SAKA Article & Guidelines" aria-label="Edit SAKA info">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        </button>
+        <button type="button" class="ibtn btn-tie-pair ${isTied ? 'is-tied' : ''}" data-tie-id="${it.id}" title="${isTied ? 'Tied pair (counts as 1 pass). Click to unlink.' : 'Click to tie with adjacent item as 1 pass count'}" aria-label="Tie pair">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+          </svg>
         </button>
         <button type="button" class="ibtn" data-del="true" title="Remove item" style="width:20px;height:20px;color:var(--color-danger);">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
@@ -2389,6 +2508,36 @@ function createEditRowHtml(it, kind, idx, total) {
       </div>
     </div>
   `;
+}
+
+function moveItemInList(list, idx, step) {
+  if (idx < 0 || idx >= list.length || !step) return false;
+  const it = list[idx];
+  if (it.group) {
+    let startIdx = idx;
+    while (startIdx > 0 && list[startIdx - 1].group === it.group) startIdx--;
+    let endIdx = idx;
+    while (endIdx < list.length - 1 && list[endIdx + 1].group === it.group) endIdx++;
+
+    if (step < 0) {
+      if (startIdx <= 0) return false;
+      const prevItem = list.splice(startIdx - 1, 1)[0];
+      list.splice(endIdx, 0, prevItem);
+      return true;
+    } else if (step > 0) {
+      if (endIdx >= list.length - 1) return false;
+      const nextItem = list.splice(endIdx + 1, 1)[0];
+      list.splice(startIdx, 0, nextItem);
+      return true;
+    }
+  } else {
+    const targetIdx = idx + step;
+    if (targetIdx >= 0 && targetIdx < list.length) {
+      [list[idx], list[targetIdx]] = [list[targetIdx], list[idx]];
+      return true;
+    }
+  }
+  return false;
 }
 
 function bindEditEvents() {
@@ -2454,14 +2603,48 @@ function bindEditEvents() {
     const itemId = group.dataset.id;
     const idx = list.findIndex(x => x.id === itemId);
 
-    if (e.target.closest('[data-del]')) {
-      list.splice(idx, 1);
+    const tieBtn = e.target.closest('[data-tie-id]');
+    if (tieBtn) {
+      const it = list[idx];
+      if (!it) return;
+      if (it.group) {
+        const grpId = it.group;
+        list.forEach(x => {
+          if (x.group === grpId) delete x.group;
+        });
+      } else {
+        let partner = null;
+        if (idx < list.length - 1) {
+          partner = list[idx + 1];
+        } else if (idx > 0) {
+          partner = list[idx - 1];
+        }
+        if (partner) {
+          const newGrp = 'grp_' + uid();
+          it.group = newGrp;
+          partner.group = newGrp;
+        }
+      }
+      saveTypes();
       renderEditView();
+      return;
+    }
+
+    if (e.target.closest('[data-del]')) {
+      const it = list[idx];
+      list.splice(idx, 1);
+      if (it && it.group) {
+        const remaining = list.filter(x => x.group === it.group);
+        if (remaining.length <= 1) {
+          remaining.forEach(r => delete r.group);
+        }
+      }
+      saveTypes();
+      renderEditView();
+      return;
     } else if (e.target.closest('[data-move]')) {
       const step = parseInt(e.target.closest('[data-move]').dataset.move, 10);
-      const targetIdx = idx + step;
-      if (targetIdx >= 0 && targetIdx < list.length) {
-        [list[idx], list[targetIdx]] = [list[targetIdx], list[idx]];
+      if (moveItemInList(list, idx, step)) {
         saveTypes();
         renderEditView();
         const newGroup = editPane.querySelector(`.edit-item-group[data-id="${itemId}"]`);
@@ -2470,6 +2653,7 @@ function bindEditEvents() {
           if (btn && !btn.disabled) btn.focus();
         }
       }
+      return;
     }
   };
 
@@ -2491,10 +2675,8 @@ function bindEditEvents() {
       const list = kind === 'required' ? t.required : t.optional;
       const itemId = group.dataset.id;
       const idx = list.findIndex(x => x.id === itemId);
-      const targetIdx = idx + step;
 
-      if (targetIdx >= 0 && targetIdx < list.length) {
-        [list[idx], list[targetIdx]] = [list[targetIdx], list[idx]];
+      if (moveItemInList(list, idx, step)) {
         saveTypes();
         renderEditView();
         const newGroup = editPane.querySelector(`.edit-item-group[data-id="${itemId}"]`);
