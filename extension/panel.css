@@ -383,6 +383,21 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   width: 100%;
 }
 
+/* Policy-only rows: slightly dimmed & tagged — not counted toward secondary total */
+.item-row.policy-only .mat-label-main {
+  opacity: 0.72;
+}
+.item-row.policy-only .mat-label-hint::after {
+  content: ' · policy';
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-accent-muted, #7c8b99);
+  margin-left: 2px;
+}
+
+
 .field-container {
   position: relative;
   min-width: 0;
@@ -1257,6 +1272,37 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
 }
 .el-v360:focus {
   border-color: var(--saf-emerald);
+}
+.el-default {
+  width: 100%;
+  padding: 2px 4px;
+  font-size: 10.5px;
+  border: 1px solid var(--border-line);
+  border-radius: var(--radius-sm);
+  background: var(--bg-panel);
+  color: var(--text-main);
+}
+.el-default:focus {
+  border-color: var(--saf-emerald);
+}
+.drawer-field-checkbox {
+  margin-top: -1px;
+  margin-bottom: 6px;
+}
+.drawer-check-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9.5px;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+.drawer-check-label input[type="checkbox"] {
+  width: 11px;
+  height: 11px;
+  accent-color: var(--saf-emerald);
+  cursor: pointer;
 }
 .el-article {
   width: 100%;

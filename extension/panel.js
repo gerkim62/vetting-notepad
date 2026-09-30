@@ -477,6 +477,10 @@ function buildCopyText(t) {
       const parts = [];
       for (const git of groupItems) {
         const val = (v[git.id] || '').trim();
+        const isUnchangedDefault = git.defaultValue && val === git.defaultValue.trim() && !st[git.id];
+        if (git.omitDefault && isUnchangedDefault) {
+          continue;
+        }
         if (val) {
           const { copy: copyLabel } = parseLabel(git.label);
           let str = `${copyLabel}: ${val}`;
@@ -490,6 +494,10 @@ function buildCopyText(t) {
       }
     } else {
       const val = (v[it.id] || '').trim();
+      const isUnchangedDefault = it.defaultValue && val === it.defaultValue.trim() && !st[it.id];
+      if (it.omitDefault && isUnchangedDefault) {
+        continue;
+      }
       if (val) {
         const { copy: copyLabel } = parseLabel(it.label);
         let line = `${copyLabel}: ${val}`;
@@ -788,10 +796,12 @@ function updateSecondaryCounter() {
 
   const processedGroups = new Set();
   t.optional.forEach(it => {
+    if (it.excludeFromCount) return; // policy-only: skip count
     if (it.group) {
       if (processedGroups.has(it.group)) return;
       processedGroups.add(it.group);
-      const grpItems = t.optional.filter(x => x.group === it.group);
+      const grpItems = t.optional.filter(x => x.group === it.group && !x.excludeFromCount);
+      if (!grpItems.length) return;
       const grpStatus = getGroupStatus(grpItems, st);
       if (grpStatus === 'passed') passedCount++;
       else if (grpStatus === 'failed') failedCount++;
@@ -877,7 +887,11 @@ function renderForm() {
 }
 
 function createRowHtml(it, kind, idx) {
-  const val = curValues()[it.id] || '';
+  let val = curValues()[it.id];
+  if (val === undefined) {
+    val = it.defaultValue || '';
+    curValues()[it.id] = val;
+  }
   const isFilled = val.length > 0;
   const isMandatory = kind === 'mandatory';
   const st = curStatus()[it.id] || '';
@@ -916,7 +930,7 @@ function createRowHtml(it, kind, idx) {
   ` : '';
 
   return `
-    <div class="item-row ${kind}" data-id="${it.id}">
+    <div class="item-row ${kind}${it.excludeFromCount ? ' policy-only' : ''}" data-id="${it.id}">
       <div class="field-container">
         <div class="material-field ${isExpanded ? 'expanded' : ''} ${isFilled ? 'has-value' : ''} ${st ? 'status-' + st : ''}">
           <label class="mat-label" for="inp_${it.id}" title="${escapeHtml(lblTitle)}">
@@ -1524,7 +1538,7 @@ function renderEditView() {
 }
 
 function createEditRowHtml(it, kind, idx, total, list) {
-  const hasRich = !!(it.article || it.info || it.v360);
+  const hasRich = !!(it.article || it.info || it.v360 || it.defaultValue || it.excludeFromCount);
   const isTied = !!it.group;
   let canMoveUp = idx > 0;
   let canMoveDown = idx < total - 1;
@@ -1576,6 +1590,22 @@ function createEditRowHtml(it, kind, idx, total, list) {
             <option value="gender" ${it.v360 === 'gender' ? 'selected' : ''}>Gender</option>
             <option value="docType" ${it.v360 === 'docType' ? 'selected' : ''}>Document Type</option>
           </select>
+        </div>
+        <div class="drawer-field">
+          <span class="drawer-label">Default Value (Pre-fill):</span>
+          <input type="text" class="el-default" value="${escapeHtml(it.defaultValue || '')}" placeholder="Optional pre-filled value">
+        </div>
+        <div class="drawer-field drawer-field-checkbox">
+          <label class="drawer-check-label">
+            <input type="checkbox" class="el-omit-default" ${it.omitDefault ? 'checked' : ''}>
+            <span>Omit from copy if unchanged from default</span>
+          </label>
+        </div>
+        <div class="drawer-field drawer-field-checkbox">
+          <label class="drawer-check-label">
+            <input type="checkbox" class="el-exclude-count" ${it.excludeFromCount ? 'checked' : ''}>
+            <span>Policy-only (exclude from secondary count)</span>
+          </label>
         </div>
         <div class="drawer-field">
           <span class="drawer-label">SAKA Article:</span>
@@ -1788,7 +1818,7 @@ function bindEditEvents() {
     else if (e.target.classList.contains('el-article')) {
       item.article = e.target.value.trim();
       const btn = group.querySelector('.btn-toggle-drawer');
-      if (btn) btn.classList.toggle('has-rich', !!(item.article || item.info || item.v360));
+      if (btn) btn.classList.toggle('has-rich', !!(item.article || item.info || item.v360 || item.excludeFromCount));
     }
     else if (e.target.classList.contains('el-info')) {
       item.info = e.target.value;
@@ -1798,7 +1828,12 @@ function bindEditEvents() {
     else if (e.target.classList.contains('el-v360')) {
       item.v360 = e.target.value || null;
       const btn = group.querySelector('.btn-toggle-drawer');
-      if (btn) btn.classList.toggle('has-rich', !!(item.article || item.info || item.v360));
+      if (btn) btn.classList.toggle('has-rich', !!(item.article || item.info || item.v360 || item.defaultValue));
+    }
+    else if (e.target.classList.contains('el-default')) {
+      item.defaultValue = e.target.value.trim() || undefined;
+      const btn = group.querySelector('.btn-toggle-drawer');
+      if (btn) btn.classList.toggle('has-rich', !!(item.article || item.info || item.v360 || item.defaultValue));
     }
     saveTypes();
   };
@@ -1813,7 +1848,27 @@ function bindEditEvents() {
       if (!item) return;
       item.v360 = e.target.value || null;
       const btn = group.querySelector('.btn-toggle-drawer');
-      if (btn) btn.classList.toggle('has-rich', !!(item.article || item.info || item.v360));
+      if (btn) btn.classList.toggle('has-rich', !!(item.article || item.info || item.v360 || item.defaultValue));
+      saveTypes();
+    } else if (e.target.classList.contains('el-omit-default')) {
+      const group = e.target.closest('.edit-item-group');
+      if (!group) return;
+      const kind = group.dataset.kind;
+      const list = kind === 'required' ? t.required : t.optional;
+      const item = list.find(x => x.id === group.dataset.id);
+      if (!item) return;
+      item.omitDefault = e.target.checked || undefined;
+      saveTypes();
+    } else if (e.target.classList.contains('el-exclude-count')) {
+      const group = e.target.closest('.edit-item-group');
+      if (!group) return;
+      const kind = group.dataset.kind;
+      const list = kind === 'required' ? t.required : t.optional;
+      const item = list.find(x => x.id === group.dataset.id);
+      if (!item) return;
+      item.excludeFromCount = e.target.checked || undefined;
+      const btn = group.querySelector('.btn-toggle-drawer');
+      if (btn) btn.classList.toggle('has-rich', !!(item.article || item.info || item.v360 || item.defaultValue || item.excludeFromCount));
       saveTypes();
     }
   };
