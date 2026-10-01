@@ -2083,6 +2083,8 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
   margin-top: 6px;
   padding-top: 8px;
   border-top: 1px solid var(--border-line);
@@ -2095,6 +2097,21 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   color: var(--text-muted);
   cursor: pointer;
   user-select: none;
+  flex-shrink: 0;
+}
+.var-modal-footer .btn-action {
+  white-space: nowrap;
+}
+@media (max-width: 250px) {
+  .var-modal-footer {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .var-modal-footer .btn-action {
+    width: 100%;
+    justify-content: center;
+  }
 }
 .custom-chk {
   accent-color: var(--saf-emerald);

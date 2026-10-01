@@ -3425,16 +3425,16 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-// Clamp minimum window width to 250px on window resize
+// Clamp minimum window width to 200px on window resize
 let resizeClampTimer = null;
 window.addEventListener('resize', () => {
   if (typeof chrome !== 'undefined' && chrome.windows && chrome.windows.getCurrent) {
-    if (window.outerWidth < 250) {
+    if (window.outerWidth < 200) {
       if (resizeClampTimer) clearTimeout(resizeClampTimer);
       resizeClampTimer = setTimeout(() => {
         chrome.windows.getCurrent((w) => {
-          if (w && typeof w.width === 'number' && w.width < 250) {
-            chrome.windows.update(w.id, { width: 250 });
+          if (w && typeof w.width === 'number' && w.width < 200) {
+            chrome.windows.update(w.id, { width: 200 });
           }
         });
       }, 50);

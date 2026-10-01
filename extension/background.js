@@ -47,12 +47,12 @@ chrome.action.onClicked.addListener(async () => {
     savedBounds = storageRes && storageRes['vpad.windowBounds'];
   } catch (e) {}
 
-  // Enforce strictly 250px minimum width
-  let width = 250;
+  // Enforce strictly 200px minimum width
+  let width = 200;
   let height = 750;
 
   if (savedBounds && typeof savedBounds === 'object') {
-    if (typeof savedBounds.width === 'number') width = Math.max(250, savedBounds.width);
+    if (typeof savedBounds.width === 'number') width = Math.max(200, savedBounds.width);
     if (typeof savedBounds.height === 'number') height = Math.max(400, savedBounds.height);
   } else if (currentWin && currentWin.height) {
     height = Math.max(500, currentWin.height);
@@ -107,16 +107,16 @@ chrome.action.onClicked.addListener(async () => {
   }
 });
 
-// Continuously remember window position and strictly enforce minimum 250px width
+// Continuously remember window position and strictly enforce minimum 200px width
 chrome.windows.onBoundsChanged.addListener(async (win) => {
   if (win.id === vettingWindowId && win.state === 'normal') {
     if (isAdjustingBounds) return;
 
-    // If window shrunk below 250px on resize or reposition, immediately force it back to 250px
-    if (typeof win.width === 'number' && win.width < 250) {
+    // If window shrunk below 200px on resize or reposition, immediately force it back to 200px
+    if (typeof win.width === 'number' && win.width < 200) {
       isAdjustingBounds = true;
       try {
-        await chrome.windows.update(win.id, { width: 250 });
+        await chrome.windows.update(win.id, { width: 200 });
       } catch (e) {}
       setTimeout(() => { isAdjustingBounds = false; }, 100);
       return;
@@ -126,7 +126,7 @@ chrome.windows.onBoundsChanged.addListener(async (win) => {
       v: 2,
       left: win.left,
       top: win.top,
-      width: Math.max(250, win.width),
+      width: Math.max(200, win.width),
       height: Math.max(400, win.height)
     };
     chrome.storage.local.set({ 'vpad.windowBounds': bounds });

@@ -2090,6 +2090,8 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
   margin-top: 6px;
   padding-top: 8px;
   border-top: 1px solid var(--border-line);
@@ -2102,6 +2104,21 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   color: var(--text-muted);
   cursor: pointer;
   user-select: none;
+  flex-shrink: 0;
+}
+.var-modal-footer .btn-action {
+  white-space: nowrap;
+}
+@media (max-width: 250px) {
+  .var-modal-footer {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .var-modal-footer .btn-action {
+    width: 100%;
+    justify-content: center;
+  }
 }
 .custom-chk {
   accent-color: var(--saf-emerald);
@@ -2330,7 +2347,7 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   order: 2;
   position: relative;
   width: 250px;
-  min-width: 250px;
+  min-width: 200px;
   max-width: 700px;
   height: 100vh;
   background: var(--bg-panel);
@@ -2398,7 +2415,9 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
       <span class="top-banner-msg" id="topBannerMsg"></span>
       <button type="button" class="top-banner-btn" id="topBannerBtn" style="display:none;"></button>
       <button type="button" class="top-banner-close" id="topBannerClose" title="Dismiss" aria-label="Dismiss message">
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M18 6 6 18M6 6l12 12" />
+        </svg>
       </button>
     </div>
 
@@ -2410,131 +2429,182 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
 
         <!-- Hamburger Menu Icon -->
         <button class="ibtn" id="btnMenu" title="Menu" aria-label="Menu">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+            stroke-linecap="round">
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <line x1="3" y1="12" x2="21" y2="12" />
+            <line x1="3" y1="18" x2="21" y2="18" />
+          </svg>
         </button>
       </header>
 
       <!-- Hamburger Menu Dropdown Popover -->
       <div class="menu-dropdown" id="menuDropdown" style="display:none;" role="menu">
         <button type="button" class="menu-item" id="menuItemNotes" role="menuitem">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+            <polyline points="14 2 14 8 20 8" />
+            <line x1="16" y1="13" x2="8" y2="13" />
+            <line x1="16" y1="17" x2="8" y2="17" />
+            <polyline points="10 9 9 9 8 9" />
+          </svg>
           <span>Notes</span>
         </button>
         <button type="button" class="menu-item" id="menuItemQuickSms" role="menuitem">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </svg>
           <span>Quick SMS</span>
         </button>
         <button type="button" class="menu-item" id="menuItemQuickInteraction" role="menuitem">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path
+              d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+          </svg>
           <span>Quick Interaction</span>
         </button>
         <button type="button" class="menu-item" id="menuItemBreakNotifier" role="menuitem">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10" />
+            <polyline points="12 6 12 12 16 14" />
+          </svg>
           <span>Break Notifier</span>
         </button>
         <button type="button" class="menu-item" id="menuItemEditType" role="menuitem">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 20h9" />
+            <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+          </svg>
           <span>Edit Vetting Items</span>
         </button>
         <button type="button" class="menu-item" id="menuItemSettings" role="menuitem">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3" />
+            <path
+              d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
           <span>Settings</span>
         </button>
       </div>
 
-    <!-- Main Scrollable Form Area -->
-    <div class="scroll-pane" id="mainForm"></div>
+      <!-- Main Scrollable Form Area -->
+      <div class="scroll-pane" id="mainForm"></div>
 
-    <!-- Compact Footer -->
-    <footer class="footer-bar">
-      <!-- Collapsible Preview Drawer -->
-      <div class="preview-drawer" id="previewDrawer">
-        <pre id="previewText" class="empty">Nothing filled yet</pre>
-      </div>
-
-      <!-- Material Underline Comment Input with Suggestions -->
-      <div class="field-container comment-container">
-        <div class="material-field" id="commentFieldBox">
-          <label class="mat-label" for="commentInput">Comment (optional)</label>
-          <input type="text" class="mat-input" id="commentInput" autocomplete="off" spellcheck="false">
-          <div class="mat-underline-continuous"></div>
-        </div>
-        <ul class="comment-suggestions-menu" id="commentSuggestionsMenu" role="listbox"></ul>
-      </div>
-
-      <!-- Action Row -->
-      <div class="action-row">
-        <button class="btn-action btn-eye" id="btnTogglePreview" title="Toggle copy preview" aria-label="Toggle preview">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
-        </button>
-        <button class="btn-action btn-clear" id="btnClear" title="Clear filled items">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>
-          <span id="clearBtnText">Clear</span>
-        </button>
-        <button class="btn-action btn-copy" id="btnCopy" title="Copy to clipboard (Ctrl+Enter)">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>
-          <span id="copyBtnText">Copy</span>
-        </button>
-      </div>
-    </footer>
-
-    <!-- Ambient Minimal Break Bar at Bottom -->
-    <div class="ambient-break-bar" id="ambientBreakBar" style="display:none;" title="Click to view Break Schedule">
-      <span class="ambient-break-icon" id="ambientBreakIcon">☕</span>
-      <span class="ambient-break-text" id="ambientBreakText">--</span>
-    </div>
-
-    <!-- Sub-view: Settings & Theme Screen -->
-    <div class="view-sub" id="settingsView" style="display:none;">
-      <div class="view-header">
-        <button class="ibtn" id="btnBackSettings" title="Back to main">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
-        </button>
-        <span class="view-title">Settings</span>
-      </div>
-      <div class="scroll-pane" style="padding:8px 10px;">
-        <div class="section-head">Appearance Theme</div>
-        <div class="setting-chips" id="themeChips">
-          <button class="chip" data-theme-val="auto">Auto (System)</button>
-          <button class="chip" data-theme-val="light">Light</button>
-          <button class="chip" data-theme-val="dark">Dark</button>
+      <!-- Compact Footer -->
+      <footer class="footer-bar">
+        <!-- Collapsible Preview Drawer -->
+        <div class="preview-drawer" id="previewDrawer">
+          <pre id="previewText" class="empty">Nothing filled yet</pre>
         </div>
 
-        <div class="section-head" style="margin-top:14px;">Auto-Clear Details After Copy</div>
-        <p style="font-size:10.5px;color:var(--text-muted);margin-bottom:6px;">Wipes customer data after a countdown. Typing or clicking Cancel in the top banner halts it.</p>
-        <div class="setting-chips" id="autoClearChips">
-          <button class="chip" data-ac="0">Off (Default)</button>
-          <button class="chip" data-ac="5">5s</button>
-          <button class="chip" data-ac="10">10s</button>
-          <button class="chip" data-ac="15">15s</button>
-          <button class="chip" data-ac="30">30s</button>
-          <button class="chip" data-ac="60">1m</button>
+        <!-- Material Underline Comment Input with Suggestions -->
+        <div class="field-container comment-container">
+          <div class="material-field" id="commentFieldBox">
+            <label class="mat-label" for="commentInput">Comment (optional)</label>
+            <input type="text" class="mat-input" id="commentInput" autocomplete="off" spellcheck="false">
+            <div class="mat-underline-continuous"></div>
+          </div>
+          <ul class="comment-suggestions-menu" id="commentSuggestionsMenu" role="listbox"></ul>
         </div>
 
-        <div class="section-head" style="margin-top:16px;">Configuration & Data</div>
-        <div style="display:flex;gap:6px;margin-bottom:8px;">
-          <button class="btn-action" id="btnExportData" style="flex:1;">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Export Data
+        <!-- Action Row -->
+        <div class="action-row">
+          <button class="btn-action btn-eye" id="btnTogglePreview" title="Toggle copy preview"
+            aria-label="Toggle preview">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
           </button>
-          <button class="btn-action" id="btnImportData" style="flex:1;">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-            Import Data
+          <button class="btn-action btn-clear" id="btnClear" title="Clear filled items">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" />
+            </svg>
+            <span id="clearBtnText">Clear</span>
           </button>
-          <input type="file" id="importFileInput" accept=".json,application/json" style="display:none;">
+          <button class="btn-action btn-copy" id="btnCopy" title="Copy to clipboard (Ctrl+Enter)">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="11" height="11" rx="2" />
+              <path d="M5 15V6a2 2 0 0 1 2-2h9" />
+            </svg>
+            <span id="copyBtnText">Copy</span>
+          </button>
         </div>
+      </footer>
 
-        <button class="btn-action" id="btnResetAll" style="width:100%;color:var(--color-danger);border-color:var(--border-line);">
-          Reset Vetting Types to Defaults
-        </button>
+      <!-- Ambient Minimal Break Bar at Bottom -->
+      <div class="ambient-break-bar" id="ambientBreakBar" style="display:none;" title="Click to view Break Schedule">
+        <span class="ambient-break-icon" id="ambientBreakIcon">☕</span>
+        <span class="ambient-break-text" id="ambientBreakText">--</span>
       </div>
-    </div>
+
+      <!-- Sub-view: Settings & Theme Screen -->
+      <div class="view-sub" id="settingsView" style="display:none;">
+        <div class="view-header">
+          <button class="ibtn" id="btnBackSettings" title="Back to main">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="m15 18-6-6 6-6" />
+            </svg>
+          </button>
+          <span class="view-title">Settings</span>
+        </div>
+        <div class="scroll-pane" style="padding:8px 10px;">
+          <div class="section-head">Appearance Theme</div>
+          <div class="setting-chips" id="themeChips">
+            <button class="chip" data-theme-val="auto">Auto (System)</button>
+            <button class="chip" data-theme-val="light">Light</button>
+            <button class="chip" data-theme-val="dark">Dark</button>
+          </div>
+
+          <div class="section-head" style="margin-top:14px;">Auto-Clear Details After Copy</div>
+          <p style="font-size:10.5px;color:var(--text-muted);margin-bottom:6px;">Wipes customer data after a countdown.
+            Typing or clicking Cancel in the top banner halts it.</p>
+          <div class="setting-chips" id="autoClearChips">
+            <button class="chip" data-ac="0">Off (Default)</button>
+            <button class="chip" data-ac="5">5s</button>
+            <button class="chip" data-ac="10">10s</button>
+            <button class="chip" data-ac="15">15s</button>
+            <button class="chip" data-ac="30">30s</button>
+            <button class="chip" data-ac="60">1m</button>
+          </div>
+
+          <div class="section-head" style="margin-top:16px;">Configuration & Data</div>
+          <div style="display:flex;gap:6px;margin-bottom:8px;">
+            <button class="btn-action" id="btnExportData" style="flex:1;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                style="margin-right:4px;">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="7 10 12 15 17 10" />
+                <line x1="12" y1="15" x2="12" y2="3" />
+              </svg>
+              Export Data
+            </button>
+            <button class="btn-action" id="btnImportData" style="flex:1;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                style="margin-right:4px;">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+              Import Data
+            </button>
+            <input type="file" id="importFileInput" accept=".json,application/json" style="display:none;">
+          </div>
+
+          <button class="btn-action" id="btnResetAll"
+            style="width:100%;color:var(--color-danger);border-color:var(--border-line);">
+            Reset Vetting Types to Defaults
+          </button>
+        </div>
+      </div>
 
       <!-- Sub-view: Edit Vetting Items Screen -->
       <div class="view-sub" id="editView" style="display:none;">
         <div class="view-header">
           <button class="ibtn" id="btnBackEdit" title="Back to main">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="m15 18-6-6 6-6" />
+            </svg>
           </button>
           <span class="view-title">Edit Vetting Items</span>
         </div>
@@ -2545,22 +2615,34 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
       <div class="view-sub" id="notesView" style="display:none;">
         <div class="view-header">
           <button class="ibtn" id="btnBackNotes" title="Back" aria-label="Back">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="m15 18-6-6 6-6" />
+            </svg>
           </button>
           <div id="noteSelectMount" class="c-select note-c-select"></div>
           <button class="ibtn primary" id="btnNewNote" title="New Note" aria-label="New Note">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
           </button>
           <button class="ibtn" id="btnCopyNote" title="Copy Note" aria-label="Copy Note">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="11" height="11" rx="2" />
+              <path d="M5 15V6a2 2 0 0 1 2-2h9" />
+            </svg>
           </button>
           <button class="ibtn" id="btnDeleteNote" title="Delete Note" aria-label="Delete Note">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" />
+            </svg>
           </button>
         </div>
         <div class="note-canvas-wrap">
-          <input type="text" class="note-title-input" id="noteTitleInput" placeholder="Untitled Note" autocomplete="off" spellcheck="false">
-          <textarea class="note-body-textarea" id="noteBodyText" placeholder="Start typing notes..." autocomplete="off" spellcheck="false"></textarea>
+          <input type="text" class="note-title-input" id="noteTitleInput" placeholder="Untitled Note" autocomplete="off"
+            spellcheck="false">
+          <textarea class="note-body-textarea" id="noteBodyText" placeholder="Start typing notes..." autocomplete="off"
+            spellcheck="false"></textarea>
           <div class="note-status-bar">
             <span id="noteSaveStatus">Saved</span>
             <span id="noteWordCharCount">0 chars</span>
@@ -2572,11 +2654,16 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
       <div class="view-sub" id="quickSmsView" style="display:none;">
         <div class="view-header">
           <button class="ibtn" id="btnBackQuickSms" title="Back to main">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="m15 18-6-6 6-6" />
+            </svg>
           </button>
           <span class="view-title">Quick SMS</span>
           <button class="ibtn primary" id="btnNewSmsTemplate" title="New SMS Template" aria-label="New SMS Template">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
           </button>
         </div>
         <div class="scroll-pane" style="padding:8px 10px;" id="quickSmsList"></div>
@@ -2586,11 +2673,17 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
       <div class="view-sub" id="quickInteractionView" style="display:none;">
         <div class="view-header">
           <button class="ibtn" id="btnBackQuickInteraction" title="Back to main">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="m15 18-6-6 6-6" />
+            </svg>
           </button>
           <span class="view-title">Quick Interaction</span>
-          <button class="ibtn primary" id="btnNewInteractionTemplate" title="New Interaction Template" aria-label="New Interaction Template">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          <button class="ibtn primary" id="btnNewInteractionTemplate" title="New Interaction Template"
+            aria-label="New Interaction Template">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
           </button>
         </div>
         <div class="scroll-pane" style="padding:8px 10px;" id="quickInteractionList"></div>
@@ -2600,7 +2693,9 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
       <div class="view-sub" id="breakNotifierView" style="display:none;">
         <div class="view-header">
           <button class="ibtn" id="btnBackBreakNotifier" title="Back to main">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="m15 18-6-6 6-6" />
+            </svg>
           </button>
           <span class="view-title">Break Notifier</span>
         </div>
@@ -2672,11 +2767,14 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
 
     <!-- Variable Fill Modal for Quick SMS / Quick Interaction -->
     <div class="modal-overlay" id="varFillOverlay" style="display:none;"></div>
-    <div class="modal-card var-fill-modal" id="varFillModal" style="display:none;" role="dialog" aria-label="Fill Variables">
+    <div class="modal-card var-fill-modal" id="varFillModal" style="display:none;" role="dialog"
+      aria-label="Fill Variables">
       <div class="modal-header">
         <span class="modal-title" id="varFillTitle">Template</span>
         <button type="button" class="modal-close-btn" id="varFillClose" title="Close" aria-label="Close">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
         </button>
       </div>
       <div class="modal-body">
@@ -2691,7 +2789,10 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
             <span>Remember values</span>
           </label>
           <button type="button" class="btn-action primary" id="btnCopyResolved">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="11" height="11" rx="2" />
+              <path d="M5 15V6a2 2 0 0 1 2-2h9" />
+            </svg>
             <span>Copy Text</span>
           </button>
         </div>
@@ -2700,21 +2801,27 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
 
     <!-- Template Create / Edit Modal -->
     <div class="modal-overlay" id="templateEditOverlay" style="display:none;"></div>
-    <div class="modal-card template-edit-modal" id="templateEditModal" style="display:none;" role="dialog" aria-label="Edit Template">
+    <div class="modal-card template-edit-modal" id="templateEditModal" style="display:none;" role="dialog"
+      aria-label="Edit Template">
       <div class="modal-header">
         <span class="modal-title" id="templateEditModalTitle">Edit Template</span>
         <button type="button" class="modal-close-btn" id="templateEditClose" title="Close" aria-label="Close">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
         </button>
       </div>
       <div class="modal-body">
         <div class="modal-form-group">
           <label class="modal-field-label">Template Title</label>
-          <input type="text" class="modal-text-input" id="templateTitleInput" placeholder="e.g. Paybill Reversal" autocomplete="off" spellcheck="false">
+          <input type="text" class="modal-text-input" id="templateTitleInput" placeholder="e.g. Paybill Reversal"
+            autocomplete="off" spellcheck="false">
         </div>
         <div class="modal-form-group">
           <label class="modal-field-label">Template Message (Use {VARIABLE} for dynamic fields)</label>
-          <textarea class="template-body-textarea" id="templateBodyInput" placeholder="Dear Customer, kindly contact {ORGANIZATION} on {Phone Number}..." autocomplete="off" spellcheck="false"></textarea>
+          <textarea class="template-body-textarea" id="templateBodyInput"
+            placeholder="Dear Customer, kindly contact {ORGANIZATION} on {Phone Number}..." autocomplete="off"
+            spellcheck="false"></textarea>
         </div>
         <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:4px;">
           <button type="button" class="btn-action" id="btnCancelTemplate">Cancel</button>
@@ -2729,13 +2836,15 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
       <div class="callpad-header">
         <div class="callpad-title">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
-            <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+            <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
           </svg>
           <span>Call Items</span>
         </div>
         <button type="button" class="callpad-close" id="callPadClose" title="Close" aria-label="Close">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
         </button>
       </div>
       <div class="callpad-body" id="callPadBody"></div>
@@ -2743,9 +2852,10 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
 
     <!-- Draggable Floating Action Button (FAB) -->
     <button type="button" class="callpad-fab" id="callPadFab" title="Call Items (Current Call)" aria-label="Call Items">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
-        <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
+        stroke-linecap="round" stroke-linejoin="round">
+        <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+        <rect x="8" y="2" width="8" height="4" rx="1" ry="1" />
       </svg>
     </button>
   </div> <!-- /#app -->
@@ -2759,7 +2869,7 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
     </h1>
     <p>Ultra-compact customer verification notepad tailored for call-center agents.</p>
     <ul>
-      <li><strong>250px Compact Responsive Layout:</strong> Engineered specifically for ultra-narrow 250px agent screen docking without horizontal scrolling or awkward wrapping.</li>
+      <li><strong>200px Compact Responsive Layout:</strong> Engineered specifically for ultra-narrow 200px agent screen docking without horizontal scrolling or awkward wrapping.</li>
       <li><strong>Decluttered Header:</strong> Dedicated to a wide vetting type selector and clean hamburger menu.</li>
       <li><strong>Ambient Break Bar:</strong> Ultra-minimal, non-intrusive ambient ticker at the very bottom edge showing the upcoming shift event.</li>
       <li><strong>Quick SMS with 1-Click Clipboard Paste:</strong> Dynamic template filling for Paybill Reversals and customer communications.</li>
@@ -6198,16 +6308,16 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-// Clamp minimum window width to 250px on window resize
+// Clamp minimum window width to 200px on window resize
 let resizeClampTimer = null;
 window.addEventListener('resize', () => {
   if (typeof chrome !== 'undefined' && chrome.windows && chrome.windows.getCurrent) {
-    if (window.outerWidth < 250) {
+    if (window.outerWidth < 200) {
       if (resizeClampTimer) clearTimeout(resizeClampTimer);
       resizeClampTimer = setTimeout(() => {
         chrome.windows.getCurrent((w) => {
-          if (w && typeof w.width === 'number' && w.width < 250) {
-            chrome.windows.update(w.id, { width: 250 });
+          if (w && typeof w.width === 'number' && w.width < 200) {
+            chrome.windows.update(w.id, { width: 200 });
           }
         });
       }, 50);
@@ -6535,7 +6645,7 @@ if (rzEl && winEl && wpxEl) {
     const startW = winEl.offsetWidth;
 
     const onMove = (ev) => {
-      const newW = Math.round(Math.max(250, Math.min(600, startW + (startX - ev.clientX))));
+      const newW = Math.round(Math.max(200, Math.min(600, startW + (startX - ev.clientX))));
       winEl.style.width = newW + 'px';
       wpxEl.textContent = newW + ' px';
     };
