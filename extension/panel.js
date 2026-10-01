@@ -202,9 +202,14 @@ class CreatableSelect {
   hl(label) {
     const q = this.q.trim();
     if (!q) return CreatableSelect.esc(label);
-    const i = label.toLowerCase().indexOf(q.toLowerCase());
-    if (i < 0) return CreatableSelect.esc(label);
-    return CreatableSelect.esc(label.slice(0, i)) + '<mark>' + CreatableSelect.esc(label.slice(i, i + q.length)) + '</mark>' + CreatableSelect.esc(label.slice(i + q.length));
+    const terms = q.split(/\s+/).filter(Boolean);
+    if (!terms.length) return CreatableSelect.esc(label);
+    let escaped = CreatableSelect.esc(label);
+    terms.forEach(term => {
+      const reg = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+      escaped = escaped.replace(reg, '<mark>$1</mark>');
+    });
+    return escaped;
   }
 
   static esc(s) {
@@ -214,8 +219,13 @@ class CreatableSelect {
   render() {
     if (!this.isOpen) return;
     const q = this.q.trim().toLowerCase();
-    this.items = this.opts.filter(o => !q || o.label.toLowerCase().includes(q)).map(o => ({ o }));
-    const exact = this.opts.some(o => o.label.toLowerCase() === q);
+    const terms = q.split(/\s+/).filter(Boolean);
+    this.items = this.opts.filter(o => {
+      if (!terms.length) return true;
+      const lbl = (o.label || '').toLowerCase();
+      return terms.every(t => lbl.includes(t));
+    }).map(o => ({ o }));
+    const exact = this.opts.some(o => (o.label || '').toLowerCase() === q);
     if (q && !exact) {
       this.items.push({ create: this.q.trim() });
     }
@@ -1584,7 +1594,6 @@ function bindFormEvents() {
         if (failBtn) failBtn.classList.remove('active');
         renderCallbackPanelOnly();
       }
-      syncCurrentToUniversal();
       updateRowGuide(id);
       updateSecondaryCounter();
       syncPreview();
@@ -2775,7 +2784,7 @@ function openVarFillModal(tpl, type) {
         <div class="var-input-field-wrap">
           <input type="text" class="var-input" value="${escapeHtml(currentValues[v])}" placeholder="Enter ${escapeHtml(v)}..." autocomplete="off" spellcheck="false">
           <button type="button" class="var-paste-btn" title="Paste from clipboard">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
           </button>
         </div>
       </div>
@@ -3060,13 +3069,24 @@ function parseTimeToDate(timeStr, now) {
   return d;
 }
 
+function formatShortDuration(diffSec) {
+  if (diffSec <= 0) return '0s';
+  if (diffSec < 60) return `${diffSec < 10 ? '0' : ''}${diffSec}s`;
+  const hrs = Math.floor(diffSec / 3600);
+  const mins = Math.floor((diffSec % 3600) / 60);
+  if (hrs > 0) {
+    return mins > 0 ? `${hrs}h ${mins}m` : `${hrs}h`;
+  }
+  return `${mins}m`;
+}
+
 function formatCountdown(sec) {
   if (sec <= 0) return '00:00';
   const hrs = Math.floor(sec / 3600);
   const mins = Math.floor((sec % 3600) / 60);
   const secs = sec % 60;
   if (hrs > 0) {
-    return `${hrs}h ${mins}m`;
+    return mins > 0 ? `${hrs}h ${mins}m` : `${hrs}h`;
   }
   if (mins > 0) {
     return `${mins}m ${secs < 10 ? '0' : ''}${secs}s`;
@@ -3221,7 +3241,7 @@ function updateBreakNotifier() {
 
   if (targetTime) {
     const diffSec = Math.max(0, Math.floor((targetTime.getTime() - now.getTime()) / 1000));
-    const tickerStr = (diffSec < 60) ? `${diffSec < 10 ? '0' : ''}${diffSec}s` : `${Math.ceil(diffSec / 60)}m`;
+    const tickerStr = formatShortDuration(diffSec);
     if (breakTickerText) breakTickerText.textContent = isActive ? `In: ${tickerStr}` : tickerStr;
     if (breakCountdownBig) breakCountdownBig.textContent = formatBigCountdown(diffSec);
     if (breakStatusSub) breakStatusSub.textContent = isActive ? `Active break ends at ${targetTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : `Scheduled for ${targetTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;

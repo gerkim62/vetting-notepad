@@ -112,12 +112,12 @@
 html {
   height: 100%;
   width: 100%;
-  min-width: 250px;
+  min-width: 0;
 }
 body {
   height: 100%;
   width: 100%;
-  min-width: 250px;
+  min-width: 0;
   overflow: hidden;
   background: var(--bg-panel);
   color: var(--text-main);
@@ -131,7 +131,8 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
 
 #app {
   width: 100%;
-  min-width: 250px;
+  max-width: 100%;
+  min-width: 0;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -142,7 +143,9 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
 .views-root {
   flex: 1;
   min-height: 0;
-  min-width: 250px;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -153,6 +156,7 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
    Header Bar with Creatable Select
    ========================================================================== */
 .top-nav {
+  position: relative;
   flex: none;
   height: 36px;
   padding: 0 6px;
@@ -162,12 +166,20 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   border-bottom: 1px solid var(--border-line);
   background: var(--bg-panel);
   z-index: 25;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.top-nav .c-select,
+.view-header .c-select {
+  position: static;
 }
 
 .c-select {
   position: relative;
-  flex: 1;
+  flex: 1 1 0;
   min-width: 0;
+  width: 0;
 }
 .c-select .box {
   display: flex;
@@ -179,6 +191,8 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   border-radius: var(--radius-sm) var(--radius-sm) 0 0;
   cursor: text;
   transition: all 0.15s ease;
+  min-width: 0;
+  overflow: hidden;
 }
 .c-select:hover .box { border-bottom-color: var(--text-main); }
 .c-select.focus .box {
@@ -186,19 +200,24 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   background: var(--bg-panel);
 }
 .c-select input {
-  flex: 1;
-  min-width: 40px;
+  flex: 1 1 0;
+  min-width: 0;
+  width: 0;
   border: 0;
   outline: 0;
   background: transparent;
   color: var(--text-main);
   font: 600 11.5px inherit;
   padding: 2px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .c-select .ctl {
   display: flex;
   align-items: center;
   color: var(--text-muted);
+  flex-shrink: 0;
 }
 .c-select .ctl button {
   width: 20px;
@@ -207,6 +226,7 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   place-items: center;
   border-radius: 50%;
   color: var(--text-dim);
+  flex-shrink: 0;
 }
 .c-select .ctl button:hover { color: var(--text-main); background: var(--bg-hover); }
 .c-select .arrow { transition: transform 0.18s ease; }
@@ -215,10 +235,11 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
 .c-select ul {
   position: absolute;
   z-index: 99;
-  left: 0;
-  width: 236px;
+  left: 6px;
+  right: 6px;
+  width: auto;
   max-width: calc(100vw - 12px);
-  top: calc(100% + 4px);
+  top: calc(100% + 2px);
   margin: 0;
   padding: 4px 0;
   list-style: none;
@@ -249,7 +270,9 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
 .c-select li > span {
   flex: 1;
   min-width: 0;
+  white-space: normal;
   word-break: break-word;
+  line-height: 1.35;
 }
 .c-select li:hover, .c-select li.active { background: var(--bg-hover); }
 .c-select li[aria-selected="true"] {
@@ -281,7 +304,8 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
 .ibtn {
   width: 25px;
   height: 25px;
-  flex: none;
+  flex: 0 0 25px;
+  flex-shrink: 0;
   display: grid;
   place-items: center;
   border-radius: var(--radius-sm);
@@ -1085,6 +1109,7 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   flex-direction: column;
 }
 .view-header {
+  position: relative;
   height: 36px;
   padding: 0 6px;
   display: flex;
@@ -1092,6 +1117,8 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   gap: 6px;
   border-bottom: 1px solid var(--border-line);
   background: var(--bg-panel-alt);
+  width: 100%;
+  box-sizing: border-box;
 }
 .view-title { font-weight: 700; font-size: 12px; }
 
@@ -1624,8 +1651,10 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
    Full-Canvas Notepad
    ========================================================================== */
 .note-c-select {
-  flex: 1;
+  position: static;
+  flex: 1 1 0;
   min-width: 0;
+  width: 0;
 }
 .note-c-select .box {
   display: flex;
@@ -1637,6 +1666,8 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   border-radius: var(--radius-sm) var(--radius-sm) 0 0;
   cursor: text;
   transition: all 0.15s ease;
+  min-width: 0;
+  overflow: hidden;
 }
 .note-c-select:hover .box {
   border-bottom-color: var(--text-main);
@@ -1646,25 +1677,31 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   background: var(--bg-panel);
 }
 .note-c-select input {
-  flex: 1;
-  min-width: 30px;
+  flex: 1 1 0;
+  min-width: 0;
+  width: 0;
   border: 0;
   outline: 0;
   background: transparent;
   color: var(--text-main);
   font: 600 11.5px inherit;
   padding: 2px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .note-c-select .ctl {
   display: flex;
   align-items: center;
   color: var(--text-muted);
+  flex-shrink: 0;
 }
 .note-c-select .ctl button {
   width: 20px;
   height: 20px;
   display: grid;
   place-items: center;
+  flex-shrink: 0;
 }
 
 .note-canvas-wrap {
@@ -1778,6 +1815,7 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   top: 36px;
   right: 6px;
   width: 175px;
+  max-width: calc(100vw - 12px);
   background: var(--bg-panel);
   border: 1px solid var(--border-line);
   border-radius: var(--radius-md);
@@ -2382,10 +2420,6 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
           <span>Notes</span>
         </button>
-        <button type="button" class="menu-item" id="menuItemEditType" role="menuitem">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-          <span>Edit Vetting Items</span>
-        </button>
         <button type="button" class="menu-item" id="menuItemQuickSms" role="menuitem">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
           <span>Quick SMS</span>
@@ -2397,6 +2431,10 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
         <button type="button" class="menu-item" id="menuItemBreakNotifier" role="menuitem">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
           <span>Break Notifier</span>
+        </button>
+        <button type="button" class="menu-item" id="menuItemEditType" role="menuitem">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          <span>Edit Vetting Items</span>
         </button>
         <button type="button" class="menu-item" id="menuItemSettings" role="menuitem">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -2937,9 +2975,14 @@ class CreatableSelect {
   hl(label) {
     const q = this.q.trim();
     if (!q) return CreatableSelect.esc(label);
-    const i = label.toLowerCase().indexOf(q.toLowerCase());
-    if (i < 0) return CreatableSelect.esc(label);
-    return CreatableSelect.esc(label.slice(0, i)) + '<mark>' + CreatableSelect.esc(label.slice(i, i + q.length)) + '</mark>' + CreatableSelect.esc(label.slice(i + q.length));
+    const terms = q.split(/\s+/).filter(Boolean);
+    if (!terms.length) return CreatableSelect.esc(label);
+    let escaped = CreatableSelect.esc(label);
+    terms.forEach(term => {
+      const reg = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+      escaped = escaped.replace(reg, '<mark>$1</mark>');
+    });
+    return escaped;
   }
 
   static esc(s) {
@@ -2949,8 +2992,13 @@ class CreatableSelect {
   render() {
     if (!this.isOpen) return;
     const q = this.q.trim().toLowerCase();
-    this.items = this.opts.filter(o => !q || o.label.toLowerCase().includes(q)).map(o => ({ o }));
-    const exact = this.opts.some(o => o.label.toLowerCase() === q);
+    const terms = q.split(/\s+/).filter(Boolean);
+    this.items = this.opts.filter(o => {
+      if (!terms.length) return true;
+      const lbl = (o.label || '').toLowerCase();
+      return terms.every(t => lbl.includes(t));
+    }).map(o => ({ o }));
+    const exact = this.opts.some(o => (o.label || '').toLowerCase() === q);
     if (q && !exact) {
       this.items.push({ create: this.q.trim() });
     }
@@ -4319,7 +4367,6 @@ function bindFormEvents() {
         if (failBtn) failBtn.classList.remove('active');
         renderCallbackPanelOnly();
       }
-      syncCurrentToUniversal();
       updateRowGuide(id);
       updateSecondaryCounter();
       syncPreview();
@@ -5510,7 +5557,7 @@ function openVarFillModal(tpl, type) {
         <div class="var-input-field-wrap">
           <input type="text" class="var-input" value="${escapeHtml(currentValues[v])}" placeholder="Enter ${escapeHtml(v)}..." autocomplete="off" spellcheck="false">
           <button type="button" class="var-paste-btn" title="Paste from clipboard">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
           </button>
         </div>
       </div>
@@ -5795,13 +5842,24 @@ function parseTimeToDate(timeStr, now) {
   return d;
 }
 
+function formatShortDuration(diffSec) {
+  if (diffSec <= 0) return '0s';
+  if (diffSec < 60) return `${diffSec < 10 ? '0' : ''}${diffSec}s`;
+  const hrs = Math.floor(diffSec / 3600);
+  const mins = Math.floor((diffSec % 3600) / 60);
+  if (hrs > 0) {
+    return mins > 0 ? `${hrs}h ${mins}m` : `${hrs}h`;
+  }
+  return `${mins}m`;
+}
+
 function formatCountdown(sec) {
   if (sec <= 0) return '00:00';
   const hrs = Math.floor(sec / 3600);
   const mins = Math.floor((sec % 3600) / 60);
   const secs = sec % 60;
   if (hrs > 0) {
-    return `${hrs}h ${mins}m`;
+    return mins > 0 ? `${hrs}h ${mins}m` : `${hrs}h`;
   }
   if (mins > 0) {
     return `${mins}m ${secs < 10 ? '0' : ''}${secs}s`;
@@ -5956,7 +6014,7 @@ function updateBreakNotifier() {
 
   if (targetTime) {
     const diffSec = Math.max(0, Math.floor((targetTime.getTime() - now.getTime()) / 1000));
-    const tickerStr = (diffSec < 60) ? `${diffSec < 10 ? '0' : ''}${diffSec}s` : `${Math.ceil(diffSec / 60)}m`;
+    const tickerStr = formatShortDuration(diffSec);
     if (breakTickerText) breakTickerText.textContent = isActive ? `In: ${tickerStr}` : tickerStr;
     if (breakCountdownBig) breakCountdownBig.textContent = formatBigCountdown(diffSec);
     if (breakStatusSub) breakStatusSub.textContent = isActive ? `Active break ends at ${targetTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : `Scheduled for ${targetTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;

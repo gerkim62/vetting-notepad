@@ -105,12 +105,12 @@
 html {
   height: 100%;
   width: 100%;
-  min-width: 250px;
+  min-width: 0;
 }
 body {
   height: 100%;
   width: 100%;
-  min-width: 250px;
+  min-width: 0;
   overflow: hidden;
   background: var(--bg-panel);
   color: var(--text-main);
@@ -124,7 +124,8 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
 
 #app {
   width: 100%;
-  min-width: 250px;
+  max-width: 100%;
+  min-width: 0;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -135,7 +136,9 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
 .views-root {
   flex: 1;
   min-height: 0;
-  min-width: 250px;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -146,6 +149,7 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
    Header Bar with Creatable Select
    ========================================================================== */
 .top-nav {
+  position: relative;
   flex: none;
   height: 36px;
   padding: 0 6px;
@@ -155,12 +159,20 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   border-bottom: 1px solid var(--border-line);
   background: var(--bg-panel);
   z-index: 25;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.top-nav .c-select,
+.view-header .c-select {
+  position: static;
 }
 
 .c-select {
   position: relative;
-  flex: 1;
+  flex: 1 1 0;
   min-width: 0;
+  width: 0;
 }
 .c-select .box {
   display: flex;
@@ -172,6 +184,8 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   border-radius: var(--radius-sm) var(--radius-sm) 0 0;
   cursor: text;
   transition: all 0.15s ease;
+  min-width: 0;
+  overflow: hidden;
 }
 .c-select:hover .box { border-bottom-color: var(--text-main); }
 .c-select.focus .box {
@@ -179,19 +193,24 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   background: var(--bg-panel);
 }
 .c-select input {
-  flex: 1;
-  min-width: 40px;
+  flex: 1 1 0;
+  min-width: 0;
+  width: 0;
   border: 0;
   outline: 0;
   background: transparent;
   color: var(--text-main);
   font: 600 11.5px inherit;
   padding: 2px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .c-select .ctl {
   display: flex;
   align-items: center;
   color: var(--text-muted);
+  flex-shrink: 0;
 }
 .c-select .ctl button {
   width: 20px;
@@ -200,6 +219,7 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   place-items: center;
   border-radius: 50%;
   color: var(--text-dim);
+  flex-shrink: 0;
 }
 .c-select .ctl button:hover { color: var(--text-main); background: var(--bg-hover); }
 .c-select .arrow { transition: transform 0.18s ease; }
@@ -208,10 +228,11 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
 .c-select ul {
   position: absolute;
   z-index: 99;
-  left: 0;
-  width: 236px;
+  left: 6px;
+  right: 6px;
+  width: auto;
   max-width: calc(100vw - 12px);
-  top: calc(100% + 4px);
+  top: calc(100% + 2px);
   margin: 0;
   padding: 4px 0;
   list-style: none;
@@ -242,7 +263,9 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
 .c-select li > span {
   flex: 1;
   min-width: 0;
+  white-space: normal;
   word-break: break-word;
+  line-height: 1.35;
 }
 .c-select li:hover, .c-select li.active { background: var(--bg-hover); }
 .c-select li[aria-selected="true"] {
@@ -274,7 +297,8 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
 .ibtn {
   width: 25px;
   height: 25px;
-  flex: none;
+  flex: 0 0 25px;
+  flex-shrink: 0;
   display: grid;
   place-items: center;
   border-radius: var(--radius-sm);
@@ -1078,6 +1102,7 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   flex-direction: column;
 }
 .view-header {
+  position: relative;
   height: 36px;
   padding: 0 6px;
   display: flex;
@@ -1085,6 +1110,8 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   gap: 6px;
   border-bottom: 1px solid var(--border-line);
   background: var(--bg-panel-alt);
+  width: 100%;
+  box-sizing: border-box;
 }
 .view-title { font-weight: 700; font-size: 12px; }
 
@@ -1617,8 +1644,10 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
    Full-Canvas Notepad
    ========================================================================== */
 .note-c-select {
-  flex: 1;
+  position: static;
+  flex: 1 1 0;
   min-width: 0;
+  width: 0;
 }
 .note-c-select .box {
   display: flex;
@@ -1630,6 +1659,8 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   border-radius: var(--radius-sm) var(--radius-sm) 0 0;
   cursor: text;
   transition: all 0.15s ease;
+  min-width: 0;
+  overflow: hidden;
 }
 .note-c-select:hover .box {
   border-bottom-color: var(--text-main);
@@ -1639,25 +1670,31 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   background: var(--bg-panel);
 }
 .note-c-select input {
-  flex: 1;
-  min-width: 30px;
+  flex: 1 1 0;
+  min-width: 0;
+  width: 0;
   border: 0;
   outline: 0;
   background: transparent;
   color: var(--text-main);
   font: 600 11.5px inherit;
   padding: 2px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .note-c-select .ctl {
   display: flex;
   align-items: center;
   color: var(--text-muted);
+  flex-shrink: 0;
 }
 .note-c-select .ctl button {
   width: 20px;
   height: 20px;
   display: grid;
   place-items: center;
+  flex-shrink: 0;
 }
 
 .note-canvas-wrap {
@@ -1771,6 +1808,7 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   top: 36px;
   right: 6px;
   width: 175px;
+  max-width: calc(100vw - 12px);
   background: var(--bg-panel);
   border: 1px solid var(--border-line);
   border-radius: var(--radius-md);
