@@ -2026,9 +2026,11 @@ const btnEditType = document.getElementById('btnEditType');
 const btnBackEdit = document.getElementById('btnBackEdit');
 const editPane = document.getElementById('editPane');
 
-btnEditType.onclick = () => {
-  openEditView();
-};
+if (btnEditType) {
+  btnEditType.onclick = () => {
+    openEditView();
+  };
+}
 btnBackEdit.onclick = () => closeEditView();
 
 function openEditView() {
@@ -2437,20 +2439,826 @@ function bindEditEvents() {
 }
 
 /* ==========================================================================
-   Settings Screen Handlers
+   Hamburger Menu, Quick SMS, Quick Interaction & Break Notifier
    ========================================================================== */
+const btnMenu = document.getElementById('btnMenu');
+const menuDropdown = document.getElementById('menuDropdown');
+const menuItemNotes = document.getElementById('menuItemNotes');
+const menuItemEditType = document.getElementById('menuItemEditType');
+const menuItemQuickSms = document.getElementById('menuItemQuickSms');
+const menuItemQuickInteraction = document.getElementById('menuItemQuickInteraction');
+const menuItemSettings = document.getElementById('menuItemSettings');
+const menuItemBreakNotifier = document.getElementById('menuItemBreakNotifier');
+
+const quickSmsView = document.getElementById('quickSmsView');
+const quickInteractionView = document.getElementById('quickInteractionView');
+const breakNotifierView = document.getElementById('breakNotifierView');
+
+const btnBackQuickSms = document.getElementById('btnBackQuickSms');
+const btnBackQuickInteraction = document.getElementById('btnBackQuickInteraction');
+const btnBackBreakNotifier = document.getElementById('btnBackBreakNotifier');
+
 const settingsView = document.getElementById('settingsView');
 const btnSettings = document.getElementById('btnSettings');
 const btnBackSettings = document.getElementById('btnBackSettings');
 
-btnSettings.onclick = () => {
-  settingsView.style.display = 'flex';
-  renderSettingsView();
-};
-btnBackSettings.onclick = () => {
-  settingsView.style.display = 'none';
+function toggleMenu(show) {
+  if (!menuDropdown) return;
+  const isCurrentlyOpen = menuDropdown.style.display !== 'none';
+  const shouldOpen = (typeof show === 'boolean') ? show : !isCurrentlyOpen;
+  menuDropdown.style.display = shouldOpen ? 'flex' : 'none';
+}
+
+function closeMenu() {
+  if (menuDropdown) menuDropdown.style.display = 'none';
+}
+
+function initMenu() {
+  if (btnMenu) {
+    btnMenu.onclick = (e) => {
+      e.stopPropagation();
+      toggleMenu();
+    };
+  }
+
+  if (btnSettings) {
+    btnSettings.onclick = () => {
+      if (settingsView) settingsView.style.display = 'flex';
+      renderSettingsView();
+    };
+  }
+
+  document.addEventListener('click', (e) => {
+    if (menuDropdown && menuDropdown.style.display !== 'none') {
+      if (!menuDropdown.contains(e.target) && e.target !== btnMenu && !btnMenu?.contains(e.target)) {
+        closeMenu();
+      }
+    }
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeMenu();
+      closeVarFillModal();
+      closeTemplateEditModal();
+    }
+  });
+
+  if (menuItemNotes) {
+    menuItemNotes.onclick = () => {
+      closeMenu();
+      openNotesView();
+    };
+  }
+
+  if (menuItemEditType) {
+    menuItemEditType.onclick = () => {
+      closeMenu();
+      openEditView();
+    };
+  }
+
+  if (menuItemQuickSms) {
+    menuItemQuickSms.onclick = () => {
+      closeMenu();
+      if (quickSmsView) quickSmsView.style.display = 'flex';
+      renderQuickSmsList();
+    };
+  }
+
+  if (menuItemQuickInteraction) {
+    menuItemQuickInteraction.onclick = () => {
+      closeMenu();
+      if (quickInteractionView) quickInteractionView.style.display = 'flex';
+      renderQuickInteractionList();
+    };
+  }
+
+  if (menuItemSettings) {
+    menuItemSettings.onclick = () => {
+      closeMenu();
+      if (settingsView) settingsView.style.display = 'flex';
+      renderSettingsView();
+    };
+  }
+
+  if (menuItemBreakNotifier) {
+    menuItemBreakNotifier.onclick = () => {
+      closeMenu();
+      if (breakNotifierView) breakNotifierView.style.display = 'flex';
+      renderBreakNotifierView();
+    };
+  }
+
+  if (btnBackSettings) {
+    btnBackSettings.onclick = () => {
+      if (settingsView) settingsView.style.display = 'none';
+    };
+  }
+
+  if (btnBackQuickSms) {
+    btnBackQuickSms.onclick = () => {
+      if (quickSmsView) quickSmsView.style.display = 'none';
+    };
+  }
+
+  if (btnBackQuickInteraction) {
+    btnBackQuickInteraction.onclick = () => {
+      if (quickInteractionView) quickInteractionView.style.display = 'none';
+    };
+  }
+
+  if (btnBackBreakNotifier) {
+    btnBackBreakNotifier.onclick = () => {
+      if (breakNotifierView) breakNotifierView.style.display = 'none';
+    };
+  }
+}
+
+/* ==========================================================================
+   Quick SMS & Quick Interaction Templates
+   ========================================================================== */
+const DEFAULT_QUICK_SMS = [
+  {
+    id: 'sms_paybill_rev',
+    title: 'Paybill Reversal Request',
+    text: 'Dear Customer, kindly contact {ORGANIZATION} on {Phone Number} during working hours for reversal request of transaction {TXN CODE}. Thank You.'
+  }
+];
+
+const DEFAULT_QUICK_INTERACTION = [];
+
+let quickSmsTemplates = [];
+let quickInteractionTemplates = [];
+let rememberedTemplateVars = {};
+
+const quickSmsListEl = document.getElementById('quickSmsList');
+const quickInteractionListEl = document.getElementById('quickInteractionList');
+const btnNewSmsTemplate = document.getElementById('btnNewSmsTemplate');
+const btnNewInteractionTemplate = document.getElementById('btnNewInteractionTemplate');
+
+async function loadQuickTemplates() {
+  const savedSms = await Storage.get('vpad.quick_sms', null);
+  if (Array.isArray(savedSms) && savedSms.length > 0) {
+    quickSmsTemplates = savedSms;
+  } else {
+    quickSmsTemplates = JSON.parse(JSON.stringify(DEFAULT_QUICK_SMS));
+    Storage.set('vpad.quick_sms', quickSmsTemplates);
+  }
+
+  const savedInteraction = await Storage.get('vpad.quick_interaction', null);
+  if (Array.isArray(savedInteraction)) {
+    // Purge old default dummy interactions if any were saved
+    quickInteractionTemplates = savedInteraction.filter(item => item.id !== 'int_rev_followup' && item.id !== 'int_gen_query');
+    Storage.set('vpad.quick_interaction', quickInteractionTemplates);
+  } else {
+    quickInteractionTemplates = [];
+    Storage.set('vpad.quick_interaction', quickInteractionTemplates);
+  }
+
+  rememberedTemplateVars = (await Storage.get('vpad.remembered_vars', {})) || {};
+}
+
+function saveQuickSmsTemplates() {
+  Storage.set('vpad.quick_sms', quickSmsTemplates);
+}
+
+function saveQuickInteractionTemplates() {
+  Storage.set('vpad.quick_interaction', quickInteractionTemplates);
+}
+
+function saveRememberedVars() {
+  Storage.set('vpad.remembered_vars', rememberedTemplateVars);
+}
+
+function parseTemplateVariables(text) {
+  if (!text) return [];
+  const regex = /\{([^{}]+)\}/g;
+  const vars = [];
+  let match;
+  while ((match = regex.exec(text)) !== null) {
+    const v = match[1].trim();
+    if (v && !vars.includes(v)) {
+      vars.push(v);
+    }
+  }
+  return vars;
+}
+
+function highlightVariables(text) {
+  if (!text) return '';
+  return escapeHtml(text).replace(/\{([^{}]+)\}/g, '<span class="template-var-badge">{$1}</span>');
+}
+
+function renderTemplateCards(container, list, type) {
+  if (!container) return;
+  if (!list || list.length === 0) {
+    container.innerHTML = `<div style="text-align:center;padding:24px 10px;font-size:11px;color:var(--text-muted);">No templates yet. Click '+' above to create one.</div>`;
+    return;
+  }
+
+  container.innerHTML = list.map(item => `
+    <div class="template-card" data-template-id="${escapeHtml(item.id)}">
+      <div class="template-card-header">
+        <span class="template-card-title">${escapeHtml(item.title)}</span>
+        <div class="template-card-actions">
+          <button type="button" class="ibtn edit-tpl-btn" data-template-id="${escapeHtml(item.id)}" title="Edit template" aria-label="Edit template">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          </button>
+          <button type="button" class="ibtn del-tpl-btn" data-template-id="${escapeHtml(item.id)}" title="Delete template" aria-label="Delete template">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="template-card-body">${highlightVariables(item.text)}</div>
+    </div>
+  `).join('');
+
+  container.querySelectorAll('.template-card').forEach(card => {
+    const id = card.dataset.templateId;
+    const tpl = list.find(t => t.id === id);
+    if (!tpl) return;
+
+    card.onclick = (e) => {
+      if (e.target.closest('.edit-tpl-btn') || e.target.closest('.del-tpl-btn')) return;
+      openVarFillModal(tpl, type);
+    };
+
+    const btnEdit = card.querySelector('.edit-tpl-btn');
+    if (btnEdit) {
+      btnEdit.onclick = (e) => {
+        e.stopPropagation();
+        openTemplateEditModal(tpl, type);
+      };
+    }
+
+    const btnDel = card.querySelector('.del-tpl-btn');
+    if (btnDel) {
+      btnDel.onclick = (e) => {
+        e.stopPropagation();
+        deleteTemplate(id, type);
+      };
+    }
+  });
+}
+
+function renderQuickSmsList() {
+  renderTemplateCards(quickSmsListEl, quickSmsTemplates, 'sms');
+}
+
+function renderQuickInteractionList() {
+  renderTemplateCards(quickInteractionListEl, quickInteractionTemplates, 'interaction');
+}
+
+function deleteTemplate(id, type) {
+  if (type === 'sms') {
+    quickSmsTemplates = quickSmsTemplates.filter(t => t.id !== id);
+    saveQuickSmsTemplates();
+    renderQuickSmsList();
+  } else {
+    quickInteractionTemplates = quickInteractionTemplates.filter(t => t.id !== id);
+    saveQuickInteractionTemplates();
+    renderQuickInteractionList();
+  }
+}
+
+/* ==========================================================================
+   Variable Fill Modal Logic
+   ========================================================================== */
+const varFillOverlay = document.getElementById('varFillOverlay');
+const varFillModal = document.getElementById('varFillModal');
+const varFillTitle = document.getElementById('varFillTitle');
+const varFillClose = document.getElementById('varFillClose');
+const varInputsList = document.getElementById('varInputsList');
+const varPreviewText = document.getElementById('varPreviewText');
+const chkRememberVars = document.getElementById('chkRememberVars');
+const btnCopyResolved = document.getElementById('btnCopyResolved');
+
+let activeVarTemplate = null;
+
+function resolveTemplateText(tplText, varValues) {
+  if (!tplText) return '';
+  return tplText.replace(/\{([^{}]+)\}/g, (match, p1) => {
+    const key = p1.trim();
+    return (varValues[key] !== undefined && varValues[key] !== '') ? varValues[key] : match;
+  });
+}
+
+function openVarFillModal(tpl, type) {
+  const vars = parseTemplateVariables(tpl.text);
+  if (vars.length === 0) {
+    writeToClipboard(tpl.text);
+    showBanner(`Copied ${tpl.title}`, null, null, 1500, 'info');
+    return;
+  }
+
+  activeVarTemplate = tpl;
+  if (varFillTitle) varFillTitle.textContent = tpl.title;
+  if (varFillOverlay) varFillOverlay.style.display = 'block';
+  if (varFillModal) varFillModal.style.display = 'flex';
+
+  const currentValues = {};
+  vars.forEach(v => {
+    currentValues[v] = rememberedTemplateVars[v] || '';
+  });
+
+  const updatePreview = () => {
+    if (varPreviewText) {
+      varPreviewText.textContent = resolveTemplateText(tpl.text, currentValues);
+    }
+  };
+
+  if (varInputsList) {
+    varInputsList.innerHTML = vars.map(v => `
+      <div class="var-input-row" data-var-name="${escapeHtml(v)}">
+        <label class="var-input-label">${escapeHtml(v)}</label>
+        <div class="var-input-field-wrap">
+          <input type="text" class="var-input" value="${escapeHtml(currentValues[v])}" placeholder="Enter ${escapeHtml(v)}..." autocomplete="off" spellcheck="false">
+          <button type="button" class="var-paste-btn" title="Paste from clipboard">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>
+          </button>
+        </div>
+      </div>
+    `).join('');
+
+    varInputsList.querySelectorAll('.var-input-row').forEach(row => {
+      const v = row.dataset.varName;
+      const inp = row.querySelector('.var-input');
+      const btnPaste = row.querySelector('.var-paste-btn');
+
+      if (inp) {
+        inp.oninput = () => {
+          currentValues[v] = inp.value;
+          updatePreview();
+        };
+      }
+
+      if (btnPaste) {
+        btnPaste.onclick = async () => {
+          try {
+            const clipText = await navigator.clipboard.readText();
+            if (clipText && inp) {
+              inp.value = clipText.trim();
+              currentValues[v] = inp.value;
+              updatePreview();
+            }
+          } catch (err) {
+            console.error('Clipboard paste failed:', err);
+          }
+        };
+      }
+    });
+
+    const firstInp = varInputsList.querySelector('.var-input');
+    if (firstInp) setTimeout(() => firstInp.focus(), 50);
+  }
+
+  updatePreview();
+
+  if (btnCopyResolved) {
+    btnCopyResolved.onclick = async () => {
+      const resolved = resolveTemplateText(tpl.text, currentValues);
+      await writeToClipboard(resolved);
+
+      if (chkRememberVars && chkRememberVars.checked) {
+        vars.forEach(v => {
+          rememberedTemplateVars[v] = currentValues[v] || '';
+        });
+      } else {
+        vars.forEach(v => {
+          delete rememberedTemplateVars[v];
+        });
+      }
+      saveRememberedVars();
+
+      const origHtml = btnCopyResolved.innerHTML;
+      btnCopyResolved.classList.add('copied-success');
+      btnCopyResolved.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg><span>Copied ✓</span>`;
+      setTimeout(() => {
+        btnCopyResolved.classList.remove('copied-success');
+        btnCopyResolved.innerHTML = origHtml;
+        closeVarFillModal();
+      }, 700);
+    };
+  }
+}
+
+function closeVarFillModal() {
+  if (varFillOverlay) varFillOverlay.style.display = 'none';
+  if (varFillModal) varFillModal.style.display = 'none';
+  activeVarTemplate = null;
+}
+
+if (varFillClose) varFillClose.onclick = closeVarFillModal;
+if (varFillOverlay) varFillOverlay.onclick = closeVarFillModal;
+
+/* ==========================================================================
+   Template Create / Edit Modal Logic
+   ========================================================================== */
+const templateEditOverlay = document.getElementById('templateEditOverlay');
+const templateEditModal = document.getElementById('templateEditModal');
+const templateEditModalTitle = document.getElementById('templateEditModalTitle');
+const templateEditClose = document.getElementById('templateEditClose');
+const templateTitleInput = document.getElementById('templateTitleInput');
+const templateBodyInput = document.getElementById('templateBodyInput');
+const btnCancelTemplate = document.getElementById('btnCancelTemplate');
+const btnSaveTemplate = document.getElementById('btnSaveTemplate');
+
+let editingTemplateState = null; // { tpl, type, isNew }
+
+function openTemplateEditModal(tpl, type) {
+  editingTemplateState = {
+    tpl: tpl || null,
+    type: type,
+    isNew: !tpl
+  };
+
+  if (templateEditModalTitle) {
+    templateEditModalTitle.textContent = tpl ? `Edit ${type === 'sms' ? 'SMS' : 'Interaction'} Template` : `New ${type === 'sms' ? 'SMS' : 'Interaction'} Template`;
+  }
+  if (templateTitleInput) templateTitleInput.value = tpl ? tpl.title : '';
+  if (templateBodyInput) templateBodyInput.value = tpl ? tpl.text : '';
+
+  if (templateEditOverlay) templateEditOverlay.style.display = 'block';
+  if (templateEditModal) templateEditModal.style.display = 'flex';
+  if (templateTitleInput) setTimeout(() => templateTitleInput.focus(), 50);
+}
+
+function closeTemplateEditModal() {
+  if (templateEditOverlay) templateEditOverlay.style.display = 'none';
+  if (templateEditModal) templateEditModal.style.display = 'none';
+  editingTemplateState = null;
+}
+
+if (templateEditClose) templateEditClose.onclick = closeTemplateEditModal;
+if (templateEditOverlay) templateEditOverlay.onclick = closeTemplateEditModal;
+if (btnCancelTemplate) btnCancelTemplate.onclick = closeTemplateEditModal;
+
+if (btnSaveTemplate) {
+  btnSaveTemplate.onclick = () => {
+    if (!editingTemplateState) return;
+    const title = (templateTitleInput?.value || '').trim();
+    const text = (templateBodyInput?.value || '').trim();
+    if (!title || !text) {
+      showBanner('Title and message text cannot be empty', null, null, 2500, 'warning');
+      return;
+    }
+
+    const { tpl, type, isNew } = editingTemplateState;
+    if (isNew) {
+      const newTpl = {
+        id: (type === 'sms' ? 'sms_' : 'int_') + Date.now(),
+        title,
+        text
+      };
+      if (type === 'sms') {
+        quickSmsTemplates.push(newTpl);
+        saveQuickSmsTemplates();
+        renderQuickSmsList();
+      } else {
+        quickInteractionTemplates.push(newTpl);
+        saveQuickInteractionTemplates();
+        renderQuickInteractionList();
+      }
+    } else if (tpl) {
+      tpl.title = title;
+      tpl.text = text;
+      if (type === 'sms') {
+        saveQuickSmsTemplates();
+        renderQuickSmsList();
+      } else {
+        saveQuickInteractionTemplates();
+        renderQuickInteractionList();
+      }
+    }
+
+    closeTemplateEditModal();
+  };
+}
+
+if (btnNewSmsTemplate) {
+  btnNewSmsTemplate.onclick = () => openTemplateEditModal(null, 'sms');
+}
+if (btnNewInteractionTemplate) {
+  btnNewInteractionTemplate.onclick = () => openTemplateEditModal(null, 'interaction');
+}
+
+/* ==========================================================================
+   Break Notifier & Live Header Ticker
+   ========================================================================== */
+const breakTicker = document.getElementById('breakTicker');
+const breakTickerIcon = document.getElementById('breakTickerIcon');
+const breakTickerText = document.getElementById('breakTickerText');
+
+const break1StartInput = document.getElementById('break1Start');
+const lunchStartInput = document.getElementById('lunchStart');
+const break2StartInput = document.getElementById('break2Start');
+const shiftEndInput = document.getElementById('shiftEnd');
+
+const chkNotifyDesktop = document.getElementById('chkNotifyDesktop');
+const chkNotifyToast = document.getElementById('chkNotifyToast');
+
+const breakEventTitle = document.getElementById('breakEventTitle');
+const breakEventTag = document.getElementById('breakEventTag');
+const breakCountdownBig = document.getElementById('breakCountdownBig');
+const breakProgressBar = document.getElementById('breakProgressBar');
+const breakStatusSub = document.getElementById('breakStatusSub');
+
+const DEFAULT_BREAK_SCHEDULE = {
+  break1: '10:00', // 10 min
+  lunch: '13:00',  // 40 min
+  break2: '16:00', // 10 min
+  shiftEnd: '18:00',
+  notifyDesktop: false,
+  notifyToast: true
 };
 
+let breakSchedule = Object.assign({}, DEFAULT_BREAK_SCHEDULE);
+let lastNotifiedEventKey = null;
+
+async function initBreakNotifier() {
+  const saved = await Storage.get('vpad.break_schedule', null);
+  if (saved && typeof saved === 'object') {
+    breakSchedule = Object.assign({}, DEFAULT_BREAK_SCHEDULE, saved);
+  }
+
+  if (break1StartInput) break1StartInput.value = breakSchedule.break1 || '';
+  if (lunchStartInput) lunchStartInput.value = breakSchedule.lunch || '';
+  if (break2StartInput) break2StartInput.value = breakSchedule.break2 || '';
+  if (shiftEndInput) shiftEndInput.value = breakSchedule.shiftEnd || '';
+  if (chkNotifyDesktop) chkNotifyDesktop.checked = Boolean(breakSchedule.notifyDesktop);
+  if (chkNotifyToast) chkNotifyToast.checked = (breakSchedule.notifyToast !== false);
+
+  bindBreakScheduleEvents();
+  updateBreakNotifier();
+  setInterval(updateBreakNotifier, 1000);
+}
+
+function bindBreakScheduleEvents() {
+  const save = () => {
+    breakSchedule.break1 = break1StartInput?.value || '';
+    breakSchedule.lunch = lunchStartInput?.value || '';
+    breakSchedule.break2 = break2StartInput?.value || '';
+    breakSchedule.shiftEnd = shiftEndInput?.value || '';
+    breakSchedule.notifyDesktop = Boolean(chkNotifyDesktop?.checked);
+    breakSchedule.notifyToast = Boolean(chkNotifyToast?.checked);
+    Storage.set('vpad.break_schedule', breakSchedule);
+    updateBreakNotifier();
+  };
+
+  [break1StartInput, lunchStartInput, break2StartInput, shiftEndInput].forEach(inp => {
+    if (inp) inp.addEventListener('change', save);
+  });
+
+  if (chkNotifyDesktop) {
+    chkNotifyDesktop.addEventListener('change', async () => {
+      if (chkNotifyDesktop.checked && typeof Notification !== 'undefined') {
+        if (Notification.permission === 'default') {
+          await Notification.requestPermission();
+        }
+      }
+      save();
+    });
+  }
+
+  if (chkNotifyToast) {
+    chkNotifyToast.addEventListener('change', save);
+  }
+
+  if (breakTicker) {
+    breakTicker.onclick = () => {
+      if (breakNotifierView) breakNotifierView.style.display = 'flex';
+      renderBreakNotifierView();
+    };
+  }
+
+  const ambientBreakBar = document.getElementById('ambientBreakBar');
+  if (ambientBreakBar) {
+    ambientBreakBar.onclick = () => {
+      if (breakNotifierView) breakNotifierView.style.display = 'flex';
+      renderBreakNotifierView();
+    };
+  }
+}
+
+function renderBreakNotifierView() {
+  if (break1StartInput) break1StartInput.value = breakSchedule.break1 || '';
+  if (lunchStartInput) lunchStartInput.value = breakSchedule.lunch || '';
+  if (break2StartInput) break2StartInput.value = breakSchedule.break2 || '';
+  if (shiftEndInput) shiftEndInput.value = breakSchedule.shiftEnd || '';
+  if (chkNotifyDesktop) chkNotifyDesktop.checked = Boolean(breakSchedule.notifyDesktop);
+  if (chkNotifyToast) chkNotifyToast.checked = (breakSchedule.notifyToast !== false);
+  updateBreakNotifier();
+}
+
+function parseTimeToDate(timeStr, now) {
+  if (!timeStr || !timeStr.includes(':')) return null;
+  const [h, m] = timeStr.split(':').map(Number);
+  if (isNaN(h) || isNaN(m)) return null;
+  const d = new Date(now);
+  d.setHours(h, m, 0, 0);
+  return d;
+}
+
+function formatCountdown(sec) {
+  if (sec <= 0) return '00:00';
+  const hrs = Math.floor(sec / 3600);
+  const mins = Math.floor((sec % 3600) / 60);
+  const secs = sec % 60;
+  if (hrs > 0) {
+    return `${hrs}h ${mins}m`;
+  }
+  if (mins > 0) {
+    return `${mins}m ${secs < 10 ? '0' : ''}${secs}s`;
+  }
+  return `${secs < 10 ? '0' : ''}${secs}s`;
+}
+
+function formatBigCountdown(sec) {
+  if (sec <= 0) return '00:00:00';
+  const hrs = Math.floor(sec / 3600);
+  const mins = Math.floor((sec % 3600) / 60);
+  const secs = sec % 60;
+  return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+}
+
+function triggerBreakNotification(key, title, body) {
+  if (lastNotifiedEventKey === key) return;
+  lastNotifiedEventKey = key;
+
+  if (breakSchedule.notifyToast) {
+    showBanner(`${title}: ${body}`, 'Dismiss', null, 8000, 'warning');
+  }
+
+  if (breakSchedule.notifyDesktop && typeof Notification !== 'undefined') {
+    if (Notification.permission === 'granted') {
+      try {
+        new Notification(title, { body: body, icon: 'icons/icon48.png' });
+      } catch (err) {
+        console.error('Notification error:', err);
+      }
+    }
+  }
+}
+
+function updateBreakNotifier() {
+  const now = new Date();
+
+  const b1Start = parseTimeToDate(breakSchedule.break1, now);
+  const b1End = b1Start ? new Date(b1Start.getTime() + 10 * 60 * 1000) : null;
+
+  const lStart = parseTimeToDate(breakSchedule.lunch, now);
+  const lEnd = lStart ? new Date(lStart.getTime() + 40 * 60 * 1000) : null;
+
+  const b2Start = parseTimeToDate(breakSchedule.break2, now);
+  const b2End = b2Start ? new Date(b2Start.getTime() + 10 * 60 * 1000) : null;
+
+  const sEnd = parseTimeToDate(breakSchedule.shiftEnd, now);
+
+  if (!b1Start && !lStart && !b2Start && !sEnd) {
+    if (breakTicker) breakTicker.style.display = 'none';
+    if (breakCountdownBig) breakCountdownBig.textContent = '--:--:--';
+    if (breakEventTitle) breakEventTitle.textContent = 'No Schedule Set';
+    if (breakStatusSub) breakStatusSub.textContent = 'Set your break times below to start timer';
+    return;
+  }
+
+  if (breakTicker) breakTicker.style.display = 'inline-flex';
+
+  let currentPhase = null;
+  let targetTime = null;
+  let eventName = '';
+  let eventTag = '';
+  let icon = '☕';
+  let isActive = false;
+  let notifKey = null;
+
+  if (b1Start && now < b1Start) {
+    currentPhase = 'before_b1';
+    targetTime = b1Start;
+    eventName = 'Next: Break 1';
+    eventTag = '10m break';
+    icon = '☕';
+  } else if (b1Start && b1End && now >= b1Start && now < b1End) {
+    currentPhase = 'in_b1';
+    targetTime = b1End;
+    eventName = 'On Break 1';
+    eventTag = 'Back soon';
+    icon = '☕';
+    isActive = true;
+    notifKey = 'b1_start';
+  } else if (lStart && now < lStart) {
+    currentPhase = 'before_lunch';
+    targetTime = lStart;
+    eventName = 'Next: Lunch';
+    eventTag = '40m lunch';
+    icon = '🍱';
+    if (b1End && Math.abs(now.getTime() - b1End.getTime()) < 3000) {
+      triggerBreakNotification('b1_end', 'Break 1 Finished', 'Ready to resume calls 📞');
+    }
+  } else if (lStart && lEnd && now >= lStart && now < lEnd) {
+    currentPhase = 'in_lunch';
+    targetTime = lEnd;
+    eventName = 'On Lunch';
+    eventTag = 'Back soon';
+    icon = '🍱';
+    isActive = true;
+    notifKey = 'lunch_start';
+  } else if (b2Start && now < b2Start) {
+    currentPhase = 'before_b2';
+    targetTime = b2Start;
+    eventName = 'Next: Break 2';
+    eventTag = '10m break';
+    icon = '☕';
+    if (lEnd && Math.abs(now.getTime() - lEnd.getTime()) < 3000) {
+      triggerBreakNotification('lunch_end', 'Lunch Finished', 'Ready to resume calls 📞');
+    }
+  } else if (b2Start && b2End && now >= b2Start && now < b2End) {
+    currentPhase = 'in_b2';
+    targetTime = b2End;
+    eventName = 'On Break 2';
+    eventTag = 'Back soon';
+    icon = '☕';
+    isActive = true;
+    notifKey = 'b2_start';
+  } else if (sEnd && now < sEnd) {
+    currentPhase = 'before_shift_end';
+    targetTime = sEnd;
+    eventName = 'Next: Shift End';
+    eventTag = 'End of Day';
+    icon = '🏁';
+    if (b2End && Math.abs(now.getTime() - b2End.getTime()) < 3000) {
+      triggerBreakNotification('b2_end', 'Break 2 Finished', 'Ready to resume calls 📞');
+    }
+  } else {
+    currentPhase = 'shift_done';
+    targetTime = null;
+    eventName = 'Shift Completed';
+    eventTag = 'Done';
+    icon = '🏁';
+    if (sEnd && Math.abs(now.getTime() - sEnd.getTime()) < 3000) {
+      triggerBreakNotification('shift_done', 'Shift Completed', 'Great job today! 🎉');
+    }
+  }
+
+  if (notifKey && targetTime) {
+    const diffSec = Math.floor((targetTime.getTime() - now.getTime()) / 1000);
+    if (notifKey === 'b1_start' && diffSec >= 590) {
+      triggerBreakNotification('b1_start', 'Break 1 Started', 'Time for Break 1 (10 min break) ☕');
+    } else if (notifKey === 'lunch_start' && diffSec >= 2390) {
+      triggerBreakNotification('lunch_start', 'Lunch Started', 'Time for Lunch (40 min lunch) 🍱');
+    } else if (notifKey === 'b2_start' && diffSec >= 590) {
+      triggerBreakNotification('b2_start', 'Break 2 Started', 'Time for Break 2 (10 min break) ☕');
+    }
+  }
+
+  if (breakTickerIcon) breakTickerIcon.textContent = icon;
+  if (breakTicker) breakTicker.classList.toggle('active-break', isActive);
+
+  const ambientBreakBar = document.getElementById('ambientBreakBar');
+  const ambientBreakIcon = document.getElementById('ambientBreakIcon');
+  const ambientBreakText = document.getElementById('ambientBreakText');
+
+  if (targetTime) {
+    const diffSec = Math.max(0, Math.floor((targetTime.getTime() - now.getTime()) / 1000));
+    const tickerStr = (diffSec < 60) ? `${diffSec < 10 ? '0' : ''}${diffSec}s` : `${Math.ceil(diffSec / 60)}m`;
+    if (breakTickerText) breakTickerText.textContent = isActive ? `In: ${tickerStr}` : tickerStr;
+    if (breakCountdownBig) breakCountdownBig.textContent = formatBigCountdown(diffSec);
+    if (breakStatusSub) breakStatusSub.textContent = isActive ? `Active break ends at ${targetTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : `Scheduled for ${targetTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+
+    if (ambientBreakBar) {
+      ambientBreakBar.style.display = 'flex';
+      if (ambientBreakIcon) ambientBreakIcon.textContent = icon;
+      if (ambientBreakText) {
+        ambientBreakText.textContent = isActive ? `${eventName} · ${tickerStr} left` : `${eventName} in ${tickerStr}`;
+      }
+    }
+  } else {
+    if (breakTickerText) breakTickerText.textContent = 'Done';
+    if (breakCountdownBig) breakCountdownBig.textContent = '00:00:00';
+    if (breakStatusSub) breakStatusSub.textContent = 'Shift completed for today';
+
+    if (ambientBreakBar) {
+      ambientBreakBar.style.display = 'flex';
+      if (ambientBreakIcon) ambientBreakIcon.textContent = '🏁';
+      if (ambientBreakText) ambientBreakText.textContent = 'Shift Completed';
+    }
+  }
+
+  if (breakEventTitle) breakEventTitle.textContent = eventName;
+  if (breakEventTag) breakEventTag.textContent = eventTag;
+
+  if (b1Start && sEnd) {
+    const totalDayMs = sEnd.getTime() - b1Start.getTime();
+    const elapsedDayMs = now.getTime() - b1Start.getTime();
+    const pct = Math.max(0, Math.min(100, Math.round((elapsedDayMs / totalDayMs) * 100)));
+    if (breakProgressBar) breakProgressBar.style.width = `${pct}%`;
+  }
+}
+
+/* ==========================================================================
+   Settings Screen Handlers
+   ========================================================================== */
 function renderSettingsView() {
   const themeChips = document.getElementById('themeChips');
   themeChips.querySelectorAll('.chip').forEach(c => {
@@ -2909,6 +3717,9 @@ async function init() {
   renderForm();
   updateCommentInput();
   await initCallPad();
+  initMenu();
+  await loadQuickTemplates();
+  await initBreakNotifier();
 }
 
 init();
