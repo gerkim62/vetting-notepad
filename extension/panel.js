@@ -55,14 +55,9 @@ function defaultVettingTypes() {
 
 let types = [];
 let settings = { theme: 'auto', autoClear: 0 };
-let universalState = {
-  callingNumber: '',
-  callerName: '',
-  idNumber: '',
-  yob: '',
-  note: '',
-  attempt: 1
-};
+let callAttempt = 1;
+let callPadKeys = [];
+let callPadValues = {};
 let notes = [];
 let activeNoteId = null;
 let noteSelectComponent = null;
@@ -74,16 +69,22 @@ const curComments = () => {
   if (!Array.isArray(t.comments)) t.comments = [];
   return t.comments;
 };
-let activeTypeId = 'undecided';
+let activeTypeId = null;
 let formValues = {};
 let itemStatus = {};
 let previewOpen = false;
 let autoClearTimer = null;
 let autoClearSeconds = 0;
 
-const curType = () => types.find(t => t.id === activeTypeId) || (activeTypeId === 'undecided' ? null : types[0]);
-const curValues = () => (formValues[activeTypeId] || (formValues[activeTypeId] = {}));
-const curStatus = () => (itemStatus[activeTypeId] || (itemStatus[activeTypeId] = {}));
+const curType = () => types.find(t => t.id === activeTypeId) || types[0] || null;
+const curValues = () => {
+  const tId = activeTypeId || (types[0] ? types[0].id : 'default');
+  return formValues[tId] || (formValues[tId] = {});
+};
+const curStatus = () => {
+  const tId = activeTypeId || (types[0] ? types[0].id : 'default');
+  return itemStatus[tId] || (itemStatus[tId] = {});
+};
 
 function applyTheme(theme) {
   document.documentElement.setAttribute('data-theme', theme);
@@ -508,15 +509,7 @@ function isPrimaryItem(it) {
 }
 
 function buildCopyText(t) {
-  if (activeTypeId === 'undecided' || !t) {
-    const lines = ['Vetting Notepad – Call Intake'];
-    if (universalState.callingNumber) lines.push(`Calling Number: ${universalState.callingNumber}`);
-    if (universalState.callerName) lines.push(`Customer Names: ${universalState.callerName}`);
-    if (universalState.idNumber) lines.push(`ID Number: ${universalState.idNumber}`);
-    if (universalState.yob) lines.push(`Year of Birth: ${universalState.yob}`);
-    if (universalState.note) lines.push(`Note: ${universalState.note}`);
-    return lines.join('\n');
-  }
+  if (!t) return '';
 
   const v = curValues();
   const st = curStatus();
@@ -587,7 +580,7 @@ function buildCopyText(t) {
     const hasPrimaryFailed = failedItems.some(it => isPrimaryItem(it));
     if (hasPrimaryFailed) {
       lines.push('Referred to Retail Centre / Care Desk with original ID.');
-    } else if (universalState.attempt === 2) {
+    } else if (callAttempt === 2) {
       lines.push('Failed vetting again. Not asked to call back. Referred to Retail Centre / Care Desk with original ID.');
     } else {
       const failedLabels = failedItems.map(it => parseLabel(it.label).copy).join(', ');
@@ -676,52 +669,42 @@ btnClear.onclick = () => {
 
   const v = curValues();
   const st = curStatus();
-  const hasUniversal = !!(universalState.callingNumber || universalState.callerName || universalState.idNumber || universalState.yob || universalState.note);
-  if (!Object.values(v).some(x => x && x.trim()) && !Object.values(st).some(Boolean) && !hasUniversal) {
+  const hasCallPadValues = Object.values(callPadValues).some(x => x && x.trim());
+  if (!Object.values(v).some(x => x && x.trim()) && !Object.values(st).some(Boolean) && !hasCallPadValues) {
     return;
   }
 
   const snapVal = JSON.parse(JSON.stringify(formValues));
   const snapStatus = JSON.parse(JSON.stringify(itemStatus));
-  const snapUniversal = Object.assign({}, universalState);
-  const snapActive = activeTypeId;
+  const snapCallPad = Object.assign({}, callPadValues);
+  const snapAttempt = callAttempt;
 
   formValues = {};
   itemStatus = {};
-  universalState = {
-    callingNumber: '',
-    callerName: '',
-    idNumber: '',
-    yob: '',
-    note: '',
-    attempt: 1
-  };
-  activeTypeId = 'undecided';
-  if (typeSelectComponent) {
-    typeSelectComponent.val = 'undecided';
-    typeSelectComponent.sync();
+  callPadValues = {};
+  callAttempt = 1;
+
+  while (callPadKeys.length > 1 && !(callPadKeys[callPadKeys.length - 1].key || '').trim()) {
+    callPadKeys.pop();
   }
-  saveTypes();
+  saveCallPadKeys();
 
   renderForm();
   updateCommentInput();
   syncPreview();
+  renderCallPad();
 
   showClearedFeedback();
 
   showBanner('Call cleared', 'Undo', () => {
     formValues = snapVal;
     itemStatus = snapStatus;
-    universalState = snapUniversal;
-    activeTypeId = snapActive;
-    if (typeSelectComponent) {
-      typeSelectComponent.val = activeTypeId;
-      typeSelectComponent.sync();
-    }
-    saveTypes();
+    callPadValues = snapCallPad;
+    callAttempt = snapAttempt;
     renderForm();
     updateCommentInput();
     syncPreview();
+    renderCallPad();
   }, 4000, 'info');
 };
 
@@ -1001,7 +984,7 @@ function renderCallbackPanelHtml(t, st) {
       </div>
     `;
   } else {
-    const isAttempt2 = universalState.attempt === 2;
+    const isAttempt2 = callAttempt === 2;
     const bodyText = isAttempt2
       ? `Failed vetting again. Not asked to call back. Advise customer to visit <strong>Retail Centre / Care Desk</strong> with original national ID.`
       : `Advised customer to confirm <strong>${escapeHtml(failedLabels)}</strong> and call back. Details logged for callback reference.`;
@@ -1043,215 +1026,362 @@ function renderCallbackPanelOnly() {
   const btnAttempt = document.getElementById('btnToggleAttempt');
   if (btnAttempt) {
     btnAttempt.onclick = () => {
-      universalState.attempt = universalState.attempt === 1 ? 2 : 1;
+      callAttempt = callAttempt === 1 ? 2 : 1;
       renderCallbackPanelOnly();
       syncPreview();
     };
   }
 }
 
-function renderUndecidedView() {
-  const topTypes = [
-    { id: 'swap', name: 'SIM Swap', desc: 'Enhanced Vetting' },
-    { id: 'reversal', name: 'M-PESA Reversal', desc: 'Airtime & Txns' },
-    { id: 'bar_self', name: 'Line Barring', desc: 'Owner / Lost Line' },
-    { id: 'unbar', name: 'Line Unbarring', desc: 'Self Only' },
-    { id: 'puk', name: 'PUK Retrieval', desc: 'Self / Verification' },
-    { id: 'pin_unlock', name: 'PIN Unlock', desc: 'Locked M-PESA PIN' }
-  ];
+/* ==========================================================================
+   Call-Wide Floating Key-Value Notepad (Call Companion)
+   ========================================================================== */
+const callPadFab = document.getElementById('callPadFab');
+const callPadPopover = document.getElementById('callPadPopover');
+const callPadOverlay = document.getElementById('callPadOverlay');
+const callPadClose = document.getElementById('callPadClose');
+const callPadBody = document.getElementById('callPadBody');
 
-  const quickButtonsHtml = topTypes.map(t => `
-    <button type="button" class="intake-quick-btn" data-type-target="${t.id}">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
-      </svg>
-      <div>
-        <div style="font-weight:700;">${escapeHtml(t.name)}</div>
-        <div style="font-size:9.5px;color:var(--text-muted);">${escapeHtml(t.desc)}</div>
-      </div>
-    </button>
-  `).join('');
+async function initCallPad() {
+  const savedKeys = await Storage.get('vpad.callpad_keys', null);
+  if (Array.isArray(savedKeys) && savedKeys.length > 0) {
+    callPadKeys = savedKeys;
+  } else {
+    callPadKeys = [
+      { id: 'caller_name', key: 'Caller Name' }
+    ];
+  }
 
-  return `
-    <div class="intake-container">
-      <div class="intake-banner">
-        <div class="intake-banner-text">Call Intake (Undecided)</div>
-        <div class="intake-banner-hint">Fast intake before picking a vetting type</div>
-      </div>
+  const savedPos = await Storage.get('vpad.callpad_pos', null);
+  if (savedPos && typeof savedPos.x === 'number' && typeof savedPos.y === 'number') {
+    applyFabPosition(savedPos.x, savedPos.y);
+  }
 
-      <div class="intake-fields-grid">
-        <div class="field-container">
-          <div class="material-field ${universalState.callingNumber ? 'has-value expanded' : ''}">
-            <label class="mat-label" for="intake_calling">Calling / Target Line</label>
-            <input type="text" class="mat-input" id="intake_calling" value="${escapeHtml(universalState.callingNumber)}" placeholder="07xx / 01xx" autocomplete="off" spellcheck="false">
-            <div class="mat-underline-continuous"></div>
-          </div>
-        </div>
+  renderCallPad();
+  initCallPadFabDrag();
 
-        <div class="field-container">
-          <div class="material-field ${universalState.idNumber ? 'has-value expanded' : ''}">
-            <label class="mat-label" for="intake_id">ID Number</label>
-            <input type="text" class="mat-input" id="intake_id" value="${escapeHtml(universalState.idNumber)}" placeholder="8 digits" autocomplete="off" spellcheck="false">
-            <div class="mat-underline-continuous"></div>
-          </div>
-        </div>
+  if (callPadOverlay) callPadOverlay.onclick = closeCallPad;
+  if (callPadClose) callPadClose.onclick = closeCallPad;
 
-        <div class="field-container intake-field-full">
-          <div class="material-field ${universalState.callerName ? 'has-value expanded' : ''}">
-            <label class="mat-label" for="intake_name">Customer Full Names</label>
-            <input type="text" class="mat-input" id="intake_name" value="${escapeHtml(universalState.callerName)}" placeholder="Names on View 360" autocomplete="off" spellcheck="false">
-            <div class="mat-underline-continuous"></div>
-          </div>
-        </div>
-
-        <div class="field-container intake-field-full">
-          <div class="material-field ${universalState.yob ? 'has-value expanded' : ''}">
-            <label class="mat-label" for="intake_yob">Year of Birth (YOB)</label>
-            <input type="text" class="mat-input" id="intake_yob" value="${escapeHtml(universalState.yob)}" placeholder="YYYY" autocomplete="off" spellcheck="false">
-            <div class="mat-underline-continuous"></div>
-          </div>
-        </div>
-
-        <div class="field-container intake-field-full">
-          <div class="material-field ${universalState.note ? 'has-value expanded' : ''}">
-            <label class="mat-label" for="intake_note">Quick Scratch Note</label>
-            <input type="text" class="mat-input" id="intake_note" value="${escapeHtml(universalState.note)}" placeholder="Any raw info (goes to comments)..." autocomplete="off" spellcheck="false">
-            <div class="mat-underline-continuous"></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="intake-quick-types">
-        <div class="intake-quick-title">Select Vetting Type to Transition</div>
-        <div class="intake-quick-grid">
-          ${quickButtonsHtml}
-        </div>
-      </div>
-    </div>
-  `;
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && callPadPopover && callPadPopover.style.display !== 'none') {
+      closeCallPad();
+    }
+  });
 }
 
-function syncCurrentToUniversal() {
-  if (activeTypeId === 'undecided') {
-    const inpCalling = document.getElementById('intake_calling');
-    const inpId = document.getElementById('intake_id');
-    const inpName = document.getElementById('intake_name');
-    const inpYob = document.getElementById('intake_yob');
-    const inpNote = document.getElementById('intake_note');
-    if (inpCalling) universalState.callingNumber = inpCalling.value.trim();
-    if (inpId) universalState.idNumber = inpId.value.trim();
-    if (inpName) universalState.callerName = inpName.value.trim();
-    if (inpYob) universalState.yob = inpYob.value.trim();
-    if (inpNote) universalState.note = inpNote.value.trim();
-  } else {
-    const t = curType();
-    if (t) {
-      const v = curValues();
-      const all = [...t.required, ...t.optional];
-      const nameItem = all.find(it => it.v360 === 'fullName' || /full\s*name|sender\s*name/i.test(it.label));
-      const idItem = all.find(it => it.v360 === 'idNumber' || /id\s*number/i.test(it.label));
-      const yobItem = all.find(it => it.v360 === 'yob' || /year\s*of\s*birth/i.test(it.label));
-      const callItem = all.find(it => /calling\s*number/i.test(it.label));
-      if (nameItem && v[nameItem.id]) universalState.callerName = v[nameItem.id];
-      if (idItem && v[idItem.id]) universalState.idNumber = v[idItem.id];
-      if (yobItem && v[yobItem.id]) universalState.yob = v[yobItem.id];
-      if (callItem && v[callItem.id]) universalState.callingNumber = v[callItem.id];
+function saveCallPadKeys() {
+  Storage.set('vpad.callpad_keys', callPadKeys);
+}
+
+function renderCallPad() {
+  if (!callPadBody) return;
+
+  if (!Array.isArray(callPadKeys) || callPadKeys.length === 0) {
+    callPadKeys = [{ id: 'caller_name', key: 'Caller Name' }];
+    saveCallPadKeys();
+  }
+
+  callPadBody.innerHTML = '';
+  callPadKeys.forEach((item, idx) => {
+    const rowEl = createCallPadRowElement(item, idx);
+    callPadBody.appendChild(rowEl);
+  });
+}
+
+function createCallPadRowElement(item, idx) {
+  const id = item.id;
+  const val = callPadValues[id] || '';
+  const isCallerName = (id === 'caller_name');
+  const hasContent = (item.key || '').trim().length > 0 || (val || '').trim().length > 0;
+  const isLast = (idx === callPadKeys.length - 1);
+  const isNewBlank = isLast && !hasContent;
+
+  const row = document.createElement('div');
+  row.className = `callpad-row ${isNewBlank ? 'new-row' : ''}`;
+  row.dataset.keyId = escapeHtml(id);
+  row.dataset.index = String(idx);
+
+  row.innerHTML = `
+    <div class="callpad-key-wrap">
+      <input type="text" class="callpad-key-input" value="${escapeHtml(item.key)}" placeholder="Item" title="Edit label" autocomplete="off" spellcheck="false"${isCallerName ? ' readonly' : ''}>
+      ${isCallerName ? '' : `
+      <button type="button" class="callpad-row-btn delete-btn" title="Delete item" aria-label="Delete item" style="${hasContent ? '' : 'visibility:hidden;'}">
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>`}
+    </div>
+    <div class="callpad-val-wrap">
+      <input type="text" class="callpad-val-input" value="${escapeHtml(val)}" placeholder="Detail..." autocomplete="off" spellcheck="false">
+      <button type="button" class="callpad-row-btn copy-btn" title="Copy detail" aria-label="Copy detail" style="${val.trim() ? '' : 'opacity:0.4;'}">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>
+      </button>
+    </div>
+  `;
+
+  const keyInput = row.querySelector('.callpad-key-input');
+  const valInput = row.querySelector('.callpad-val-input');
+  const btnCopy = row.querySelector('.copy-btn');
+  const btnDelete = row.querySelector('.delete-btn');
+
+  if (keyInput) {
+    keyInput.addEventListener('input', () => {
+      item.key = keyInput.value;
+      saveCallPadKeys();
+      if (btnDelete) {
+        const hc = (item.key || '').trim().length > 0 || (callPadValues[id] || '').trim().length > 0;
+        btnDelete.style.visibility = hc ? 'visible' : 'hidden';
+      }
+    });
+
+    keyInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (valInput) valInput.focus();
+      }
+    });
+
+    keyInput.addEventListener('blur', () => {
+      handleItemBlur(item, keyInput, valInput);
+    });
+  }
+
+  if (valInput) {
+    valInput.addEventListener('input', () => {
+      callPadValues[id] = valInput.value;
+      if (btnDelete) {
+        const hc = (item.key || '').trim().length > 0 || (valInput.value || '').trim().length > 0;
+        btnDelete.style.visibility = hc ? 'visible' : 'hidden';
+      }
+      if (btnCopy) {
+        btnCopy.style.opacity = valInput.value.trim() ? '1' : '0.4';
+      }
+    });
+
+    valInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const nextRow = row.nextElementSibling;
+        if (nextRow) {
+          const nextKey = nextRow.querySelector('.callpad-key-input');
+          if (nextKey) nextKey.focus();
+        } else {
+          const keyVal = keyInput ? keyInput.value.trim() : (item.key || '').trim();
+          const valVal = valInput.value.trim();
+          const hasTyped = (item.id === 'caller_name') ? (valVal.length > 0) : (keyVal.length > 0 || valVal.length > 0);
+          if (hasTyped) {
+            addNewCallPadRow(true);
+          }
+        }
+      }
+    });
+
+    valInput.addEventListener('blur', () => {
+      handleItemBlur(item, keyInput, valInput);
+    });
+  }
+
+  if (btnCopy) {
+    btnCopy.onclick = async () => {
+      const textToCopy = callPadValues[id] || (valInput ? valInput.value : '');
+      if (!textToCopy.trim()) return;
+      await writeToClipboard(textToCopy);
+      const origHtml = btnCopy.innerHTML;
+      const origTitle = btnCopy.title;
+      btnCopy.classList.add('copied-success');
+      btnCopy.title = 'Copied ✓';
+      btnCopy.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>`;
+      setTimeout(() => {
+        btnCopy.classList.remove('copied-success');
+        btnCopy.title = origTitle;
+        btnCopy.innerHTML = origHtml;
+      }, 1200);
+    };
+  }
+
+  if (btnDelete) {
+    btnDelete.onclick = () => {
+      callPadKeys = callPadKeys.filter(k => k.id !== id);
+      delete callPadValues[id];
+      if (callPadKeys.length === 0) {
+        callPadKeys = [{ id: 'caller_name', key: 'Caller Name' }];
+      }
+      saveCallPadKeys();
+      renderCallPad();
+    };
+  }
+
+  return row;
+}
+
+function addNewCallPadRow(focusKey = false) {
+  if (callPadKeys.length > 0) {
+    const last = callPadKeys[callPadKeys.length - 1];
+    const lastKey = (last.key || '').trim();
+    const lastVal = (callPadValues[last.id] || '').trim();
+    if (last.id !== 'caller_name' && !lastKey && !lastVal) {
+      if (focusKey) {
+        const lastRow = callPadBody?.querySelector(`.callpad-row[data-key-id="${last.id}"]`);
+        const keyInp = lastRow?.querySelector('.callpad-key-input');
+        if (keyInp) keyInp.focus();
+      }
+      return;
+    }
+  }
+
+  const newId = 'k_' + Date.now();
+  const newItem = { id: newId, key: '' };
+  callPadKeys.push(newItem);
+  saveCallPadKeys();
+
+  if (callPadBody) {
+    const newIdx = callPadKeys.length - 1;
+    const rowEl = createCallPadRowElement(newItem, newIdx);
+    callPadBody.appendChild(rowEl);
+    if (focusKey) {
+      const keyInp = rowEl.querySelector('.callpad-key-input');
+      if (keyInp) keyInp.focus();
     }
   }
 }
 
-function populateUniversalIntoType(targetTypeId) {
-  if (targetTypeId === 'undecided') return;
-  const targetType = types.find(t => t.id === targetTypeId);
-  if (!targetType) return;
-  const v = formValues[targetTypeId] || (formValues[targetTypeId] = {});
-  const all = [...targetType.required, ...targetType.optional];
+function handleItemBlur(item, keyInput, valInput) {
+  if (!Array.isArray(callPadKeys) || callPadKeys.length === 0) return;
+  const lastItem = callPadKeys[callPadKeys.length - 1];
+  if (lastItem.id !== item.id) return;
 
-  const nameItem = all.find(it => it.v360 === 'fullName' || /full\s*name|sender\s*name/i.test(it.label));
-  const idItem = all.find(it => it.v360 === 'idNumber' || /id\s*number/i.test(it.label));
-  const yobItem = all.find(it => it.v360 === 'yob' || /year\s*of\s*birth/i.test(it.label));
-  const callItem = all.find(it => /calling\s*number/i.test(it.label));
+  const keyVal = keyInput ? keyInput.value.trim() : (item.key || '').trim();
+  const valVal = valInput ? valInput.value.trim() : (callPadValues[item.id] || '').trim();
+  const hasTyped = (item.id === 'caller_name') ? (valVal.length > 0) : (keyVal.length > 0 || valVal.length > 0);
 
-  if (nameItem && universalState.callerName && !v[nameItem.id]) v[nameItem.id] = universalState.callerName;
-  if (idItem && universalState.idNumber && !v[idItem.id]) v[idItem.id] = universalState.idNumber;
-  if (yobItem && universalState.yob && !v[yobItem.id]) v[yobItem.id] = universalState.yob;
-  if (callItem && universalState.callingNumber && !v[callItem.id]) v[callItem.id] = universalState.callingNumber;
-
-  if (universalState.note && !v._comment) {
-    v._comment = universalState.note;
+  if (hasTyped) {
+    addNewCallPadRow(false);
   }
 }
 
+function openCallPad() {
+  if (callPadPopover) callPadPopover.style.display = 'flex';
+  if (callPadOverlay) callPadOverlay.style.display = 'block';
+  renderCallPad();
+  const firstVal = callPadBody?.querySelector('.callpad-val-input');
+  if (firstVal) firstVal.focus();
+}
+
+function closeCallPad() {
+  if (callPadPopover) callPadPopover.style.display = 'none';
+  if (callPadOverlay) callPadOverlay.style.display = 'none';
+}
+
+function toggleCallPad() {
+  if (callPadPopover && callPadPopover.style.display !== 'none') {
+    closeCallPad();
+  } else {
+    openCallPad();
+  }
+}
+
+function applyFabPosition(x, y) {
+  if (!callPadFab) return;
+  const app = document.getElementById('app') || document.body;
+  const rect = app.getBoundingClientRect();
+  const maxX = Math.max(10, rect.width - 34);
+  const maxY = Math.max(10, rect.height - 34);
+  const clampedX = Math.max(6, Math.min(maxX, x));
+  const clampedY = Math.max(6, Math.min(maxY, y));
+  callPadFab.style.left = `${clampedX}px`;
+  callPadFab.style.top = `${clampedY}px`;
+  callPadFab.style.right = 'auto';
+  callPadFab.style.bottom = 'auto';
+}
+
+function initCallPadFabDrag() {
+  if (!callPadFab) return;
+  let isDragging = false;
+  let hasMoved = false;
+  let startX = 0, startY = 0;
+  let origLeft = 0, origTop = 0;
+
+  const onPointerDown = (e) => {
+    isDragging = true;
+    hasMoved = false;
+    callPadFab.classList.add('is-dragging');
+    const clientX = e.clientX ?? (e.touches && e.touches[0].clientX);
+    const clientY = e.clientY ?? (e.touches && e.touches[0].clientY);
+    startX = clientX;
+    startY = clientY;
+
+    const rect = callPadFab.getBoundingClientRect();
+    const appRect = (document.getElementById('app') || document.body).getBoundingClientRect();
+    origLeft = rect.left - appRect.left;
+    origTop = rect.top - appRect.top;
+
+    window.addEventListener('mousemove', onPointerMove, { passive: false });
+    window.addEventListener('mouseup', onPointerUp);
+    window.addEventListener('touchmove', onPointerMove, { passive: false });
+    window.addEventListener('touchend', onPointerUp);
+  };
+
+  const onPointerMove = (e) => {
+    if (!isDragging) return;
+    const clientX = e.clientX ?? (e.touches && e.touches[0].clientX);
+    const clientY = e.clientY ?? (e.touches && e.touches[0].clientY);
+    const dx = clientX - startX;
+    const dy = clientY - startY;
+
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+      hasMoved = true;
+      if (e.cancelable) e.preventDefault();
+      applyFabPosition(origLeft + dx, origTop + dy);
+    }
+  };
+
+  const onPointerUp = () => {
+    if (!isDragging) return;
+    isDragging = false;
+    callPadFab.classList.remove('is-dragging');
+    window.removeEventListener('mousemove', onPointerMove);
+    window.removeEventListener('mouseup', onPointerUp);
+    window.removeEventListener('touchmove', onPointerMove);
+    window.removeEventListener('touchend', onPointerUp);
+
+    if (hasMoved) {
+      const appRect = (document.getElementById('app') || document.body).getBoundingClientRect();
+      const rect = callPadFab.getBoundingClientRect();
+      Storage.set('vpad.callpad_pos', {
+        x: rect.left - appRect.left,
+        y: rect.top - appRect.top
+      });
+      setTimeout(() => { hasMoved = false; }, 50);
+    }
+  };
+
+  callPadFab.addEventListener('mousedown', onPointerDown);
+  callPadFab.addEventListener('touchstart', onPointerDown, { passive: false });
+  callPadFab.addEventListener('click', (e) => {
+    if (hasMoved) {
+      hasMoved = false;
+      return;
+    }
+    toggleCallPad();
+  });
+}
+
 function switchToType(targetId) {
-  syncCurrentToUniversal();
   activeTypeId = targetId;
   if (typeSelectComponent) {
     typeSelectComponent.val = targetId;
     typeSelectComponent.sync();
   }
-  saveTypes();
-  populateUniversalIntoType(targetId);
+  Storage.set('vpad.active', targetId);
   renderForm();
   updateCommentInput();
-  if (targetId !== 'undecided') {
-    const emptyInp = mainForm.querySelector('.mat-input:not([value]), .mat-input[value=""]');
-    if (emptyInp) emptyInp.focus();
-  }
-}
-
-function bindUndecidedEvents() {
-  const inputs = mainForm.querySelectorAll('.mat-input');
-  inputs.forEach((input, idx) => {
-    const box = input.closest('.material-field');
-    input.addEventListener('focus', () => box.classList.add('is-focused', 'expanded'));
-    input.addEventListener('blur', () => {
-      box.classList.remove('is-focused');
-      if (input.value.trim().length === 0) box.classList.remove('expanded');
-    });
-    input.addEventListener('input', () => {
-      syncCurrentToUniversal();
-      syncPreview();
-    });
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        const next = inputs[idx + 1];
-        if (next) next.focus();
-        else {
-          const firstBtn = mainForm.querySelector('.intake-quick-btn');
-          if (firstBtn) firstBtn.focus();
-        }
-      }
-    });
-    input.addEventListener('paste', async (e) => {
-      setTimeout(() => {
-        const text = input.value;
-        const parsed = parseView360Text(text);
-        if (parsed) {
-          if (parsed.fullName) universalState.callerName = parsed.fullName;
-          if (parsed.idNumber) universalState.idNumber = parsed.idNumber;
-          if (parsed.yob) universalState.yob = parsed.yob;
-          if (parsed.msisdn) universalState.callingNumber = parsed.msisdn;
-          renderForm();
-          showBanner('Pasted and mapped View 360 card details', null, null, 3000, 'info');
-        }
-      }, 50);
-    });
-  });
-
-  mainForm.querySelectorAll('.intake-quick-btn').forEach(btn => {
-    btn.onclick = () => {
-      const targetId = btn.dataset.typeTarget;
-      switchToType(targetId);
-    };
-  });
+  const emptyInp = mainForm.querySelector('.mat-input:not([value]), .mat-input[value=""]');
+  if (emptyInp) emptyInp.focus();
 }
 
 function renderForm() {
   const t = curType();
-  if (activeTypeId === 'undecided' || !t) {
-    mainForm.innerHTML = renderUndecidedView();
-    bindUndecidedEvents();
+  if (!t) {
+    mainForm.innerHTML = '<div style="padding:24px 16px;text-align:center;color:var(--text-muted);font-size:11px;">No vetting type selected</div>';
     syncPreview();
     return;
   }
@@ -1512,7 +1642,7 @@ function bindFormEvents() {
   const btnAttempt = document.getElementById('btnToggleAttempt');
   if (btnAttempt) {
     btnAttempt.onclick = () => {
-      universalState.attempt = universalState.attempt === 1 ? 2 : 1;
+      callAttempt = callAttempt === 1 ? 2 : 1;
       renderCallbackPanelOnly();
       syncPreview();
     };
@@ -1855,10 +1985,7 @@ const typeSelectMount = document.getElementById('typeSelectMount');
 let typeSelectComponent = null;
 
 function initTypeSelect() {
-  const options = [
-    { value: 'undecided', label: '📞 Undecided (Intake)' },
-    ...types.map(t => ({ value: t.id, label: t.name }))
-  ];
+  const options = types.map(t => ({ value: t.id, label: t.name }));
   typeSelectComponent = new CreatableSelect(typeSelectMount, {
     options,
     value: activeTypeId,
@@ -1886,10 +2013,7 @@ function initTypeSelect() {
 
 function refreshTypeSelect() {
   if (typeSelectComponent) {
-    const options = [
-      { value: 'undecided', label: '📞 Undecided (Intake)' },
-      ...types.map(t => ({ value: t.id, label: t.name }))
-    ];
+    const options = types.map(t => ({ value: t.id, label: t.name }));
     typeSelectComponent.setOptions(options, activeTypeId);
   }
 }
@@ -1903,10 +2027,6 @@ const btnBackEdit = document.getElementById('btnBackEdit');
 const editPane = document.getElementById('editPane');
 
 btnEditType.onclick = () => {
-  if (activeTypeId === 'undecided') {
-    showBanner('Please select a specific vetting type to customize its items.', null, null, 3000, 'info');
-    return;
-  }
   openEditView();
 };
 btnBackEdit.onclick = () => closeEditView();
@@ -2779,15 +2899,16 @@ async function init() {
   await loadNotes();
   initNoteSelect();
 
-  activeTypeId = await Storage.get('vpad.active', 'undecided');
-  if (activeTypeId !== 'undecided' && !types.some(t => t.id === activeTypeId)) {
-    activeTypeId = 'undecided';
+  activeTypeId = await Storage.get('vpad.active', null);
+  if (!activeTypeId || activeTypeId === 'undecided' || !types.some(t => t.id === activeTypeId)) {
+    activeTypeId = types[0] ? types[0].id : null;
   }
 
   applyTheme(settings.theme || 'auto');
   initTypeSelect();
   renderForm();
   updateCommentInput();
+  await initCallPad();
 }
 
 init();

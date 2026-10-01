@@ -159,6 +159,32 @@
         </div>
       </div>
     </div> <!-- /.views-root -->
+
+    <!-- Call-Wide Floating Key-Value Notepad (Call Companion) -->
+    <div class="callpad-overlay" id="callPadOverlay" style="display:none;"></div>
+    <div class="callpad-popover" id="callPadPopover" style="display:none;" role="dialog" aria-label="Call Items">
+      <div class="callpad-header">
+        <div class="callpad-title">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+            <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+          </svg>
+          <span>Call Items</span>
+        </div>
+        <button type="button" class="callpad-close" id="callPadClose" title="Close" aria-label="Close">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+      <div class="callpad-body" id="callPadBody"></div>
+    </div>
+
+    <!-- Draggable Floating Action Button (FAB) -->
+    <button type="button" class="callpad-fab" id="callPadFab" title="Call Items (Current Call)" aria-label="Call Items">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>
+        <rect x="8" y="2" width="8" height="4" rx="1" ry="1"/>
+      </svg>
+    </button>
   </div> <!-- /#app -->
 
   <script type="module" src="panel.js"></script>
