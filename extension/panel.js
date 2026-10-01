@@ -55,20 +55,30 @@ function defaultVettingTypes() {
 
 let types = [];
 let settings = { theme: 'auto', autoClear: 0 };
+let universalState = {
+  callingNumber: '',
+  callerName: '',
+  idNumber: '',
+  yob: '',
+  note: '',
+  attempt: 1
+};
+let persistentNotes = [];
+
 const curComments = () => {
   const t = curType();
   if (!t) return [];
   if (!Array.isArray(t.comments)) t.comments = [];
   return t.comments;
 };
-let activeTypeId = '';
+let activeTypeId = 'undecided';
 let formValues = {};
 let itemStatus = {};
 let previewOpen = false;
 let autoClearTimer = null;
 let autoClearSeconds = 0;
 
-const curType = () => types.find(t => t.id === activeTypeId) || types[0];
+const curType = () => types.find(t => t.id === activeTypeId) || (activeTypeId === 'undecided' ? null : types[0]);
 const curValues = () => (formValues[activeTypeId] || (formValues[activeTypeId] = {}));
 const curStatus = () => (itemStatus[activeTypeId] || (itemStatus[activeTypeId] = {}));
 
@@ -457,10 +467,60 @@ function parseLabel(raw) {
 /* ==========================================================================
    Build Text Output & Copy Operations
    ========================================================================== */
+function isVettingItem(it) {
+  if (!it) return false;
+  const lbl = (it.label || '').toLowerCase();
+  const id = (it.id || '').toLowerCase();
+  if (
+    lbl.includes('calling number') ||
+    lbl.includes('line to swap') ||
+    lbl.includes('serial') ||
+    lbl.includes('simex') ||
+    lbl.includes('transaction id') ||
+    lbl.includes('sr number') ||
+    lbl.includes('amount') ||
+    lbl.includes('alternative number') ||
+    lbl.includes('reversal type') ||
+    lbl.includes('wrong account') ||
+    lbl.includes('correct account') ||
+    it.excludeFromCount
+  ) {
+    return false;
+  }
+  return true;
+}
+
+function isPrimaryItem(it) {
+  if (!it) return false;
+  const lbl = (it.label || '').toLowerCase();
+  return (
+    it.v360 === 'fullName' ||
+    it.v360 === 'idNumber' ||
+    it.v360 === 'yob' ||
+    lbl.includes('full name') ||
+    lbl.includes('owner name') ||
+    lbl.includes('id number') ||
+    lbl.includes('year of birth')
+  );
+}
+
 function buildCopyText(t) {
+  if (activeTypeId === 'undecided' || !t) {
+    const lines = ['Vetting Notepad – Call Intake'];
+    if (universalState.callingNumber) lines.push(`Calling Number: ${universalState.callingNumber}`);
+    if (universalState.callerName) lines.push(`Customer Names: ${universalState.callerName}`);
+    if (universalState.idNumber) lines.push(`ID Number: ${universalState.idNumber}`);
+    if (universalState.yob) lines.push(`Year of Birth: ${universalState.yob}`);
+    if (universalState.note) lines.push(`Note: ${universalState.note}`);
+    return lines.join('\n');
+  }
+
   const v = curValues();
   const st = curStatus();
   const lines = [];
+
+  const title = t.copyTitle || `${t.name} – Vetting`;
+  lines.push(title);
 
   const c = (v._comment || '').trim();
   if (c) lines.push(c);
@@ -484,9 +544,14 @@ function buildCopyText(t) {
         if (val) {
           const { copy: copyLabel } = parseLabel(git.label);
           let str = `${copyLabel}: ${val}`;
-          if (st[git.id] === 'passed') str += ' (Passed)';
-          else if (st[git.id] === 'failed') str += ' (Failed)';
+          if (isVettingItem(git)) {
+            if (st[git.id] === 'failed') str += ' (Failed)';
+            else str += ' (Passed)';
+          }
           parts.push(str);
+        } else if (st[git.id] === 'failed') {
+          const { copy: copyLabel } = parseLabel(git.label);
+          parts.push(`${copyLabel}: Failed (Failed)`);
         }
       }
       if (parts.length > 0) {
@@ -501,10 +566,29 @@ function buildCopyText(t) {
       if (val) {
         const { copy: copyLabel } = parseLabel(it.label);
         let line = `${copyLabel}: ${val}`;
-        if (st[it.id] === 'passed') line += ' (Passed)';
-        else if (st[it.id] === 'failed') line += ' (Failed)';
+        if (isVettingItem(it)) {
+          if (st[it.id] === 'failed') line += ' (Failed)';
+          else line += ' (Passed)';
+        }
         lines.push(line);
+      } else if (st[it.id] === 'failed') {
+        const { copy: copyLabel } = parseLabel(it.label);
+        lines.push(`${copyLabel}: Failed (Failed)`);
       }
+    }
+  }
+
+  // SAKA Failed Callback / Referral appended text
+  const failedItems = allItems.filter(it => st[it.id] === 'failed');
+  if (failedItems.length > 0) {
+    const hasPrimaryFailed = failedItems.some(it => isPrimaryItem(it));
+    if (hasPrimaryFailed) {
+      lines.push('Referred to Retail Centre / Care Desk with original ID.');
+    } else if (universalState.attempt === 2) {
+      lines.push('Failed vetting again. Not asked to call back. Referred to Retail Centre / Care Desk with original ID.');
+    } else {
+      const failedLabels = failedItems.map(it => parseLabel(it.label).copy).join(', ');
+      lines.push(`Failed vetting. Advised to confirm ${failedLabels} and call back.`);
     }
   }
 
@@ -589,24 +673,49 @@ btnClear.onclick = () => {
 
   const v = curValues();
   const st = curStatus();
-  if (!Object.values(v).some(x => x && x.trim()) && !Object.values(st).some(Boolean)) {
+  const hasUniversal = !!(universalState.callingNumber || universalState.callerName || universalState.idNumber || universalState.yob || universalState.note);
+  if (!Object.values(v).some(x => x && x.trim()) && !Object.values(st).some(Boolean) && !hasUniversal) {
     return;
   }
 
-  const snapVal = Object.assign({}, v);
-  const snapStatus = Object.assign({}, st);
+  const snapVal = JSON.parse(JSON.stringify(formValues));
+  const snapStatus = JSON.parse(JSON.stringify(itemStatus));
+  const snapUniversal = Object.assign({}, universalState);
+  const snapActive = activeTypeId;
 
-  formValues[activeTypeId] = {};
-  itemStatus[activeTypeId] = {};
+  formValues = {};
+  itemStatus = {};
+  universalState = {
+    callingNumber: '',
+    callerName: '',
+    idNumber: '',
+    yob: '',
+    note: '',
+    attempt: 1
+  };
+  activeTypeId = 'undecided';
+  if (typeSelectComponent) {
+    typeSelectComponent.val = 'undecided';
+    typeSelectComponent.sync();
+  }
+  saveTypes();
+
   renderForm();
   updateCommentInput();
   syncPreview();
 
   showClearedFeedback();
 
-  showBanner('Details cleared', 'Undo', () => {
-    formValues[activeTypeId] = snapVal;
-    itemStatus[activeTypeId] = snapStatus;
+  showBanner('Call cleared', 'Undo', () => {
+    formValues = snapVal;
+    itemStatus = snapStatus;
+    universalState = snapUniversal;
+    activeTypeId = snapActive;
+    if (typeSelectComponent) {
+      typeSelectComponent.val = activeTypeId;
+      typeSelectComponent.sync();
+    }
+    saveTypes();
     renderForm();
     updateCommentInput();
     syncPreview();
@@ -750,9 +859,17 @@ function setupInfoPopovers() {
   });
 }
 
+function getItemEffectiveStatus(it, st, val) {
+  if (!it) return null;
+  if (st[it.id] === 'failed') return 'failed';
+  if ((val || '').trim().length > 0) return 'passed';
+  return null;
+}
+
 function getGroupStatus(grpItems, st) {
   if (!grpItems || grpItems.length === 0) return null;
-  const statuses = grpItems.map(it => st[it.id] || '');
+  const v = curValues();
+  const statuses = grpItems.map(it => getItemEffectiveStatus(it, st, v[it.id]));
   if (statuses.some(s => s === 'failed')) return 'failed';
   if (statuses.every(s => s === 'passed')) return 'passed';
   if (statuses.some(s => s === 'passed')) return 'partial';
@@ -791,12 +908,13 @@ function updateSecondaryCounter() {
   pill.style.display = 'inline-flex';
 
   const st = curStatus();
+  const v = curValues();
   let passedCount = 0;
   let failedCount = 0;
 
   const processedGroups = new Set();
   t.optional.forEach(it => {
-    if (it.excludeFromCount) return; // policy-only: skip count
+    if (it.excludeFromCount) return;
     if (it.group) {
       if (processedGroups.has(it.group)) return;
       processedGroups.add(it.group);
@@ -806,8 +924,9 @@ function updateSecondaryCounter() {
       if (grpStatus === 'passed') passedCount++;
       else if (grpStatus === 'failed') failedCount++;
     } else {
-      if (st[it.id] === 'passed') passedCount++;
-      if (st[it.id] === 'failed') failedCount++;
+      const status = getItemEffectiveStatus(it, st, v[it.id]);
+      if (status === 'passed') passedCount++;
+      if (status === 'failed') failedCount++;
     }
   });
 
@@ -855,9 +974,284 @@ function renderItemList(items, kind, st) {
   return html;
 }
 
-function renderForm() {
+function renderCallbackPanelHtml(t, st) {
+  const allItems = [...t.required, ...t.optional];
+  const failedItems = allItems.filter(it => st[it.id] === 'failed');
+  if (failedItems.length === 0) return '';
+
+  const hasPrimaryFailed = failedItems.some(it => isPrimaryItem(it));
+  const failedLabels = failedItems.map(it => parseLabel(it.label).copy).join(', ');
+
+  let contentHtml = '';
+  if (hasPrimaryFailed) {
+    contentHtml = `
+      <div class="saka-callback-panel primary-failed">
+        <div class="saka-callback-head">
+          <div class="saka-callback-title" style="color:var(--color-danger);">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            Personal Details Failed (SAKA VMDA-0001)
+          </div>
+        </div>
+        <div class="saka-callback-body">
+          Stop vetting. Advise customer to visit <strong>Retail Centre / Care Desk</strong> with original ID. Do not probe further account details.
+        </div>
+      </div>
+    `;
+  } else {
+    const isAttempt2 = universalState.attempt === 2;
+    const bodyText = isAttempt2
+      ? `Failed vetting again. Not asked to call back. Advise customer to visit <strong>Retail Centre / Care Desk</strong> with original national ID.`
+      : `Advised customer to confirm <strong>${escapeHtml(failedLabels)}</strong> and call back. Details logged for callback reference.`;
+
+    contentHtml = `
+      <div class="saka-callback-panel">
+        <div class="saka-callback-head">
+          <div class="saka-callback-title">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            Failed Vetting Callback (SAKA)
+          </div>
+          <button type="button" class="saka-attempt-pill ${isAttempt2 ? 'active' : ''}" id="btnToggleAttempt" title="Toggle 1st vs 2nd failure">
+            ${isAttempt2 ? '2nd Failure' : '1st Failure'}
+          </button>
+        </div>
+        <div class="saka-callback-body">
+          ${bodyText}
+        </div>
+      </div>
+    `;
+  }
+  return contentHtml;
+}
+
+function renderCallbackPanelOnly() {
   const t = curType();
   if (!t) return;
+  const existing = mainForm.querySelector('.saka-callback-panel');
+  const newHtml = renderCallbackPanelHtml(t, curStatus());
+  if (existing) {
+    if (newHtml) {
+      existing.outerHTML = newHtml;
+    } else {
+      existing.remove();
+    }
+  } else if (newHtml) {
+    mainForm.insertAdjacentHTML('beforeend', newHtml);
+  }
+  const btnAttempt = document.getElementById('btnToggleAttempt');
+  if (btnAttempt) {
+    btnAttempt.onclick = () => {
+      universalState.attempt = universalState.attempt === 1 ? 2 : 1;
+      renderCallbackPanelOnly();
+      syncPreview();
+    };
+  }
+}
+
+function renderUndecidedView() {
+  const topTypes = [
+    { id: 'swap', name: 'SIM Swap', desc: 'Enhanced Vetting' },
+    { id: 'reversal', name: 'M-PESA Reversal', desc: 'Airtime & Txns' },
+    { id: 'bar_self', name: 'Line Barring', desc: 'Owner / Lost Line' },
+    { id: 'unbar', name: 'Line Unbarring', desc: 'Self Only' },
+    { id: 'puk', name: 'PUK Retrieval', desc: 'Self / Verification' },
+    { id: 'pin_unlock', name: 'PIN Unlock', desc: 'Locked M-PESA PIN' }
+  ];
+
+  const quickButtonsHtml = topTypes.map(t => `
+    <button type="button" class="intake-quick-btn" data-type-target="${t.id}">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+      </svg>
+      <div>
+        <div style="font-weight:700;">${escapeHtml(t.name)}</div>
+        <div style="font-size:9.5px;color:var(--text-muted);">${escapeHtml(t.desc)}</div>
+      </div>
+    </button>
+  `).join('');
+
+  return `
+    <div class="intake-container">
+      <div class="intake-banner">
+        <div class="intake-banner-text">Call Intake (Undecided)</div>
+        <div class="intake-banner-hint">Fast intake before picking a vetting type</div>
+      </div>
+
+      <div class="intake-fields-grid">
+        <div class="field-container">
+          <div class="material-field ${universalState.callingNumber ? 'has-value expanded' : ''}">
+            <label class="mat-label" for="intake_calling">Calling / Target Line</label>
+            <input type="text" class="mat-input" id="intake_calling" value="${escapeHtml(universalState.callingNumber)}" placeholder="07xx / 01xx" autocomplete="off" spellcheck="false">
+            <div class="mat-underline-continuous"></div>
+          </div>
+        </div>
+
+        <div class="field-container">
+          <div class="material-field ${universalState.idNumber ? 'has-value expanded' : ''}">
+            <label class="mat-label" for="intake_id">ID Number</label>
+            <input type="text" class="mat-input" id="intake_id" value="${escapeHtml(universalState.idNumber)}" placeholder="8 digits" autocomplete="off" spellcheck="false">
+            <div class="mat-underline-continuous"></div>
+          </div>
+        </div>
+
+        <div class="field-container intake-field-full">
+          <div class="material-field ${universalState.callerName ? 'has-value expanded' : ''}">
+            <label class="mat-label" for="intake_name">Customer Full Names</label>
+            <input type="text" class="mat-input" id="intake_name" value="${escapeHtml(universalState.callerName)}" placeholder="Names on View 360" autocomplete="off" spellcheck="false">
+            <div class="mat-underline-continuous"></div>
+          </div>
+        </div>
+
+        <div class="field-container intake-field-full">
+          <div class="material-field ${universalState.yob ? 'has-value expanded' : ''}">
+            <label class="mat-label" for="intake_yob">Year of Birth (YOB)</label>
+            <input type="text" class="mat-input" id="intake_yob" value="${escapeHtml(universalState.yob)}" placeholder="YYYY" autocomplete="off" spellcheck="false">
+            <div class="mat-underline-continuous"></div>
+          </div>
+        </div>
+
+        <div class="field-container intake-field-full">
+          <div class="material-field ${universalState.note ? 'has-value expanded' : ''}">
+            <label class="mat-label" for="intake_note">Quick Scratch Note</label>
+            <input type="text" class="mat-input" id="intake_note" value="${escapeHtml(universalState.note)}" placeholder="Any raw info (goes to comments)..." autocomplete="off" spellcheck="false">
+            <div class="mat-underline-continuous"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="intake-quick-types">
+        <div class="intake-quick-title">Select Vetting Type to Transition</div>
+        <div class="intake-quick-grid">
+          ${quickButtonsHtml}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function syncCurrentToUniversal() {
+  if (activeTypeId === 'undecided') {
+    const inpCalling = document.getElementById('intake_calling');
+    const inpId = document.getElementById('intake_id');
+    const inpName = document.getElementById('intake_name');
+    const inpYob = document.getElementById('intake_yob');
+    const inpNote = document.getElementById('intake_note');
+    if (inpCalling) universalState.callingNumber = inpCalling.value.trim();
+    if (inpId) universalState.idNumber = inpId.value.trim();
+    if (inpName) universalState.callerName = inpName.value.trim();
+    if (inpYob) universalState.yob = inpYob.value.trim();
+    if (inpNote) universalState.note = inpNote.value.trim();
+  } else {
+    const t = curType();
+    if (t) {
+      const v = curValues();
+      const all = [...t.required, ...t.optional];
+      const nameItem = all.find(it => it.v360 === 'fullName' || /full\s*name|sender\s*name/i.test(it.label));
+      const idItem = all.find(it => it.v360 === 'idNumber' || /id\s*number/i.test(it.label));
+      const yobItem = all.find(it => it.v360 === 'yob' || /year\s*of\s*birth/i.test(it.label));
+      const callItem = all.find(it => /calling\s*number/i.test(it.label));
+      if (nameItem && v[nameItem.id]) universalState.callerName = v[nameItem.id];
+      if (idItem && v[idItem.id]) universalState.idNumber = v[idItem.id];
+      if (yobItem && v[yobItem.id]) universalState.yob = v[yobItem.id];
+      if (callItem && v[callItem.id]) universalState.callingNumber = v[callItem.id];
+    }
+  }
+}
+
+function populateUniversalIntoType(targetTypeId) {
+  if (targetTypeId === 'undecided') return;
+  const targetType = types.find(t => t.id === targetTypeId);
+  if (!targetType) return;
+  const v = formValues[targetTypeId] || (formValues[targetTypeId] = {});
+  const all = [...targetType.required, ...targetType.optional];
+
+  const nameItem = all.find(it => it.v360 === 'fullName' || /full\s*name|sender\s*name/i.test(it.label));
+  const idItem = all.find(it => it.v360 === 'idNumber' || /id\s*number/i.test(it.label));
+  const yobItem = all.find(it => it.v360 === 'yob' || /year\s*of\s*birth/i.test(it.label));
+  const callItem = all.find(it => /calling\s*number/i.test(it.label));
+
+  if (nameItem && universalState.callerName && !v[nameItem.id]) v[nameItem.id] = universalState.callerName;
+  if (idItem && universalState.idNumber && !v[idItem.id]) v[idItem.id] = universalState.idNumber;
+  if (yobItem && universalState.yob && !v[yobItem.id]) v[yobItem.id] = universalState.yob;
+  if (callItem && universalState.callingNumber && !v[callItem.id]) v[callItem.id] = universalState.callingNumber;
+
+  if (universalState.note && !v._comment) {
+    v._comment = universalState.note;
+  }
+}
+
+function switchToType(targetId) {
+  syncCurrentToUniversal();
+  activeTypeId = targetId;
+  if (typeSelectComponent) {
+    typeSelectComponent.val = targetId;
+    typeSelectComponent.sync();
+  }
+  saveTypes();
+  populateUniversalIntoType(targetId);
+  renderForm();
+  updateCommentInput();
+  if (targetId !== 'undecided') {
+    const emptyInp = mainForm.querySelector('.mat-input:not([value]), .mat-input[value=""]');
+    if (emptyInp) emptyInp.focus();
+  }
+}
+
+function bindUndecidedEvents() {
+  const inputs = mainForm.querySelectorAll('.mat-input');
+  inputs.forEach((input, idx) => {
+    const box = input.closest('.material-field');
+    input.addEventListener('focus', () => box.classList.add('is-focused', 'expanded'));
+    input.addEventListener('blur', () => {
+      box.classList.remove('is-focused');
+      if (input.value.trim().length === 0) box.classList.remove('expanded');
+    });
+    input.addEventListener('input', () => {
+      syncCurrentToUniversal();
+      syncPreview();
+    });
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const next = inputs[idx + 1];
+        if (next) next.focus();
+        else {
+          const firstBtn = mainForm.querySelector('.intake-quick-btn');
+          if (firstBtn) firstBtn.focus();
+        }
+      }
+    });
+    input.addEventListener('paste', async (e) => {
+      setTimeout(() => {
+        const text = input.value;
+        const parsed = parseView360Text(text);
+        if (parsed) {
+          if (parsed.fullName) universalState.callerName = parsed.fullName;
+          if (parsed.idNumber) universalState.idNumber = parsed.idNumber;
+          if (parsed.yob) universalState.yob = parsed.yob;
+          if (parsed.msisdn) universalState.callingNumber = parsed.msisdn;
+          renderForm();
+          showBanner('Pasted and mapped View 360 card details', null, null, 3000, 'info');
+        }
+      }, 50);
+    });
+  });
+
+  mainForm.querySelectorAll('.intake-quick-btn').forEach(btn => {
+    btn.onclick = () => {
+      const targetId = btn.dataset.typeTarget;
+      switchToType(targetId);
+    };
+  });
+}
+
+function renderForm() {
+  const t = curType();
+  if (activeTypeId === 'undecided' || !t) {
+    mainForm.innerHTML = renderUndecidedView();
+    bindUndecidedEvents();
+    syncPreview();
+    return;
+  }
   const st = curStatus();
 
   let html = '';
@@ -876,6 +1270,8 @@ function renderForm() {
     `;
     html += renderItemList(t.optional, 'optional', st);
   }
+
+  html += renderCallbackPanelHtml(t, st);
 
   mainForm.innerHTML = html;
   bindFormEvents();
@@ -930,6 +1326,18 @@ function createRowHtml(it, kind, idx) {
     </button>
   ` : '';
 
+  const isVetted = isVettingItem(it);
+  const statusActionsHtml = isVetted ? `
+    <div class="status-actions">
+      <button type="button" class="pf-btn fail ${st === 'failed' ? 'active' : ''}" data-status-btn="failed" data-id="${it.id}" title="Mark as Failed" aria-label="Mark ${escapeHtml(lblMain)} as Failed">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+        </svg>
+      </button>
+    </div>
+  ` : `<div class="status-actions"></div>`;
+
   return `
     <div class="item-row ${kind}${it.excludeFromCount ? ' policy-only' : ''}" data-id="${it.id}">
       <div class="field-container">
@@ -944,20 +1352,7 @@ function createRowHtml(it, kind, idx) {
         </div>
       </div>
 
-      <!-- Pass / Fail Action Icons: Ban ⊘ and Check ✓ -->
-      <div class="status-actions">
-        <button type="button" class="pf-btn fail ${st === 'failed' ? 'active' : ''}" data-status-btn="failed" data-id="${it.id}" title="Mark as Failed" aria-label="Mark ${escapeHtml(lblMain)} as Failed">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
-            <circle cx="12" cy="12" r="10"/>
-            <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
-          </svg>
-        </button>
-        <button type="button" class="pf-btn pass ${st === 'passed' ? 'active' : ''}" data-status-btn="passed" data-id="${it.id}" title="Mark as Passed" aria-label="Mark ${escapeHtml(lblMain)} as Passed">
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <path d="m5 12 5 5L20 7"/>
-          </svg>
-        </button>
-      </div>
+      ${statusActionsHtml}
 
       <button type="button" class="paste-btn" data-paste-id="${it.id}" title="Paste from clipboard" aria-label="Paste ${escapeHtml(lblMain)}">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg>
@@ -1047,7 +1442,18 @@ function bindFormEvents() {
     input.addEventListener('input', () => {
       stopAutoClear();
       curValues()[id] = input.value;
+      if (curStatus()[id] === 'failed' && input.value.trim().length > 0) {
+        curStatus()[id] = null;
+        box.classList.remove('status-failed');
+        const track = input.closest('.item-row')?.querySelector('.mat-underline-track');
+        if (track) track.classList.remove('status-failed');
+        const failBtn = input.closest('.item-row')?.querySelector('[data-status-btn="failed"]');
+        if (failBtn) failBtn.classList.remove('active');
+        renderCallbackPanelOnly();
+      }
+      syncCurrentToUniversal();
       updateRowGuide(id);
+      updateSecondaryCounter();
       syncPreview();
     });
 
@@ -1069,10 +1475,9 @@ function bindFormEvents() {
     btn.onclick = () => {
       stopAutoClear();
       const id = btn.dataset.id;
-      const targetStatus = btn.dataset.statusBtn;
       const cur = curStatus()[id];
 
-      const newStatus = cur === targetStatus ? null : targetStatus;
+      const newStatus = cur === 'failed' ? null : 'failed';
       curStatus()[id] = newStatus;
 
       const row = btn.closest('.item-row');
@@ -1092,15 +1497,23 @@ function bindFormEvents() {
         }
       }
 
-      row.querySelectorAll('.pf-btn').forEach(b => {
-        b.classList.toggle('active', b.dataset.statusBtn === newStatus);
-      });
+      btn.classList.toggle('active', newStatus === 'failed');
 
       updateTiedGroupBrackets();
-      syncPreview();
       updateSecondaryCounter();
+      renderCallbackPanelOnly();
+      syncPreview();
     };
   });
+
+  const btnAttempt = document.getElementById('btnToggleAttempt');
+  if (btnAttempt) {
+    btnAttempt.onclick = () => {
+      universalState.attempt = universalState.attempt === 1 ? 2 : 1;
+      renderCallbackPanelOnly();
+      syncPreview();
+    };
+  }
 
   mainForm.querySelectorAll('.paste-btn').forEach(btn => {
     btn.onclick = async () => {
@@ -1426,7 +1839,9 @@ async function doCopy() {
     copyBtnText.textContent = 'Copy';
   }, 1400);
 
-  startAutoClear(t.id);
+  if (t) {
+    startAutoClear(t.id);
+  }
 }
 btnCopy.onclick = doCopy;
 
@@ -1437,16 +1852,16 @@ const typeSelectMount = document.getElementById('typeSelectMount');
 let typeSelectComponent = null;
 
 function initTypeSelect() {
+  const options = [
+    { value: 'undecided', label: '📞 Undecided (Intake)' },
+    ...types.map(t => ({ value: t.id, label: t.name }))
+  ];
   typeSelectComponent = new CreatableSelect(typeSelectMount, {
-    options: types.map(t => ({ value: t.id, label: t.name })),
+    options,
     value: activeTypeId,
     placeholder: 'Vetting type...',
     onChange: (val) => {
-      activeTypeId = val;
-      saveTypes();
-      stopAutoClear();
-      renderForm();
-      updateCommentInput();
+      switchToType(val);
     },
     onCreate: (opt) => {
       const newTypeObj = {
@@ -1460,10 +1875,7 @@ function initTypeSelect() {
         optional: []
       };
       types.push(newTypeObj);
-      activeTypeId = newTypeObj.id;
-      saveTypes();
-      renderForm();
-      updateCommentInput();
+      switchToType(newTypeObj.id);
       openEditView();
     }
   });
@@ -1471,7 +1883,11 @@ function initTypeSelect() {
 
 function refreshTypeSelect() {
   if (typeSelectComponent) {
-    typeSelectComponent.setOptions(types.map(t => ({ value: t.id, label: t.name })), activeTypeId);
+    const options = [
+      { value: 'undecided', label: '📞 Undecided (Intake)' },
+      ...types.map(t => ({ value: t.id, label: t.name }))
+    ];
+    typeSelectComponent.setOptions(options, activeTypeId);
   }
 }
 
@@ -1483,7 +1899,13 @@ const btnEditType = document.getElementById('btnEditType');
 const btnBackEdit = document.getElementById('btnBackEdit');
 const editPane = document.getElementById('editPane');
 
-btnEditType.onclick = () => openEditView();
+btnEditType.onclick = () => {
+  if (activeTypeId === 'undecided') {
+    showBanner('Please select a specific vetting type to customize its items.', null, null, 3000, 'info');
+    return;
+  }
+  openEditView();
+};
 btnBackEdit.onclick = () => closeEditView();
 
 function openEditView() {
@@ -2082,35 +2504,134 @@ document.addEventListener('keydown', (e) => {
 });
 
 /* ==========================================================================
+   Persistent Shift Notes
+   ========================================================================== */
+const notesView = document.getElementById('notesView');
+const btnNotes = document.getElementById('btnNotes');
+const btnBackNotes = document.getElementById('btnBackNotes');
+const btnNewNote = document.getElementById('btnNewNote');
+const btnAddNote = document.getElementById('btnAddNote');
+const noteComposerText = document.getElementById('noteComposerText');
+const notesSearchInput = document.getElementById('notesSearchInput');
+
+async function loadPersistentNotes() {
+  persistentNotes = await Storage.get('vpad.notes', []);
+  if (!Array.isArray(persistentNotes)) persistentNotes = [];
+}
+
+async function savePersistentNotes() {
+  await Storage.set('vpad.notes', persistentNotes);
+}
+
+function openNotesView() {
+  notesView.style.display = 'flex';
+  renderNotesList(notesSearchInput?.value || '');
+  if (noteComposerText) noteComposerText.focus();
+}
+
+function closeNotesView() {
+  notesView.style.display = 'none';
+}
+
+if (btnNotes) btnNotes.onclick = openNotesView;
+if (btnBackNotes) btnBackNotes.onclick = closeNotesView;
+if (btnNewNote) {
+  btnNewNote.onclick = () => {
+    if (noteComposerText) {
+      noteComposerText.focus();
+      noteComposerText.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+}
+
+if (btnAddNote && noteComposerText) {
+  btnAddNote.onclick = async () => {
+    const text = noteComposerText.value.trim();
+    if (!text) return;
+    persistentNotes.unshift({
+      id: uid(),
+      text,
+      pinned: false,
+      createdAt: Date.now()
+    });
+    noteComposerText.value = '';
+    await savePersistentNotes();
+    renderNotesList(notesSearchInput?.value || '');
+  };
+}
+
+if (notesSearchInput) {
+  notesSearchInput.oninput = () => {
+    renderNotesList(notesSearchInput.value);
+  };
+}
+
+function renderNotesList(filterQuery = '') {
+  const container = document.getElementById('notesList');
+  if (!container) return;
+  const q = filterQuery.toLowerCase().trim();
+  const filtered = persistentNotes
+    .filter(n => !q || n.text.toLowerCase().includes(q))
+    .sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || b.createdAt - a.createdAt);
+
+  if (filtered.length === 0) {
+    container.innerHTML = `<div style="text-align:center;padding:20px;font-size:11px;color:var(--text-muted);">${q ? 'No matching notes found' : 'No notes saved yet. Add reminders or shift notes above.'}</div>`;
+    return;
+  }
+
+  container.innerHTML = filtered.map(n => `
+    <div class="note-card ${n.pinned ? 'pinned' : ''}" data-note-id="${n.id}">
+      <div class="note-card-text">${escapeHtml(n.text)}</div>
+      <div class="note-card-meta">
+        <span>${new Date(n.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+        <div class="note-card-actions">
+          <button type="button" class="note-act-btn pin ${n.pinned ? 'active' : ''}" data-action="pin" title="${n.pinned ? 'Unpin note' : 'Pin note to top'}">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="${n.pinned ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-2l-2-2V5a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v8l-2 2v2z"/></svg>
+          </button>
+          <button type="button" class="note-act-btn" data-action="copy" title="Copy note text">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>
+          </button>
+          <button type="button" class="note-act-btn" data-action="delete" title="Delete note">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+
+  container.querySelectorAll('.note-card').forEach(card => {
+    const id = card.dataset.noteId;
+    const note = persistentNotes.find(n => n.id === id);
+    if (!note) return;
+    card.querySelector('[data-action="pin"]').onclick = async () => {
+      note.pinned = !note.pinned;
+      await savePersistentNotes();
+      renderNotesList(notesSearchInput?.value || '');
+    };
+    card.querySelector('[data-action="copy"]').onclick = async () => {
+      await writeToClipboard(note.text);
+      showBanner('Note copied to clipboard', null, null, 2500, 'info');
+    };
+    card.querySelector('[data-action="delete"]').onclick = async () => {
+      persistentNotes = persistentNotes.filter(n => n.id !== id);
+      await savePersistentNotes();
+      renderNotesList(notesSearchInput?.value || '');
+    };
+  });
+}
+
+/* ==========================================================================
    Initialization
    ========================================================================== */
 async function init() {
   const configVer = await Storage.get('vpad.config_version', 0);
   const loadedTypes = await Storage.get('vpad.types', null);
 
-  if (configVer < 8 || !Array.isArray(loadedTypes) || loadedTypes.length < 13) {
-    if (configVer >= 7 && Array.isArray(loadedTypes) && loadedTypes.length >= 13) {
-      types = loadedTypes;
-      types.forEach(t => {
-        [...(t.required || []), ...(t.optional || [])].forEach(it => {
-          if (it.v360 !== undefined) return;
-          const id = (it.id || '').toLowerCase();
-          const lbl = (it.label || '').toLowerCase();
-          if (id.includes('name') || lbl.includes('full name') || lbl.includes('owner name') || lbl.includes('sender name')) {
-            it.v360 = 'fullName';
-          } else if (id.includes('idnum') || id.includes('owner_id') || lbl.includes('id number') || lbl.includes('owner id')) {
-            it.v360 = 'idNumber';
-          } else if (id.includes('yob') || lbl.includes('year of birth')) {
-            it.v360 = 'yob';
-          }
-        });
-      });
-    } else {
-      types = defaultVettingTypes();
-    }
+  if (configVer < 9 || !Array.isArray(loadedTypes) || loadedTypes.length < 13) {
+    types = defaultVettingTypes();
     Storage.setMultiple({
       'vpad.types': types,
-      'vpad.config_version': 8
+      'vpad.config_version': 9
     });
   } else {
     types = loadedTypes;
@@ -2119,8 +2640,12 @@ async function init() {
   const loadedSettings = await Storage.get('vpad.settings', null);
   if (loadedSettings) settings = Object.assign(settings, loadedSettings);
 
-  activeTypeId = await Storage.get('vpad.active', types[0].id);
-  if (!types.some(t => t.id === activeTypeId)) activeTypeId = types[0].id;
+  await loadPersistentNotes();
+
+  activeTypeId = await Storage.get('vpad.active', 'undecided');
+  if (activeTypeId !== 'undecided' && !types.some(t => t.id === activeTypeId)) {
+    activeTypeId = 'undecided';
+  }
 
   applyTheme(settings.theme || 'auto');
   initTypeSelect();

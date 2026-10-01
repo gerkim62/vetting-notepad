@@ -373,10 +373,10 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   min-width: 0;
 }
 
-/* Item Row Grid: 100% Flush Left (1fr) | Pass/Fail (34px) | Paste (22px) */
+/* Item Row Grid: 1fr | Status Ban (20px) | Paste (20px) */
 .item-row {
   display: grid;
-  grid-template-columns: 1fr 34px 22px;
+  grid-template-columns: 1fr 20px 20px;
   gap: 4px;
   align-items: flex-end;
   padding: 2.5px 0;
@@ -736,56 +736,55 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   background: var(--color-danger);
 }
 
-/* Pass / Fail Action Buttons ([⚑] [✓]) */
+/* Fail / Ban Action Button (⊘) */
 .status-actions {
   display: flex;
   align-items: center;
-  gap: 2px;
-  justify-content: flex-end;
-  width: 34px;
+  justify-content: center;
+  width: 20px;
   height: 20px;
   flex: none;
   margin-bottom: 2px;
 }
 .pf-btn {
-  width: 16px;
+  width: 20px;
   height: 20px;
   display: grid;
   place-items: center;
-  border-radius: 3px;
+  border-radius: 4px;
+  border: 0;
+  background: transparent;
   color: var(--text-dim);
   cursor: pointer;
   transition: all 0.12s ease;
   padding: 0;
 }
-.pf-btn:hover { background: var(--bg-hover); color: var(--text-main); }
-.pf-btn.fail:hover { color: var(--color-danger); background: var(--color-danger-soft); }
-.pf-btn.pass:hover { color: var(--saf-emerald); background: var(--saf-emerald-soft); }
-
-.pf-btn.fail.active {
-  background: var(--color-danger-soft);
+.pf-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-main);
+}
+.pf-btn.fail:hover {
   color: var(--color-danger);
+  background: var(--color-danger-soft);
+}
+.pf-btn.fail.active {
+  background: var(--color-danger);
+  color: #ffffff;
   font-weight: 700;
 }
 .pf-btn.fail.active svg {
-  stroke: var(--color-danger);
-}
-.pf-btn.pass.active {
-  background: var(--saf-emerald-soft);
-  color: var(--saf-emerald);
-  font-weight: 700;
-}
-.pf-btn.pass.active svg {
-  stroke: var(--saf-emerald);
+  stroke: #ffffff;
 }
 
 /* Paste Button */
 .paste-btn {
-  width: 22px;
+  width: 20px;
   height: 20px;
   display: grid;
   place-items: center;
-  border-radius: 3px;
+  border-radius: 4px;
+  border: 0;
+  background: transparent;
   color: var(--text-dim);
   flex: none;
   cursor: pointer;
@@ -1342,3 +1341,235 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
 }
+
+/* ==========================================================================
+   Vetting Notepad v2 — Additional Styles
+   ========================================================================== */
+
+/* Undecided Call Intake View */
+.intake-container {
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.intake-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 8px;
+  background: var(--saf-emerald-soft);
+  border: 1px solid rgba(0, 135, 81, 0.2);
+  border-radius: var(--radius-md);
+}
+.intake-banner-text {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--saf-emerald);
+}
+.intake-banner-hint {
+  font-size: 9.5px;
+  color: var(--text-muted);
+}
+.intake-fields-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 8px;
+}
+.intake-field-full {
+  grid-column: span 2;
+}
+.intake-quick-types {
+  margin-top: 4px;
+}
+.intake-quick-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+}
+.intake-quick-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+.intake-quick-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 8px;
+  background: var(--bg-panel-alt);
+  border: 1px solid var(--border-line);
+  border-radius: var(--radius-md);
+  color: var(--text-main);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+.intake-quick-btn:hover {
+  background: var(--bg-hover);
+  border-color: var(--saf-emerald);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+.intake-quick-btn svg {
+  color: var(--saf-emerald);
+  flex-shrink: 0;
+}
+
+/* SAKA Callback & Referral Banner */
+.saka-callback-panel {
+  margin: 8px 10px 4px;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  background: var(--bg-panel-alt);
+  border: 1px solid var(--border-line);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  animation: slideDown 0.18s ease;
+}
+.saka-callback-panel.primary-failed {
+  border-color: var(--color-danger);
+  background: var(--color-danger-soft);
+}
+.saka-callback-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+.saka-callback-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-main);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.saka-attempt-pill {
+  font-size: 9.5px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  border: 1px solid var(--border-line);
+  background: var(--bg-panel);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.saka-attempt-pill.active {
+  background: var(--color-danger);
+  border-color: var(--color-danger);
+  color: #fff;
+  font-weight: 700;
+}
+.saka-callback-body {
+  font-size: 10.5px;
+  line-height: 1.35;
+  color: var(--text-muted);
+}
+.saka-callback-body strong {
+  color: var(--text-main);
+}
+
+/* Persistent Notes Drawer */
+.notes-search-wrap {
+  margin-bottom: 8px;
+}
+.notes-search-input {
+  width: 100%;
+  padding: 4px 8px;
+  font-size: 11px;
+  border: 1px solid var(--border-line);
+  border-radius: var(--radius-sm);
+  background: var(--bg-panel-alt);
+  color: var(--text-main);
+}
+.notes-search-input:focus {
+  border-color: var(--saf-emerald);
+  outline: none;
+}
+.note-composer {
+  background: var(--bg-panel-alt);
+  border: 1px solid var(--border-line);
+  border-radius: var(--radius-md);
+  padding: 6px 8px;
+  margin-bottom: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.note-composer-text {
+  width: 100%;
+  font-size: 11px;
+  font-family: inherit;
+  border: 0;
+  background: transparent;
+  color: var(--text-main);
+  resize: vertical;
+  outline: none;
+  min-height: 44px;
+}
+.note-composer-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.note-warn-hint {
+  font-size: 9px;
+  color: var(--text-dim);
+}
+.notes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.note-card {
+  background: var(--bg-panel);
+  border: 1px solid var(--border-line);
+  border-radius: var(--radius-md);
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  position: relative;
+}
+.note-card.pinned {
+  border-color: var(--saf-emerald);
+  background: var(--saf-emerald-soft);
+}
+.note-card-text {
+  font-size: 11px;
+  line-height: 1.35;
+  color: var(--text-main);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.note-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 9px;
+  color: var(--text-muted);
+}
+.note-card-actions {
+  display: flex;
+  gap: 4px;
+}
+.note-act-btn {
+  background: none;
+  border: 0;
+  cursor: pointer;
+  color: var(--text-dim);
+  padding: 2px;
+}
+.note-act-btn:hover {
+  color: var(--text-main);
+}
+.note-act-btn.pin.active {
+  color: var(--saf-emerald);
+}
+
