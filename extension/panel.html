@@ -23,14 +23,14 @@
       <header class="top-nav">
         <div id="typeSelectMount" class="c-select"></div>
 
-        <!-- Persistent Shift Notes Icon -->
-        <button class="ibtn" id="btnNotes" title="Persistent Shift Notes" aria-label="Notes">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-        </button>
-
         <!-- 1-Click Pencil Icon to Edit Items -->
         <button class="ibtn primary" id="btnEditType" title="Edit items for this vetting type" aria-label="Edit items">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        </button>
+
+        <!-- Notes Icon -->
+        <button class="ibtn" id="btnNotes" title="Notes" aria-label="Notes">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
         </button>
 
         <!-- Settings Icon -->
@@ -132,29 +132,30 @@
         <div class="scroll-pane" style="padding:8px 10px;" id="editPane"></div>
       </div>
 
-      <!-- Sub-view: Persistent Notes Screen -->
+      <!-- Sub-view: Notes Screen -->
       <div class="view-sub" id="notesView" style="display:none;">
         <div class="view-header">
-          <button class="ibtn" id="btnBackNotes" title="Back to main">
+          <button class="ibtn" id="btnBackNotes" title="Back" aria-label="Back">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
           </button>
-          <span class="view-title">Persistent Notes</span>
-          <button class="ibtn primary" id="btnNewNote" title="New Note" style="margin-left:auto;">
+          <div id="noteSelectMount" class="c-select note-c-select"></div>
+          <button class="ibtn primary" id="btnNewNote" title="New Note" aria-label="New Note">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
           </button>
+          <button class="ibtn" id="btnCopyNote" title="Copy Note" aria-label="Copy Note">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>
+          </button>
+          <button class="ibtn" id="btnDeleteNote" title="Delete Note" aria-label="Delete Note">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>
+          </button>
         </div>
-        <div class="scroll-pane" style="padding:8px 10px;">
-          <div class="notes-search-wrap">
-            <input type="text" id="notesSearchInput" class="notes-search-input" placeholder="Search saved notes..." autocomplete="off">
+        <div class="note-canvas-wrap">
+          <input type="text" class="note-title-input" id="noteTitleInput" placeholder="Untitled Note" autocomplete="off" spellcheck="false">
+          <textarea class="note-body-textarea" id="noteBodyText" placeholder="Start typing notes..." autocomplete="off" spellcheck="false"></textarea>
+          <div class="note-status-bar">
+            <span id="noteSaveStatus">Saved</span>
+            <span id="noteWordCharCount">0 chars</span>
           </div>
-          <div class="note-composer" id="noteComposer">
-            <textarea id="noteComposerText" class="note-composer-text" placeholder="Add a quick note, reference code, or reminder..." rows="2"></textarea>
-            <div class="note-composer-footer">
-              <span class="note-warn-hint">Do not store customer PII</span>
-              <button class="btn-action primary" id="btnAddNote" style="padding:3px 10px;font-size:11px;">Save Note</button>
-            </div>
-          </div>
-          <div class="notes-list" id="notesList"></div>
         </div>
       </div>
     </div> <!-- /.views-root -->

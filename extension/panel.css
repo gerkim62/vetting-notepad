@@ -274,6 +274,11 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
 }
 .ibtn.primary { color: var(--saf-emerald); }
 .ibtn.primary:hover { background: var(--saf-emerald-soft); }
+.ibtn.copied-success {
+  color: var(--saf-emerald);
+  background: var(--saf-emerald-soft);
+  transform: scale(1.08);
+}
 
 /* ==========================================================================
    Scrollable Body & Item Rows
@@ -1475,101 +1480,118 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   color: var(--text-main);
 }
 
-/* Persistent Notes Drawer */
-.notes-search-wrap {
-  margin-bottom: 8px;
+/* ==========================================================================
+   Full-Canvas Notepad
+   ========================================================================== */
+.note-c-select {
+  flex: 1;
+  min-width: 0;
 }
-.notes-search-input {
-  width: 100%;
-  padding: 4px 8px;
-  font-size: 11px;
-  border: 1px solid var(--border-line);
-  border-radius: var(--radius-sm);
-  background: var(--bg-panel-alt);
-  color: var(--text-main);
-}
-.notes-search-input:focus {
-  border-color: var(--saf-emerald);
-  outline: none;
-}
-.note-composer {
-  background: var(--bg-panel-alt);
-  border: 1px solid var(--border-line);
-  border-radius: var(--radius-md);
-  padding: 6px 8px;
-  margin-bottom: 10px;
+.note-c-select .box {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
+  align-items: center;
+  height: 26px;
+  padding: 0 4px 0 7px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--underline-idle);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  cursor: text;
+  transition: all 0.15s ease;
 }
-.note-composer-text {
-  width: 100%;
-  font-size: 11px;
-  font-family: inherit;
+.note-c-select:hover .box {
+  border-bottom-color: var(--text-main);
+}
+.note-c-select.focus .box {
+  border-bottom: 2px solid var(--saf-emerald);
+  background: var(--bg-panel);
+}
+.note-c-select input {
+  flex: 1;
+  min-width: 30px;
   border: 0;
+  outline: 0;
   background: transparent;
   color: var(--text-main);
-  resize: vertical;
-  outline: none;
-  min-height: 44px;
+  font: 600 11.5px inherit;
+  padding: 2px 0;
 }
-.note-composer-footer {
+.note-c-select .ctl {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-}
-.note-warn-hint {
-  font-size: 9px;
-  color: var(--text-dim);
-}
-.notes-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.note-card {
-  background: var(--bg-panel);
-  border: 1px solid var(--border-line);
-  border-radius: var(--radius-md);
-  padding: 6px 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  position: relative;
-}
-.note-card.pinned {
-  border-color: var(--saf-emerald);
-  background: var(--saf-emerald-soft);
-}
-.note-card-text {
-  font-size: 11px;
-  line-height: 1.35;
-  color: var(--text-main);
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-.note-card-meta {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 9px;
   color: var(--text-muted);
 }
-.note-card-actions {
+.note-c-select .ctl button {
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+}
+
+.note-canvas-wrap {
+  flex: 1;
+  min-height: 0;
   display: flex;
-  gap: 4px;
+  flex-direction: column;
+  background: var(--bg-panel);
 }
-.note-act-btn {
-  background: none;
-  border: 0;
-  cursor: pointer;
-  color: var(--text-dim);
-  padding: 2px;
-}
-.note-act-btn:hover {
+
+.note-title-input {
+  flex: none;
+  font-size: 12.5px;
+  font-weight: 700;
   color: var(--text-main);
+  padding: 7px 10px 5px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  border-bottom: 1px solid var(--border-line);
+  transition: border-color 0.15s ease;
+  font-family: inherit;
 }
-.note-act-btn.pin.active {
+.note-title-input:focus {
+  border-bottom-color: var(--saf-emerald);
+}
+.note-title-input::placeholder {
+  color: var(--text-dim);
+  font-weight: 500;
+}
+
+.note-body-textarea {
+  flex: 1;
+  width: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text-main);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace, sans-serif;
+  font-size: 11.5px;
+  line-height: 1.5;
+  padding: 8px 10px;
+  resize: none;
+  overflow-y: auto;
+}
+.note-body-textarea::placeholder {
+  color: var(--text-dim);
+}
+
+.note-status-bar {
+  flex: none;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px;
+  font-size: 9.5px;
+  color: var(--text-dim);
+  border-top: 1px solid var(--border-line);
+  background: var(--bg-panel-alt);
+  user-select: none;
+}
+#noteSaveStatus.saved {
   color: var(--saf-emerald);
+  font-weight: 600;
+}
+#noteSaveStatus.saving {
+  color: var(--color-warn);
 }
 

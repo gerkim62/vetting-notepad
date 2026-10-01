@@ -63,7 +63,10 @@ let universalState = {
   note: '',
   attempt: 1
 };
-let persistentNotes = [];
+let notes = [];
+let activeNoteId = null;
+let noteSelectComponent = null;
+let saveNotesTimer = null;
 
 const curComments = () => {
   const t = curType();
@@ -2504,29 +2507,204 @@ document.addEventListener('keydown', (e) => {
 });
 
 /* ==========================================================================
-   Persistent Shift Notes
+   Full-Canvas Notepad
    ========================================================================== */
 const notesView = document.getElementById('notesView');
 const btnNotes = document.getElementById('btnNotes');
 const btnBackNotes = document.getElementById('btnBackNotes');
 const btnNewNote = document.getElementById('btnNewNote');
-const btnAddNote = document.getElementById('btnAddNote');
-const noteComposerText = document.getElementById('noteComposerText');
-const notesSearchInput = document.getElementById('notesSearchInput');
+const btnCopyNote = document.getElementById('btnCopyNote');
+const btnDeleteNote = document.getElementById('btnDeleteNote');
+const noteSelectMount = document.getElementById('noteSelectMount');
+const noteTitleInput = document.getElementById('noteTitleInput');
+const noteBodyText = document.getElementById('noteBodyText');
+const noteSaveStatus = document.getElementById('noteSaveStatus');
+const noteWordCharCount = document.getElementById('noteWordCharCount');
 
-async function loadPersistentNotes() {
-  persistentNotes = await Storage.get('vpad.notes', []);
-  if (!Array.isArray(persistentNotes)) persistentNotes = [];
+async function loadNotes() {
+  const raw = await Storage.get('vpad.notes', []);
+  if (Array.isArray(raw) && raw.length > 0) {
+    notes = raw.map(n => ({
+      id: n.id || uid(),
+      title: n.title || (n.text ? n.text.split('\n')[0].slice(0, 32) : 'Untitled Note'),
+      text: n.text || '',
+      updatedAt: n.updatedAt || n.createdAt || Date.now()
+    }));
+  } else {
+    notes = [
+      {
+        id: uid(),
+        title: 'General Notes',
+        text: '',
+        updatedAt: Date.now()
+      }
+    ];
+  }
+  activeNoteId = await Storage.get('vpad.active_note', notes[0].id);
+  if (!notes.some(n => n.id === activeNoteId)) {
+    activeNoteId = notes[0].id;
+  }
 }
 
-async function savePersistentNotes() {
-  await Storage.set('vpad.notes', persistentNotes);
+async function saveNotesImmediate() {
+  await Storage.set('vpad.notes', notes);
+  await Storage.set('vpad.active_note', activeNoteId);
+  if (noteSaveStatus) {
+    noteSaveStatus.textContent = 'Saved';
+    noteSaveStatus.className = 'saved';
+  }
+}
+
+function scheduleSaveNotes() {
+  if (noteSaveStatus) {
+    noteSaveStatus.textContent = 'Saving...';
+    noteSaveStatus.className = 'saving';
+  }
+  if (saveNotesTimer) clearTimeout(saveNotesTimer);
+  saveNotesTimer = setTimeout(() => {
+    saveNotesImmediate();
+  }, 180);
+}
+
+function getActiveNote() {
+  return notes.find(n => n.id === activeNoteId) || notes[0];
+}
+
+function updateNoteCounts() {
+  if (!noteWordCharCount) return;
+  const cur = getActiveNote();
+  const len = cur ? cur.text.length : 0;
+  const words = cur && cur.text.trim() ? cur.text.trim().split(/\s+/).length : 0;
+  noteWordCharCount.textContent = `${words} words · ${len} chars`;
+}
+
+function switchNote(noteId) {
+  activeNoteId = noteId;
+  Storage.set('vpad.active_note', activeNoteId);
+  const note = getActiveNote();
+  if (!note) return;
+
+  if (noteTitleInput) noteTitleInput.value = note.title || '';
+  if (noteBodyText) noteBodyText.value = note.text || '';
+  updateNoteCounts();
+
+  if (noteSelectComponent) {
+    const opts = notes.map(n => ({ value: n.id, label: n.title || 'Untitled Note' }));
+    noteSelectComponent.setOptions(opts, activeNoteId);
+  }
+}
+
+function createNote(title = 'Untitled Note') {
+  const newNote = {
+    id: uid(),
+    title: title.trim() || 'Untitled Note',
+    text: '',
+    updatedAt: Date.now()
+  };
+  notes.unshift(newNote);
+  saveNotesImmediate();
+  switchNote(newNote.id);
+  if (noteBodyText) noteBodyText.focus();
+}
+
+async function deleteActiveNote() {
+  if (notes.length <= 1) {
+    const onlyNote = notes[0];
+    const snapText = onlyNote.text;
+    const snapTitle = onlyNote.title;
+    onlyNote.text = '';
+    onlyNote.title = 'General Notes';
+    onlyNote.updatedAt = Date.now();
+    await saveNotesImmediate();
+    switchNote(onlyNote.id);
+    showBanner('Note cleared', 'Undo', () => {
+      onlyNote.text = snapText;
+      onlyNote.title = snapTitle;
+      saveNotesImmediate();
+      switchNote(onlyNote.id);
+    }, 4000, 'info');
+    return;
+  }
+
+  const deleted = getActiveNote();
+  const deletedIdx = notes.indexOf(deleted);
+  notes = notes.filter(n => n.id !== deleted.id);
+  const nextNote = notes[Math.min(deletedIdx, notes.length - 1)];
+  activeNoteId = nextNote.id;
+  await saveNotesImmediate();
+  switchNote(nextNote.id);
+
+  showBanner(`"${deleted.title || 'Note'}" deleted`, 'Undo', () => {
+    notes.splice(deletedIdx, 0, deleted);
+    activeNoteId = deleted.id;
+    saveNotesImmediate();
+    switchNote(deleted.id);
+  }, 4000, 'info');
+}
+
+async function copyActiveNote() {
+  const note = getActiveNote();
+  if (!note) return;
+  const toCopy = (note.text || '').trim() || (note.title || '').trim();
+  if (!toCopy) {
+    if (noteSaveStatus) {
+      noteSaveStatus.textContent = 'Empty note';
+      noteSaveStatus.className = 'saving';
+      setTimeout(() => {
+        noteSaveStatus.textContent = 'Saved';
+        noteSaveStatus.className = 'saved';
+      }, 1200);
+    }
+    return;
+  }
+  await writeToClipboard(note.text);
+  if (btnCopyNote) {
+    const origHtml = btnCopyNote.innerHTML;
+    const origTitle = btnCopyNote.title;
+    btnCopyNote.classList.add('copied-success');
+    btnCopyNote.title = 'Copied ✓';
+    btnCopyNote.innerHTML = `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>`;
+
+    if (noteSaveStatus) {
+      noteSaveStatus.textContent = 'Copied ✓';
+      noteSaveStatus.className = 'saved';
+    }
+
+    setTimeout(() => {
+      btnCopyNote.classList.remove('copied-success');
+      btnCopyNote.title = origTitle;
+      btnCopyNote.innerHTML = origHtml;
+      if (noteSaveStatus) {
+        noteSaveStatus.textContent = 'Saved';
+        noteSaveStatus.className = 'saved';
+      }
+    }, 1200);
+  }
+}
+
+function initNoteSelect() {
+  if (!noteSelectMount) return;
+  const opts = notes.map(n => ({ value: n.id, label: n.title || 'Untitled Note' }));
+  noteSelectComponent = new CreatableSelect(noteSelectMount, {
+    options: opts,
+    value: activeNoteId,
+    placeholder: 'Search or new note...',
+    onChange: (val) => {
+      switchNote(val);
+    },
+    onCreate: (opt) => {
+      createNote(opt.label);
+    }
+  });
 }
 
 function openNotesView() {
   notesView.style.display = 'flex';
-  renderNotesList(notesSearchInput?.value || '');
-  if (noteComposerText) noteComposerText.focus();
+  switchNote(activeNoteId);
+  if (noteBodyText) {
+    noteBodyText.focus();
+    noteBodyText.setSelectionRange(noteBodyText.value.length, noteBodyText.value.length);
+  }
 }
 
 function closeNotesView() {
@@ -2535,88 +2713,46 @@ function closeNotesView() {
 
 if (btnNotes) btnNotes.onclick = openNotesView;
 if (btnBackNotes) btnBackNotes.onclick = closeNotesView;
-if (btnNewNote) {
-  btnNewNote.onclick = () => {
-    if (noteComposerText) {
-      noteComposerText.focus();
-      noteComposerText.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
-}
+if (btnNewNote) btnNewNote.onclick = () => createNote('Untitled Note');
+if (btnCopyNote) btnCopyNote.onclick = copyActiveNote;
+if (btnDeleteNote) btnDeleteNote.onclick = deleteActiveNote;
 
-if (btnAddNote && noteComposerText) {
-  btnAddNote.onclick = async () => {
-    const text = noteComposerText.value.trim();
-    if (!text) return;
-    persistentNotes.unshift({
-      id: uid(),
-      text,
-      pinned: false,
-      createdAt: Date.now()
-    });
-    noteComposerText.value = '';
-    await savePersistentNotes();
-    renderNotesList(notesSearchInput?.value || '');
-  };
-}
-
-if (notesSearchInput) {
-  notesSearchInput.oninput = () => {
-    renderNotesList(notesSearchInput.value);
-  };
-}
-
-function renderNotesList(filterQuery = '') {
-  const container = document.getElementById('notesList');
-  if (!container) return;
-  const q = filterQuery.toLowerCase().trim();
-  const filtered = persistentNotes
-    .filter(n => !q || n.text.toLowerCase().includes(q))
-    .sort((a, b) => (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || b.createdAt - a.createdAt);
-
-  if (filtered.length === 0) {
-    container.innerHTML = `<div style="text-align:center;padding:20px;font-size:11px;color:var(--text-muted);">${q ? 'No matching notes found' : 'No notes saved yet. Add reminders or shift notes above.'}</div>`;
-    return;
-  }
-
-  container.innerHTML = filtered.map(n => `
-    <div class="note-card ${n.pinned ? 'pinned' : ''}" data-note-id="${n.id}">
-      <div class="note-card-text">${escapeHtml(n.text)}</div>
-      <div class="note-card-meta">
-        <span>${new Date(n.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-        <div class="note-card-actions">
-          <button type="button" class="note-act-btn pin ${n.pinned ? 'active' : ''}" data-action="pin" title="${n.pinned ? 'Unpin note' : 'Pin note to top'}">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="${n.pinned ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><line x1="12" y1="17" x2="12" y2="22"/><path d="M5 17h14v-2l-2-2V5a2 2 0 0 0-2-2H9a2 2 0 0 0-2 2v8l-2 2v2z"/></svg>
-          </button>
-          <button type="button" class="note-act-btn" data-action="copy" title="Copy note text">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>
-          </button>
-          <button type="button" class="note-act-btn" data-action="delete" title="Delete note">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>
-          </button>
-        </div>
-      </div>
-    </div>
-  `).join('');
-
-  container.querySelectorAll('.note-card').forEach(card => {
-    const id = card.dataset.noteId;
-    const note = persistentNotes.find(n => n.id === id);
+if (noteTitleInput) {
+  noteTitleInput.addEventListener('input', () => {
+    const note = getActiveNote();
     if (!note) return;
-    card.querySelector('[data-action="pin"]').onclick = async () => {
-      note.pinned = !note.pinned;
-      await savePersistentNotes();
-      renderNotesList(notesSearchInput?.value || '');
-    };
-    card.querySelector('[data-action="copy"]').onclick = async () => {
-      await writeToClipboard(note.text);
-      showBanner('Note copied to clipboard', null, null, 2500, 'info');
-    };
-    card.querySelector('[data-action="delete"]').onclick = async () => {
-      persistentNotes = persistentNotes.filter(n => n.id !== id);
-      await savePersistentNotes();
-      renderNotesList(notesSearchInput?.value || '');
-    };
+    note.title = noteTitleInput.value.trim() || 'Untitled Note';
+    note.updatedAt = Date.now();
+    scheduleSaveNotes();
+    if (noteSelectComponent) {
+      const opts = notes.map(n => ({ value: n.id, label: n.title || 'Untitled Note' }));
+      noteSelectComponent.setOptions(opts, activeNoteId);
+    }
+  });
+}
+
+if (noteBodyText) {
+  noteBodyText.addEventListener('input', () => {
+    const note = getActiveNote();
+    if (!note) return;
+    note.text = noteBodyText.value;
+    note.updatedAt = Date.now();
+    updateNoteCounts();
+    scheduleSaveNotes();
+  });
+  noteBodyText.addEventListener('keydown', (e) => {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const start = noteBodyText.selectionStart;
+      const end = noteBodyText.selectionEnd;
+      noteBodyText.value = noteBodyText.value.substring(0, start) + '  ' + noteBodyText.value.substring(end);
+      noteBodyText.selectionStart = noteBodyText.selectionEnd = start + 2;
+      const note = getActiveNote();
+      if (note) {
+        note.text = noteBodyText.value;
+        scheduleSaveNotes();
+      }
+    }
   });
 }
 
@@ -2640,7 +2776,8 @@ async function init() {
   const loadedSettings = await Storage.get('vpad.settings', null);
   if (loadedSettings) settings = Object.assign(settings, loadedSettings);
 
-  await loadPersistentNotes();
+  await loadNotes();
+  initNoteSelect();
 
   activeTypeId = await Storage.get('vpad.active', 'undecided');
   if (activeTypeId !== 'undecided' && !types.some(t => t.id === activeTypeId)) {
