@@ -518,6 +518,42 @@ function isPrimaryItem(it) {
   );
 }
 
+function countSecondaryPassed(t, st, v) {
+  let passed = 0;
+  const seen = new Set();
+  t.optional.forEach(it => {
+    if (it.excludeFromCount) return;
+    if (it.group) {
+      if (seen.has(it.group)) return;
+      seen.add(it.group);
+      const grp = t.optional.filter(x => x.group === it.group && !x.excludeFromCount);
+      if (grp.length && getGroupStatus(grp, st) === 'passed') passed++;
+    } else if (getItemEffectiveStatus(it, st, v[it.id]) === 'passed') {
+      passed++;
+    }
+  });
+  return passed;
+}
+
+function getCallbackInfo(t, st, v) {
+  const failedItems = [...t.required, ...t.optional].filter(it => st[it.id] === 'failed');
+  if (failedItems.length === 0) return { show: false };
+  if (failedItems.some(it => isPrimaryItem(it))) return { show: true, primary: true };
+
+  const minSec = t.minSecondary || 0;
+  if (!minSec) {
+    return { show: true, primary: false, labels: failedItems.map(it => parseLabel(it.label).copy) };
+  }
+
+  const needed = Math.max(0, minSec - countSecondaryPassed(t, st, v));
+  const failedReq = failedItems.filter(it => t.required.includes(it));
+  const failedSec = failedItems.filter(it => t.optional.includes(it));
+  if (failedReq.length === 0 && needed === 0) return { show: false };
+
+  const labels = [...failedReq, ...failedSec].map(it => parseLabel(it.label).copy);
+  return { show: true, primary: false, labels };
+}
+
 function buildCopyText(t) {
   if (!t) return '';
 
@@ -585,16 +621,14 @@ function buildCopyText(t) {
   }
 
   // SAKA Failed Callback / Referral appended text
-  const failedItems = allItems.filter(it => st[it.id] === 'failed');
-  if (failedItems.length > 0) {
-    const hasPrimaryFailed = failedItems.some(it => isPrimaryItem(it));
-    if (hasPrimaryFailed) {
+  const cb = getCallbackInfo(t, st, v);
+  if (cb.show) {
+    if (cb.primary) {
       lines.push('Referred to Retail Centre / Care Desk with original ID.');
     } else if (callAttempt === 2) {
       lines.push('Failed vetting again. Not asked to call back. Referred to Retail Centre / Care Desk with original ID.');
     } else {
-      const failedLabels = failedItems.map(it => parseLabel(it.label).copy).join(', ');
-      lines.push(`Failed vetting. Advised to confirm ${failedLabels} and call back.`);
+      lines.push(`Failed vetting. Advised to confirm ${cb.labels.join(', ')} and call back.`);
     }
   }
 
@@ -971,52 +1005,20 @@ function renderItemList(items, kind, st) {
 }
 
 function renderCallbackPanelHtml(t, st) {
-  const allItems = [...t.required, ...t.optional];
-  const failedItems = allItems.filter(it => st[it.id] === 'failed');
-  if (failedItems.length === 0) return '';
+  const cb = getCallbackInfo(t, st, curValues());
+  if (!cb.show) return '';
+  const failedLabels = (cb.labels || []).join(', ');
 
-  const hasPrimaryFailed = failedItems.some(it => isPrimaryItem(it));
-  const failedLabels = failedItems.map(it => parseLabel(it.label).copy).join(', ');
-
-  let contentHtml = '';
-  if (hasPrimaryFailed) {
-    contentHtml = `
-      <div class="saka-callback-panel primary-failed">
-        <div class="saka-callback-head">
-          <div class="saka-callback-title" style="color:var(--color-danger);">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            Personal Details Failed (SAKA VMDA-0001)
-          </div>
-        </div>
-        <div class="saka-callback-body">
-          Stop vetting. Advise customer to visit <strong>Retail Centre / Care Desk</strong> with original ID. Do not probe further account details.
-        </div>
-      </div>
-    `;
-  } else {
-    const isAttempt2 = callAttempt === 2;
-    const bodyText = isAttempt2
-      ? `Failed vetting again. Not asked to call back. Advise customer to visit <strong>Retail Centre / Care Desk</strong> with original national ID.`
-      : `Advised customer to confirm <strong>${escapeHtml(failedLabels)}</strong> and call back. Details logged for callback reference.`;
-
-    contentHtml = `
-      <div class="saka-callback-panel">
-        <div class="saka-callback-head">
-          <div class="saka-callback-title">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-            Failed Vetting Callback (SAKA)
-          </div>
-          <button type="button" class="saka-attempt-pill ${isAttempt2 ? 'active' : ''}" id="btnToggleAttempt" title="Toggle 1st vs 2nd failure">
-            ${isAttempt2 ? '2nd Failure' : '1st Failure'}
-          </button>
-        </div>
-        <div class="saka-callback-body">
-          ${bodyText}
-        </div>
-      </div>
-    `;
+  if (cb.primary) {
+    return `<div class="saka-callback-panel primary-failed" title="Personal details failed (SAKA VMDA-0001). Stop vetting. Advise customer to visit Retail Centre / Care Desk with original ID. Do not probe further account details."><span class="saka-callback-body"><b class="saka-hl">Personal failed.</b> Stop. Refer to <strong>Retail/Care Desk</strong> with ID.</span></div>`;
   }
-  return contentHtml;
+
+  const isAttempt2 = callAttempt === 2;
+  const bodyText = isAttempt2
+    ? `<b class="saka-hl">Failed again.</b> No callback. Refer to <strong>Retail/Care Desk</strong> with ID.`
+    : `Confirm <strong>${escapeHtml(failedLabels)}</strong>, then call back.`;
+
+  return `<div class="saka-callback-panel"><button type="button" class="saka-attempt-pill ${isAttempt2 ? 'active' : ''}" id="btnToggleAttempt" title="Toggle 1st vs 2nd failure">${isAttempt2 ? '2nd' : '1st'}</button><span class="saka-callback-body">${bodyText}</span></div>`;
 }
 
 function renderCallbackPanelOnly() {
@@ -1596,6 +1598,7 @@ function bindFormEvents() {
       }
       updateRowGuide(id);
       updateSecondaryCounter();
+      renderCallbackPanelOnly();
       syncPreview();
     });
 
