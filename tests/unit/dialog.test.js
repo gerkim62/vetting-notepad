@@ -1,0 +1,124 @@
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { AppDialog } from '../../extension/lib/dialog.js';
+
+describe('AppDialog Component', () => {
+  beforeEach(() => {
+    document.body.innerHTML = '<div id="dialogMount"></div>';
+  });
+
+  afterEach(() => {
+    document.body.innerHTML = '';
+  });
+
+  it('resolves true when confirm is confirmed', async () => {
+    const promise = AppDialog.confirm({
+      title: 'Delete Item',
+      message: 'Are you sure?',
+      confirmText: 'Yes, Delete',
+      danger: true
+    });
+
+    const overlay = document.querySelector('.app-dialog-overlay');
+    expect(overlay).not.toBeNull();
+    expect(overlay.textContent).toContain('Delete Item');
+    expect(overlay.textContent).toContain('Are you sure?');
+
+    const confirmBtn = overlay.querySelector('.app-dialog-btn-confirm');
+    expect(confirmBtn.textContent).toBe('Yes, Delete');
+    expect(confirmBtn.classList.contains('danger')).toBe(true);
+
+    confirmBtn.click();
+    const result = await promise;
+    expect(result).toBe(true);
+    expect(document.querySelector('.app-dialog-overlay')).toBeNull();
+  });
+
+  it('resolves false when cancel button is clicked', async () => {
+    const promise = AppDialog.confirm({
+      title: 'Reset Settings',
+      message: 'Reset all?'
+    });
+
+    const cancelBtn = document.querySelector('.app-dialog-btn-cancel');
+    cancelBtn.click();
+    const result = await promise;
+    expect(result).toBe(false);
+    expect(document.querySelector('.app-dialog-overlay')).toBeNull();
+  });
+
+  it('resolves false when Escape key is pressed', async () => {
+    const promise = AppDialog.confirm({
+      title: 'Dismiss Test',
+      message: 'Test escape'
+    });
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    const result = await promise;
+    expect(result).toBe(false);
+  });
+
+  it('resolves input value on prompt submission', async () => {
+    const promise = AppDialog.prompt({
+      title: 'New Label',
+      message: 'Enter title:',
+      defaultValue: 'Custom Vetting'
+    });
+
+    const input = document.querySelector('.app-dialog-input');
+    expect(input).not.toBeNull();
+    expect(input.value).toBe('Custom Vetting');
+
+    input.value = 'Updated Vetting';
+    const confirmBtn = document.querySelector('.app-dialog-btn-confirm');
+    confirmBtn.click();
+
+    const result = await promise;
+    expect(result).toBe('Updated Vetting');
+  });
+
+  it('resolves void on alert dismissal', async () => {
+    const promise = AppDialog.alert({
+      title: 'Notice',
+      message: 'Operation completed'
+    });
+
+    const confirmBtn = document.querySelector('.app-dialog-btn-confirm');
+    confirmBtn.click();
+
+    const result = await promise;
+    expect(result).toBeUndefined();
+  });
+
+  it('renders rich professional shortcuts modal and resolves on Done', async () => {
+    const promise = AppDialog.shortcuts();
+
+    const overlay = document.querySelector('.shortcuts-dialog-overlay');
+    expect(overlay).not.toBeNull();
+
+    const title = overlay.querySelector('#shortcutsModalTitle');
+    expect(title.textContent).toBe('Keyboard Shortcuts');
+
+    const kbdCaps = overlay.querySelectorAll('.kbd-cap');
+    expect(kbdCaps.length).toBeGreaterThan(5);
+
+    const rows = overlay.querySelectorAll('.shortcut-row');
+    expect(rows.length).toBeGreaterThan(5);
+
+    const doneBtn = overlay.querySelector('#shortcutsDialogDone');
+    expect(doneBtn).not.toBeNull();
+    doneBtn.click();
+
+    await promise;
+    expect(document.querySelector('.shortcuts-dialog-overlay')).toBeNull();
+  });
+
+  it('closes shortcuts modal when Escape is pressed', async () => {
+    const promise = AppDialog.shortcuts();
+    expect(document.querySelector('.shortcuts-dialog-overlay')).not.toBeNull();
+
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+
+    await promise;
+    expect(document.querySelector('.shortcuts-dialog-overlay')).toBeNull();
+  });
+});

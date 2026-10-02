@@ -1292,6 +1292,146 @@
         "Repeat caller on pending issue. Referenced previous interactions and escalated to team leader."
       ],
       "copyTitle": "General Enquiry – Vetting"
+    },
+    {
+      "id": "agent_personal",
+      "name": "Agent Calling with Personal Number (Call Centre)",
+      "article": "SSCB-0006 / SCEK-0002 / DSMP-0008",
+      "minSecondary": 0,
+      "required": [
+        {
+          "id": "ap_callingno",
+          "label": "Calling Personal Number",
+          "len": 10,
+          "info": "[SAKA SCEK-0002 / SSCB-0006]\nCalling line is Agent's personal line. Must be active on IN-data >30 days. Max 2 swap requests per 24 hours."
+        },
+        {
+          "id": "ap_tillno",
+          "label": "Till / Store Number",
+          "len": 7,
+          "info": "[SAKA DSMP-0008 / Art 410]\nStore Number or Head Office Shortcode of the M-PESA Agency."
+        },
+        {
+          "id": "ap_opname",
+          "label": "Operator Full Names",
+          "len": 0,
+          "info": "[SAKA DSMP-0008 / Art 410]\nFull names of the Till Operator as registered on M-PESA G2/G3."
+        },
+        {
+          "id": "ap_opid",
+          "label": "Operator ID",
+          "len": 0,
+          "info": "[SAKA DSMP-0008 / Art 410]\nOperator ID / Assistant Number (e.g. 1, 2, 3...) of the Till Operator."
+        },
+        {
+          "id": "ap_opnatid",
+          "label": "Operator National ID",
+          "len": 8,
+          "info": "[SAKA DSMP-0008 / Art 410]\nOfficial National ID Document number of the Till Operator."
+        }
+      ],
+      "optional": [
+        {
+          "id": "ap_targetno",
+          "label": "Target Number / MSISDN",
+          "len": 10,
+          "info": "[SAKA SSCB-0006]\nTarget customer number being assisted, swapped, or unlocked."
+        },
+        {
+          "id": "ap_tid",
+          "label": "Transaction ID (TID)",
+          "len": 10,
+          "info": "[SAKA DSMP-0008]\nM-PESA Transaction ID for deposit reversals (within 24 hours SLA)."
+        },
+        {
+          "id": "ap_amount",
+          "label": "Transaction Amount (KES)",
+          "len": 0,
+          "info": "[SAKA DSMP-0008]\nExact transaction amount in KES."
+        },
+        {
+          "id": "ap_reason",
+          "label": "Reason for Call",
+          "len": 0,
+          "info": "[SAKA DSMP-0008]\nDeposit Reversal, SIM Swap Request, Till PIN Unlock, or Float Query."
+        },
+        {
+          "id": "ap_sr_ticket",
+          "label": "SR Number",
+          "len": 0,
+          "info": "CRM Service Request ticket number if escalated."
+        }
+      ],
+      "comments": [
+        "Agent vetted successfully with Operator ID & National ID. SR raised.",
+        "Call made from personal line; verified active on IN-data >30 days.",
+        "Operator failed vetting on National ID. Advised to call via Till MSISDN or visit Retail."
+      ],
+      "copyTitle": "Agent Calling (Personal Number) – Call Centre Vetting"
+    },
+    {
+      "id": "till_notif_replacement",
+      "name": "Till Notification MSISDN Replacement (Call Centre)",
+      "article": "LNMO-0001 (Art 113)",
+      "minSecondary": 0,
+      "required": [
+        {
+          "id": "tn_tillno",
+          "label": "Till / Store Number",
+          "len": 7,
+          "info": "[SAKA LNMO-0001 / Art 113]\nBuy Goods Till or Paybill shortcode as captured on M-PESA G2."
+        },
+        {
+          "id": "tn_bizname",
+          "label": "Merchant Business Name",
+          "len": 0,
+          "info": "[SAKA LNMO-0001 / Art 113]\nOfficial business/proprietor name as registered on M-PESA G2."
+        },
+        {
+          "id": "tn_nominated",
+          "label": "Calling / Nominated MSISDN",
+          "len": 10,
+          "info": "[SAKA LNMO-0001 / Art 113]\nCaller must call from the registered Nominated Number / Finance Contact."
+        },
+        {
+          "id": "tn_newnotif",
+          "label": "New Notification MSISDN",
+          "len": 10,
+          "info": "[SAKA LNMO-0001 / Art 113]\nProposed MSISDN to receive transaction notifications."
+        },
+        {
+          "id": "tn_reason",
+          "label": "Reason for Replacement",
+          "len": 0,
+          "info": "[SAKA LNMO-0001 / Art 113]\nPooled/Inactive, Phone Stolen, Business Partner Change, or Wrong Notifications."
+        }
+      ],
+      "optional": [
+        {
+          "id": "tn_type",
+          "label": "Notification Number Type",
+          "len": 0,
+          "info": "[SAKA LNMO-0001 / Art 113]\nAgent Tariff Line vs Personal MSISDN (LNM Support engages partner for KYC if personal)."
+        },
+        {
+          "id": "tn_srno",
+          "label": "SR Number (LNM Support)",
+          "len": 0,
+          "info": "[SAKA LNMO-0001 / Art 113]\nSR Cat: LNM BUY GOODS AND SERVICES, Type: Notifications, Item: Notifications Delay/Failure (24h SLA)."
+        },
+        {
+          "id": "tn_altcontact",
+          "label": "Alternate Contact Number",
+          "len": 10,
+          "info": "[SAKA LNMO-0001 / Art 113]\nSecondary contact number for LNM Support follow-up."
+        }
+      ],
+      "comments": [
+        "Merchant called from Nominated Number. Verified Till & Business Name. SR raised to LNM Support (24h SLA) to engage partner for KYC.",
+        "Caller is not calling from Nominated Number. Advised caller to place call from registered Nominated/Finance MSISDN.",
+        "Non-merchant received wrong notifications. Shortcode captured & unvetted SR escalated to LNM Support."
+      ],
+      "copyTitle": "Till Notification MSISDN Replacement – Call Centre Vetting"
     }
   ]
 }

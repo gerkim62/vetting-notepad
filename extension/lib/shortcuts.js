@@ -1,0 +1,92 @@
+/**
+ * Central Keyboard Shortcuts Router
+ * Handles Alt+Shift+<Key> screen navigation and global productivity shortcuts.
+ */
+
+export function initShortcuts(handlers = {}) {
+  const onKeyDown = (e) => {
+    // 1. Alt + Shift + <Key> Screen Switchers
+    if (e.altKey && e.shiftKey) {
+      const code = e.code || `Key${(e.key || '').toUpperCase()}`;
+      const key = (e.key || '').toUpperCase();
+
+      if (code === 'KeyN' || key === 'N') {
+        e.preventDefault();
+        handlers.toggleNotes?.();
+        return;
+      }
+      if (code === 'KeyC' || key === 'C') {
+        e.preventDefault();
+        handlers.toggleCallpad?.();
+        return;
+      }
+      if (code === 'KeyB' || key === 'B') {
+        e.preventDefault();
+        handlers.toggleBreaks?.();
+        return;
+      }
+      if (code === 'KeyS' || key === 'S') {
+        e.preventDefault();
+        handlers.toggleSettings?.();
+        return;
+      }
+      if (code === 'KeyP' || key === 'P') {
+        e.preventDefault();
+        handlers.togglePreview?.();
+        return;
+      }
+    }
+
+    // 2. Escape -> Return to main / close open modal/screen
+    if (e.key === 'Escape') {
+      handlers.handleEscape?.();
+      return;
+    }
+
+    // 3. Ctrl/Cmd + Enter -> Copy Vetting
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      e.preventDefault();
+      handlers.copyVetting?.();
+      return;
+    }
+
+    // 4. Ctrl/Cmd + Shift + V -> Paste Whole Vetting
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key.toLowerCase() === 'v' || e.code === 'KeyV')) {
+      e.preventDefault();
+      handlers.pasteVetting?.();
+      return;
+    }
+
+    // 5. Ctrl/Cmd + K -> Open & Focus Type Search
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      handlers.openTypeSearch?.();
+      return;
+    }
+
+    // 6. '?' (when not in text input) OR Ctrl/Cmd + / OR Alt+Shift+? -> Show Shortcuts
+    const target = e.target;
+    const isTextInput = target && (
+      target.tagName === 'INPUT' ||
+      target.tagName === 'TEXTAREA' ||
+      target.isContentEditable ||
+      (target.classList && target.classList.contains('ql-editor'))
+    );
+
+    if (
+      (e.key === '?' && !isTextInput) ||
+      ((e.ctrlKey || e.metaKey) && (e.key === '/' || e.code === 'Slash')) ||
+      (e.altKey && e.shiftKey && (e.key === '?' || e.code === 'Slash'))
+    ) {
+      e.preventDefault();
+      handlers.showShortcuts?.();
+      return;
+    }
+  };
+
+  document.addEventListener('keydown', onKeyDown);
+
+  return () => {
+    document.removeEventListener('keydown', onKeyDown);
+  };
+}

@@ -5,7 +5,9 @@
   "description": "Ultra-compact vetting notepad tool for call agents with customizable items, live character guide, and auto-clear.",
   "permissions": [
     "storage",
-    "clipboardWrite"
+    "clipboardWrite",
+    "clipboardRead",
+    "downloads"
   ],
   "background": {
     "service_worker": "background.js"

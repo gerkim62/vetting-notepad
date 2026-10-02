@@ -3,6 +3,20 @@
  * Ultra-compact, fast, KISS, lightweight.
  */
 import defaultConfig from './safaricom-vetting-config.json' with { type: 'json' };
+import { AppDialog } from './lib/dialog.js';
+import {
+  DEFAULT_BREAK_SCHEDULE,
+  calculateBreakState,
+  formatCountdown,
+  formatBigCountdown,
+  formatShortDuration
+} from './lib/break-timer.js';
+import { attachAutoExpand } from './lib/multiline.js';
+import { SmartCallPad } from './lib/callpad.js';
+import { parseVettingText, isVettingClipboardText } from './lib/parser.js';
+import { initShortcuts } from './lib/shortcuts.js';
+import { RichNotepad, writeDualClipboard, calculateNoteStats } from './lib/notepad.js';
+import { buildExportPayload, validateImportPayload, exportConfiguration } from './lib/exporter.js';
 
 const uid = () => Math.random().toString(36).slice(2, 8);
 
@@ -328,8 +342,14 @@ function showBanner(message, actionLabel = null, actionCallback = null, duration
 
   topBanner.style.display = 'flex';
   topBanner.style.animation = 'none';
-  void topBanner.offsetWidth; // trigger reflow for shake animation
-  topBanner.style.animation = 'bannerShake 0.4s ease-in-out';
+  void topBanner.offsetWidth; // trigger reflow for smooth animation
+  if (type === 'danger' || type === 'error') {
+    topBanner.style.animation = 'bannerShake 0.35s ease-in-out';
+  } else if (type === 'warn' || type === 'warning') {
+    topBanner.style.animation = 'bannerPop 0.22s ease-out';
+  } else {
+    topBanner.style.animation = 'bannerSlideIn 0.22s cubic-bezier(0.16, 1, 0.3, 1)';
+  }
 
   if (durationMs > 0 && !isBannerHovered) {
     bannerTimer = setTimeout(() => {
@@ -689,7 +709,7 @@ function startAutoClear(typeId) {
     stopAutoClear();
   }, 0, 'warn');
 
-  autoClearTimer = setInterval(() => {
+  autoClearTimer = setInterval(async () => {
     autoClearSeconds--;
     if (autoClearSeconds <= 0) {
       stopAutoClear();
@@ -699,6 +719,7 @@ function startAutoClear(typeId) {
       updateCommentInput();
       syncPreview();
       showClearedFeedback();
+      await checkClipboardForVetting(false);
     } else {
       clearBtnText.textContent = `Clear (${autoClearSeconds}s)`;
       if (topBannerMsg) {
@@ -708,56 +729,58 @@ function startAutoClear(typeId) {
   }, 1000);
 }
 
-btnClear.onclick = () => {
+btnClear.onclick = async () => {
   stopAutoClear();
 
   const v = curValues();
   const st = curStatus();
-  const hasCallPadValues = Object.values(callPadValues).some(x => x && x.trim());
-  if (!Object.values(v).some(x => x && x.trim()) && !Object.values(st).some(Boolean) && !hasCallPadValues) {
+  const commentVal = (commentInput ? commentInput.value : (v._comment || '')).trim();
+  const hasValues = Object.entries(v).some(([k, val]) => k !== '_comment' && val && String(val).trim().length > 0);
+  const hasStatus = Object.values(st).some(Boolean);
+  const hasContent = hasValues || hasStatus || commentVal.length > 0;
+
+  if (!hasContent) {
+    showClearedFeedback('Empty');
+    await checkClipboardForVetting(false);
     return;
   }
 
   const snapVal = JSON.parse(JSON.stringify(formValues));
   const snapStatus = JSON.parse(JSON.stringify(itemStatus));
-  const snapCallPad = Object.assign({}, callPadValues);
   const snapAttempt = callAttempt;
 
   formValues = {};
   itemStatus = {};
-  callPadValues = {};
   callAttempt = 1;
 
-  while (callPadKeys.length > 1 && !(callPadKeys[callPadKeys.length - 1].key || '').trim()) {
-    callPadKeys.pop();
+  if (commentInput) {
+    commentInput.value = '';
   }
-  saveCallPadKeys();
 
   renderForm();
   updateCommentInput();
   syncPreview();
-  renderCallPad();
-
-  showClearedFeedback();
+  showClearedFeedback('Cleared');
 
   showBanner('Call cleared', 'Undo', () => {
     formValues = snapVal;
     itemStatus = snapStatus;
-    callPadValues = snapCallPad;
     callAttempt = snapAttempt;
     renderForm();
     updateCommentInput();
     syncPreview();
-    renderCallPad();
+    setMiddleActionButton('clear');
   }, 4000, 'info');
+
+  await checkClipboardForVetting(false);
 };
 
-function showClearedFeedback() {
+function showClearedFeedback(label = 'Cleared') {
   const originalHtml = btnClear.innerHTML;
   btnClear.classList.add('cleared-success');
   btnClear.innerHTML = `
     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m5 12 5 5L20 7"/></svg>
-    <span>Cleared</span>
+    <span>${label}</span>
   `;
   setTimeout(() => {
     btnClear.classList.remove('cleared-success');
@@ -1054,14 +1077,19 @@ const callPadOverlay = document.getElementById('callPadOverlay');
 const callPadClose = document.getElementById('callPadClose');
 const callPadBody = document.getElementById('callPadBody');
 
+let smartCallPadInstance = null;
+
 async function initCallPad() {
-  const savedKeys = await Storage.get('vpad.callpad_keys', null);
-  if (Array.isArray(savedKeys) && savedKeys.length > 0) {
-    callPadKeys = savedKeys;
+  const savedLines = await Storage.get('vpad.callpad_lines', null);
+  let initialLines = [''];
+  if (Array.isArray(savedLines) && savedLines.length > 0) {
+    initialLines = savedLines;
   } else {
-    callPadKeys = [
-      { id: 'caller_name', key: 'Caller Name' }
-    ];
+    const legacyKeys = await Storage.get('vpad.callpad_keys', null);
+    if (Array.isArray(legacyKeys) && legacyKeys.length > 0) {
+      initialLines = legacyKeys.map(k => k.key).filter(k => k && k.trim());
+      if (initialLines.length === 0) initialLines = [''];
+    }
   }
 
   const savedPos = await Storage.get('vpad.callpad_pos', null);
@@ -1069,7 +1097,20 @@ async function initCallPad() {
     applyFabPosition(savedPos.x, savedPos.y);
   }
 
-  renderCallPad();
+  if (callPadBody) {
+    smartCallPadInstance = new SmartCallPad({
+      container: callPadBody,
+      initialLines,
+      onSave: (lines) => {
+        Storage.set('vpad.callpad_lines', lines);
+      },
+      onCopy: async (text) => {
+        await writeToClipboard(text);
+        return true;
+      }
+    });
+  }
+
   initCallPadFabDrag();
 
   if (callPadOverlay) callPadOverlay.onclick = closeCallPad;
@@ -1082,200 +1123,11 @@ async function initCallPad() {
   });
 }
 
-function saveCallPadKeys() {
-  Storage.set('vpad.callpad_keys', callPadKeys);
-}
-
-function renderCallPad() {
-  if (!callPadBody) return;
-
-  if (!Array.isArray(callPadKeys) || callPadKeys.length === 0) {
-    callPadKeys = [{ id: 'caller_name', key: 'Caller Name' }];
-    saveCallPadKeys();
-  }
-
-  callPadBody.innerHTML = '';
-  callPadKeys.forEach((item, idx) => {
-    const rowEl = createCallPadRowElement(item, idx);
-    callPadBody.appendChild(rowEl);
-  });
-}
-
-function createCallPadRowElement(item, idx) {
-  const id = item.id;
-  const val = callPadValues[id] || '';
-  const isCallerName = (id === 'caller_name');
-  const hasContent = (item.key || '').trim().length > 0 || (val || '').trim().length > 0;
-  const isLast = (idx === callPadKeys.length - 1);
-  const isNewBlank = isLast && !hasContent;
-
-  const row = document.createElement('div');
-  row.className = `callpad-row ${isNewBlank ? 'new-row' : ''}`;
-  row.dataset.keyId = escapeHtml(id);
-  row.dataset.index = String(idx);
-
-  row.innerHTML = `
-    <div class="callpad-key-wrap">
-      <input type="text" class="callpad-key-input" value="${escapeHtml(item.key)}" placeholder="Item" title="Edit label" autocomplete="off" spellcheck="false"${isCallerName ? ' readonly' : ''}>
-      ${isCallerName ? '' : `
-      <button type="button" class="callpad-row-btn delete-btn" title="Delete item" aria-label="Delete item" style="${hasContent ? '' : 'visibility:hidden;'}">
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
-      </button>`}
-    </div>
-    <div class="callpad-val-wrap">
-      <input type="text" class="callpad-val-input" value="${escapeHtml(val)}" placeholder="Detail..." autocomplete="off" spellcheck="false">
-      <button type="button" class="callpad-row-btn copy-btn" title="Copy detail" aria-label="Copy detail" style="${val.trim() ? '' : 'opacity:0.4;'}">
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>
-      </button>
-    </div>
-  `;
-
-  const keyInput = row.querySelector('.callpad-key-input');
-  const valInput = row.querySelector('.callpad-val-input');
-  const btnCopy = row.querySelector('.copy-btn');
-  const btnDelete = row.querySelector('.delete-btn');
-
-  if (keyInput) {
-    keyInput.addEventListener('input', () => {
-      item.key = keyInput.value;
-      saveCallPadKeys();
-      if (btnDelete) {
-        const hc = (item.key || '').trim().length > 0 || (callPadValues[id] || '').trim().length > 0;
-        btnDelete.style.visibility = hc ? 'visible' : 'hidden';
-      }
-    });
-
-    keyInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        if (valInput) valInput.focus();
-      }
-    });
-
-    keyInput.addEventListener('blur', () => {
-      handleItemBlur(item, keyInput, valInput);
-    });
-  }
-
-  if (valInput) {
-    valInput.addEventListener('input', () => {
-      callPadValues[id] = valInput.value;
-      if (btnDelete) {
-        const hc = (item.key || '').trim().length > 0 || (valInput.value || '').trim().length > 0;
-        btnDelete.style.visibility = hc ? 'visible' : 'hidden';
-      }
-      if (btnCopy) {
-        btnCopy.style.opacity = valInput.value.trim() ? '1' : '0.4';
-      }
-    });
-
-    valInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        const nextRow = row.nextElementSibling;
-        if (nextRow) {
-          const nextKey = nextRow.querySelector('.callpad-key-input');
-          if (nextKey) nextKey.focus();
-        } else {
-          const keyVal = keyInput ? keyInput.value.trim() : (item.key || '').trim();
-          const valVal = valInput.value.trim();
-          const hasTyped = (item.id === 'caller_name') ? (valVal.length > 0) : (keyVal.length > 0 || valVal.length > 0);
-          if (hasTyped) {
-            addNewCallPadRow(true);
-          }
-        }
-      }
-    });
-
-    valInput.addEventListener('blur', () => {
-      handleItemBlur(item, keyInput, valInput);
-    });
-  }
-
-  if (btnCopy) {
-    btnCopy.onclick = async () => {
-      const textToCopy = callPadValues[id] || (valInput ? valInput.value : '');
-      if (!textToCopy.trim()) return;
-      await writeToClipboard(textToCopy);
-      const origHtml = btnCopy.innerHTML;
-      const origTitle = btnCopy.title;
-      btnCopy.classList.add('copied-success');
-      btnCopy.title = 'Copied ✓';
-      btnCopy.innerHTML = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6 9 17l-5-5"/></svg>`;
-      setTimeout(() => {
-        btnCopy.classList.remove('copied-success');
-        btnCopy.title = origTitle;
-        btnCopy.innerHTML = origHtml;
-      }, 1200);
-    };
-  }
-
-  if (btnDelete) {
-    btnDelete.onclick = () => {
-      callPadKeys = callPadKeys.filter(k => k.id !== id);
-      delete callPadValues[id];
-      if (callPadKeys.length === 0) {
-        callPadKeys = [{ id: 'caller_name', key: 'Caller Name' }];
-      }
-      saveCallPadKeys();
-      renderCallPad();
-    };
-  }
-
-  return row;
-}
-
-function addNewCallPadRow(focusKey = false) {
-  if (callPadKeys.length > 0) {
-    const last = callPadKeys[callPadKeys.length - 1];
-    const lastKey = (last.key || '').trim();
-    const lastVal = (callPadValues[last.id] || '').trim();
-    if (last.id !== 'caller_name' && !lastKey && !lastVal) {
-      if (focusKey) {
-        const lastRow = callPadBody?.querySelector(`.callpad-row[data-key-id="${last.id}"]`);
-        const keyInp = lastRow?.querySelector('.callpad-key-input');
-        if (keyInp) keyInp.focus();
-      }
-      return;
-    }
-  }
-
-  const newId = 'k_' + Date.now();
-  const newItem = { id: newId, key: '' };
-  callPadKeys.push(newItem);
-  saveCallPadKeys();
-
-  if (callPadBody) {
-    const newIdx = callPadKeys.length - 1;
-    const rowEl = createCallPadRowElement(newItem, newIdx);
-    callPadBody.appendChild(rowEl);
-    if (focusKey) {
-      const keyInp = rowEl.querySelector('.callpad-key-input');
-      if (keyInp) keyInp.focus();
-    }
-  }
-}
-
-function handleItemBlur(item, keyInput, valInput) {
-  if (!Array.isArray(callPadKeys) || callPadKeys.length === 0) return;
-  const lastItem = callPadKeys[callPadKeys.length - 1];
-  if (lastItem.id !== item.id) return;
-
-  const keyVal = keyInput ? keyInput.value.trim() : (item.key || '').trim();
-  const valVal = valInput ? valInput.value.trim() : (callPadValues[item.id] || '').trim();
-  const hasTyped = (item.id === 'caller_name') ? (valVal.length > 0) : (keyVal.length > 0 || valVal.length > 0);
-
-  if (hasTyped) {
-    addNewCallPadRow(false);
-  }
-}
-
 function openCallPad() {
   if (callPadPopover) callPadPopover.style.display = 'flex';
   if (callPadOverlay) callPadOverlay.style.display = 'block';
-  renderCallPad();
-  const firstVal = callPadBody?.querySelector('.callpad-val-input');
-  if (firstVal) firstVal.focus();
+  const firstInp = callPadBody?.querySelector('.callpad-line-input');
+  if (firstInp) firstInp.focus();
 }
 
 function closeCallPad() {
@@ -1492,7 +1344,9 @@ function createRowHtml(it, kind, idx) {
             ${infoBtnHtml}
           </label>
           ${it.len > 0 ? `<span class="field-counter" id="cnt_${it.id}"></span>` : ''}
-          <input type="text" class="mat-input ${it.len > 0 ? 'has-len' : ''}" id="inp_${it.id}" data-id="${it.id}" value="${escapeHtml(val)}" autocomplete="off" spellcheck="false">
+          ${it.multiline
+            ? `<textarea class="mat-input vfield-textarea ${it.len > 0 ? 'has-len' : ''}" id="inp_${it.id}" data-id="${it.id}" data-max-lines="${it.maxLines || 4}" rows="1" autocomplete="off" spellcheck="false">${escapeHtml(val)}</textarea>`
+            : `<input type="text" class="mat-input ${it.len > 0 ? 'has-len' : ''}" id="inp_${it.id}" data-id="${it.id}" value="${escapeHtml(val)}" autocomplete="off" spellcheck="false">`}
           ${underlineHtml}
         </div>
       </div>
@@ -1604,6 +1458,9 @@ function bindFormEvents() {
 
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
+        if (input.tagName.toLowerCase() === 'textarea' && !e.ctrlKey && !e.metaKey) {
+          return;
+        }
         e.preventDefault();
         const inputs = [...mainForm.querySelectorAll('.mat-input')];
         const nextIdx = inputs.indexOf(input) + 1;
@@ -1614,6 +1471,10 @@ function bindFormEvents() {
         }
       }
     });
+  });
+
+  mainForm.querySelectorAll('textarea.vfield-textarea').forEach(tx => {
+    attachAutoExpand(tx, tx.dataset.maxLines || 4);
   });
 
   mainForm.querySelectorAll('[data-status-btn]').forEach(btn => {
@@ -1660,69 +1521,77 @@ function bindFormEvents() {
     };
   }
 
+async function smartPasteField(input) {
+  if (!input) return false;
+  const id = input.dataset.id;
+  if (!id) return false;
+  try {
+    const rawClipboard = await navigator.clipboard.readText();
+    const t = curType();
+    const allItems = t ? [...(t.required || []), ...(t.optional || [])] : [];
+    const item = allItems.find(x => x.id === id);
+    const parsedV360 = parseView360Text(rawClipboard);
+
+    let textToPaste = '';
+    let showUnmappedWarning = false;
+    const previousVal = input.value;
+
+    if (parsedV360) {
+      const mapping = item ? item.v360 : null;
+      if (mapping && parsedV360[mapping] !== undefined) {
+        textToPaste = parsedV360[mapping] || '';
+      } else {
+        textToPaste = rawClipboard.replace(/\s*[\r\n]+\s*/g, ' ').trim();
+        showUnmappedWarning = true;
+      }
+    } else {
+      textToPaste = rawClipboard.replace(/\s*[\r\n]+\s*/g, ' ').trim();
+    }
+
+    input.value = textToPaste;
+    curValues()[id] = textToPaste;
+    stopAutoClear();
+    const box = input.closest('.material-field');
+    if (box) box.classList.add('expanded');
+    updateRowGuide(id);
+    syncPreview();
+    input.focus();
+
+    input.style.transition = 'background 0.2s ease';
+    input.style.background = 'var(--saf-emerald-soft)';
+    setTimeout(() => { input.style.background = 'transparent'; }, 400);
+
+    if (showUnmappedWarning) {
+      showBanner(
+        'Pasted raw text (no View 360 mapping for this field)',
+        'Undo',
+        () => {
+          input.value = previousVal;
+          curValues()[id] = previousVal;
+          if (box && previousVal.length === 0 && !curStatus()[id]) {
+            box.classList.remove('expanded');
+          }
+          updateRowGuide(id);
+          syncPreview();
+          input.focus();
+        },
+        4000,
+        'warn'
+      );
+    }
+    return true;
+  } catch (err) {
+    showToast('Clipboard access denied', null, null, 2500, 'warn');
+    input.focus();
+    return false;
+  }
+}
+
   mainForm.querySelectorAll('.paste-btn').forEach(btn => {
     btn.onclick = async () => {
       const id = btn.dataset.pasteId;
       const input = mainForm.querySelector(`.mat-input[data-id="${id}"]`);
-      if (!input) return;
-      try {
-        const rawClipboard = await navigator.clipboard.readText();
-        const t = curType();
-        const allItems = t ? [...(t.required || []), ...(t.optional || [])] : [];
-        const item = allItems.find(x => x.id === id);
-        const parsedV360 = parseView360Text(rawClipboard);
-
-        let textToPaste = '';
-        let showUnmappedWarning = false;
-        const previousVal = input.value;
-
-        if (parsedV360) {
-          const mapping = item ? item.v360 : null;
-          if (mapping && parsedV360[mapping] !== undefined) {
-            textToPaste = parsedV360[mapping] || '';
-          } else {
-            textToPaste = rawClipboard.replace(/\s*[\r\n]+\s*/g, ' ').trim();
-            showUnmappedWarning = true;
-          }
-        } else {
-          textToPaste = rawClipboard.replace(/\s*[\r\n]+\s*/g, ' ').trim();
-        }
-
-        input.value = textToPaste;
-        curValues()[id] = textToPaste;
-        stopAutoClear();
-        const box = input.closest('.material-field');
-        if (box) box.classList.add('expanded');
-        updateRowGuide(id);
-        syncPreview();
-        input.focus();
-
-        input.style.transition = 'background 0.2s ease';
-        input.style.background = 'var(--saf-emerald-soft)';
-        setTimeout(() => { input.style.background = 'transparent'; }, 400);
-
-        if (showUnmappedWarning) {
-          showBanner(
-            'Pasted raw text (no View 360 mapping for this field)',
-            'Undo',
-            () => {
-              input.value = previousVal;
-              curValues()[id] = previousVal;
-              if (box && previousVal.length === 0 && !curStatus()[id]) {
-                box.classList.remove('expanded');
-              }
-              updateRowGuide(id);
-              syncPreview();
-              input.focus();
-            },
-            4000,
-            'warn'
-          );
-        }
-      } catch (err) {
-        showToast('Clipboard access denied', null, null, 2500, 'warn');
-        input.focus();
-      }
+      if (input) await smartPasteField(input);
     };
   });
 }
@@ -1731,6 +1600,7 @@ function bindFormEvents() {
    Comment Handling & Suggestions Dropdown with Instant Deletion
    ========================================================================== */
 const commentInput = document.getElementById('commentInput');
+const commentInputAutoExpand = attachAutoExpand(commentInput, 5);
 const commentFieldBox = document.getElementById('commentFieldBox');
 const commentSuggestionsMenu = document.getElementById('commentSuggestionsMenu');
 
@@ -1799,7 +1669,6 @@ if (commentSuggestionsMenu) {
           t.comments.splice(idx, 1);
           saveTypes();
           renderCommentSuggestions(commentInput.value);
-          showToast('Comment deleted', null, null, 1500, 'info');
         }
       }
       return;
@@ -1921,6 +1790,7 @@ function updateCommentInput() {
   const hasVal = v.length > 0;
   commentFieldBox.classList.toggle('has-value', hasVal);
   commentFieldBox.classList.toggle('expanded', hasVal || document.activeElement === commentInput);
+  if (commentInputAutoExpand) commentInputAutoExpand.adjustHeight();
   closeCommentSuggestions();
 }
 
@@ -1990,6 +1860,125 @@ async function doCopy() {
 }
 btnCopy.onclick = doCopy;
 
+const btnPaste = document.getElementById('btnPaste');
+const pasteBtnText = document.getElementById('pasteBtnText');
+let pasteCooldown = false;
+
+function setMiddleActionButton(mode) {
+  if (!btnPaste || !btnClear) return;
+  if (mode === 'paste') {
+    pasteCooldown = true;
+    setTimeout(() => { pasteCooldown = false; }, 350);
+    btnPaste.style.display = 'inline-flex';
+    btnClear.style.display = 'none';
+  } else {
+    btnPaste.style.display = 'none';
+    btnClear.style.display = 'inline-flex';
+  }
+}
+
+async function doPasteWholeVetting(clipText = null) {
+  let text = clipText;
+  if (!text) {
+    if (navigator.clipboard && navigator.clipboard.readText) {
+      try {
+        text = await navigator.clipboard.readText();
+      } catch (err) {
+        showBanner('Clipboard access denied. Please paste manually.', null, null, 2500, 'danger');
+        return;
+      }
+    }
+  }
+
+  if (!text || !text.trim()) {
+    showBanner('Clipboard is empty', null, null, 2000, 'warn');
+    return;
+  }
+
+  const parsed = parseVettingText(text, types, activeTypeId);
+  if (parsed.typeId && parsed.typeId !== activeTypeId) {
+    switchToType(parsed.typeId);
+  }
+
+  const v = curValues();
+  const st = curStatus();
+  Object.assign(v, parsed.values);
+  if (parsed.comment) {
+    v._comment = parsed.comment;
+  }
+  Object.assign(st, parsed.status);
+
+  renderForm();
+  updateCommentInput();
+  syncPreview();
+
+  const count = Object.keys(parsed.values).length;
+  if (btnPaste && pasteBtnText) {
+    btnPaste.classList.add('copied-success');
+    pasteBtnText.textContent = 'Pasted ✓';
+    setTimeout(() => {
+      btnPaste.classList.remove('copied-success');
+      pasteBtnText.textContent = 'Paste';
+      setMiddleActionButton('clear');
+    }, 1200);
+  } else {
+    setMiddleActionButton('clear');
+  }
+
+  const typeName = curType() ? curType().name : '';
+  showBanner(`Pasted ${count} ${count === 1 ? 'field' : 'fields'} into ${typeName} ✓`, null, null, 2500, 'info');
+}
+
+if (btnPaste) {
+  btnPaste.onclick = () => {
+    if (pasteCooldown) return;
+    doPasteWholeVetting();
+  };
+}
+
+let lastCheckedClip = null;
+
+async function checkClipboardForVetting(showPromptBanner = true) {
+  try {
+    if (!navigator.clipboard || !navigator.clipboard.readText) {
+      setMiddleActionButton('clear');
+      return;
+    }
+    const clip = await navigator.clipboard.readText();
+    if (!clip || !clip.trim()) {
+      setMiddleActionButton('clear');
+      return;
+    }
+    const isVetting = isVettingClipboardText(clip, types);
+    if (isVetting) {
+      setMiddleActionButton('paste');
+      if (showPromptBanner && clip !== lastCheckedClip) {
+        lastCheckedClip = clip;
+        showBanner(
+          'Vetting data on clipboard detected',
+          'Paste All',
+          () => {
+            doPasteWholeVetting(clip);
+          },
+          5000,
+          'info'
+        );
+      } else if (!showPromptBanner) {
+        lastCheckedClip = clip;
+      }
+    } else {
+      setMiddleActionButton('clear');
+    }
+  } catch (e) {
+    setMiddleActionButton('clear');
+  }
+}
+
+window.addEventListener('focus', checkClipboardForVetting);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') checkClipboardForVetting();
+});
+
 /* ==========================================================================
    Mount CreatableSelect for Vetting Types
    ========================================================================== */
@@ -2001,7 +1990,7 @@ function initTypeSelect() {
   typeSelectComponent = new CreatableSelect(typeSelectMount, {
     options,
     value: activeTypeId,
-    placeholder: 'Vetting type...',
+    placeholder: 'Vetting type... (Ctrl+K)',
     onChange: (val) => {
       switchToType(val);
     },
@@ -2108,7 +2097,7 @@ function renderEditView() {
 }
 
 function createEditRowHtml(it, kind, idx, total, list) {
-  const hasRich = !!(it.article || it.info || it.v360 || it.defaultValue || it.excludeFromCount);
+  const hasRich = !!(it.article || it.info || it.v360 || it.defaultValue || it.excludeFromCount || it.multiline);
   const isTied = !!it.group;
   let canMoveUp = idx > 0;
   let canMoveDown = idx < total - 1;
@@ -2177,6 +2166,16 @@ function createEditRowHtml(it, kind, idx, total, list) {
             <span>Policy-only (exclude from secondary count)</span>
           </label>
         </div>
+        <div class="drawer-field drawer-field-checkbox">
+          <label class="drawer-check-label">
+            <input type="checkbox" class="el-multiline" ${it.multiline ? 'checked' : ''}>
+            <span>Multiline field (expandable)</span>
+          </label>
+        </div>
+        <div class="drawer-field el-maxlines-row" id="maxlines_row_${it.id}" style="${it.multiline ? '' : 'display:none;'}">
+          <span class="drawer-label">Max Lines (auto-expand):</span>
+          <input type="number" class="el-maxlines" min="2" max="10" value="${it.maxLines || 4}">
+        </div>
         <div class="drawer-field">
           <span class="drawer-label">SAKA Article:</span>
           <input type="text" class="el-article" value="${escapeHtml(it.article || '')}" placeholder="e.g. VMDA-0001">
@@ -2239,7 +2238,7 @@ function bindEditEvents() {
     };
   }
 
-  editPane.onclick = (e) => {
+  editPane.onclick = async (e) => {
     const drawerBtn = e.target.closest('[data-drawer-btn]');
     if (drawerBtn) {
       const id = drawerBtn.dataset.drawerBtn;
@@ -2265,7 +2264,13 @@ function bindEditEvents() {
           showToast('Cannot delete the last vetting type', null, null, 2500, 'warn');
           return;
         }
-        if (confirm(`Delete "${t.name}"?`)) {
+        const ok = await AppDialog.confirm({
+          title: 'Delete Vetting Type',
+          message: `Are you sure you want to delete "${t.name}"? This cannot be undone.`,
+          confirmText: 'Delete',
+          danger: true
+        });
+        if (ok) {
           types = types.filter(x => x.id !== t.id);
           delete formValues[t.id];
           delete itemStatus[t.id];
@@ -2444,7 +2449,31 @@ function bindEditEvents() {
       if (!item) return;
       item.excludeFromCount = e.target.checked || undefined;
       const btn = group.querySelector('.btn-toggle-drawer');
-      if (btn) btn.classList.toggle('has-rich', !!(item.article || item.info || item.v360 || item.defaultValue || item.excludeFromCount));
+      if (btn) btn.classList.toggle('has-rich', !!(item.article || item.info || item.v360 || item.defaultValue || item.excludeFromCount || item.multiline));
+      saveTypes();
+    } else if (e.target.classList.contains('el-multiline')) {
+      const group = e.target.closest('.edit-item-group');
+      if (!group) return;
+      const kind = group.dataset.kind;
+      const list = kind === 'required' ? t.required : t.optional;
+      const item = list.find(x => x.id === group.dataset.id);
+      if (!item) return;
+      item.multiline = e.target.checked || undefined;
+      const maxRow = group.querySelector(`#maxlines_row_${item.id}`);
+      if (maxRow) maxRow.style.display = item.multiline ? 'flex' : 'none';
+      const btn = group.querySelector('.btn-toggle-drawer');
+      if (btn) btn.classList.toggle('has-rich', !!(item.article || item.info || item.v360 || item.defaultValue || item.excludeFromCount || item.multiline));
+      saveTypes();
+    } else if (e.target.classList.contains('el-maxlines')) {
+      const group = e.target.closest('.edit-item-group');
+      if (!group) return;
+      const kind = group.dataset.kind;
+      const list = kind === 'required' ? t.required : t.optional;
+      const item = list.find(x => x.id === group.dataset.id);
+      if (!item) return;
+      const val = parseInt(e.target.value, 10);
+      item.maxLines = Math.min(Math.max(isNaN(val) ? 4 : val, 2), 10);
+      e.target.value = item.maxLines;
       saveTypes();
     }
   };
@@ -2559,6 +2588,14 @@ function initMenu() {
       closeMenu();
       if (breakNotifierView) breakNotifierView.style.display = 'flex';
       renderBreakNotifierView();
+    };
+  }
+
+  const menuItemShortcuts = document.getElementById('menuItemShortcuts');
+  if (menuItemShortcuts) {
+    menuItemShortcuts.onclick = () => {
+      closeMenu();
+      AppDialog.shortcuts();
     };
   }
 
@@ -2976,15 +3013,6 @@ const breakCountdownBig = document.getElementById('breakCountdownBig');
 const breakProgressBar = document.getElementById('breakProgressBar');
 const breakStatusSub = document.getElementById('breakStatusSub');
 
-const DEFAULT_BREAK_SCHEDULE = {
-  break1: '10:00', // 10 min
-  lunch: '13:00',  // 40 min
-  break2: '16:00', // 10 min
-  shiftEnd: '18:00',
-  notifyDesktop: false,
-  notifyToast: true
-};
-
 let breakSchedule = Object.assign({}, DEFAULT_BREAK_SCHEDULE);
 let lastNotifiedEventKey = null;
 
@@ -3063,47 +3091,8 @@ function renderBreakNotifierView() {
   updateBreakNotifier();
 }
 
-function parseTimeToDate(timeStr, now) {
-  if (!timeStr || !timeStr.includes(':')) return null;
-  const [h, m] = timeStr.split(':').map(Number);
-  if (isNaN(h) || isNaN(m)) return null;
-  const d = new Date(now);
-  d.setHours(h, m, 0, 0);
-  return d;
-}
 
-function formatShortDuration(diffSec) {
-  if (diffSec <= 0) return '0s';
-  if (diffSec < 60) return `${diffSec < 10 ? '0' : ''}${diffSec}s`;
-  const hrs = Math.floor(diffSec / 3600);
-  const mins = Math.floor((diffSec % 3600) / 60);
-  if (hrs > 0) {
-    return mins > 0 ? `${hrs}h ${mins}m` : `${hrs}h`;
-  }
-  return `${mins}m`;
-}
 
-function formatCountdown(sec) {
-  if (sec <= 0) return '00:00';
-  const hrs = Math.floor(sec / 3600);
-  const mins = Math.floor((sec % 3600) / 60);
-  const secs = sec % 60;
-  if (hrs > 0) {
-    return mins > 0 ? `${hrs}h ${mins}m` : `${hrs}h`;
-  }
-  if (mins > 0) {
-    return `${mins}m ${secs < 10 ? '0' : ''}${secs}s`;
-  }
-  return `${secs < 10 ? '0' : ''}${secs}s`;
-}
-
-function formatBigCountdown(sec) {
-  if (sec <= 0) return '00:00:00';
-  const hrs = Math.floor(sec / 3600);
-  const mins = Math.floor((sec % 3600) / 60);
-  const secs = sec % 60;
-  return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-}
 
 function triggerBreakNotification(key, title, body) {
   if (lastNotifiedEventKey === key) return;
@@ -3126,156 +3115,72 @@ function triggerBreakNotification(key, title, body) {
 
 function updateBreakNotifier() {
   const now = new Date();
-
-  const b1Start = parseTimeToDate(breakSchedule.break1, now);
-  const b1End = b1Start ? new Date(b1Start.getTime() + 10 * 60 * 1000) : null;
-
-  const lStart = parseTimeToDate(breakSchedule.lunch, now);
-  const lEnd = lStart ? new Date(lStart.getTime() + 40 * 60 * 1000) : null;
-
-  const b2Start = parseTimeToDate(breakSchedule.break2, now);
-  const b2End = b2Start ? new Date(b2Start.getTime() + 10 * 60 * 1000) : null;
-
-  const sEnd = parseTimeToDate(breakSchedule.shiftEnd, now);
-
-  if (!b1Start && !lStart && !b2Start && !sEnd) {
-    if (breakTicker) breakTicker.style.display = 'none';
-    if (breakCountdownBig) breakCountdownBig.textContent = '--:--:--';
-    if (breakEventTitle) breakEventTitle.textContent = 'No Schedule Set';
-    if (breakStatusSub) breakStatusSub.textContent = 'Set your break times below to start timer';
-    return;
-  }
-
-  if (breakTicker) breakTicker.style.display = 'inline-flex';
-
-  let currentPhase = null;
-  let targetTime = null;
-  let eventName = '';
-  let eventTag = '';
-  let icon = '☕';
-  let isActive = false;
-  let notifKey = null;
-
-  if (b1Start && now < b1Start) {
-    currentPhase = 'before_b1';
-    targetTime = b1Start;
-    eventName = 'Next: Break 1';
-    eventTag = '10m break';
-    icon = '☕';
-  } else if (b1Start && b1End && now >= b1Start && now < b1End) {
-    currentPhase = 'in_b1';
-    targetTime = b1End;
-    eventName = 'On Break 1';
-    eventTag = 'Back soon';
-    icon = '☕';
-    isActive = true;
-    notifKey = 'b1_start';
-  } else if (lStart && now < lStart) {
-    currentPhase = 'before_lunch';
-    targetTime = lStart;
-    eventName = 'Next: Lunch';
-    eventTag = '40m lunch';
-    icon = '🍱';
-    if (b1End && Math.abs(now.getTime() - b1End.getTime()) < 3000) {
-      triggerBreakNotification('b1_end', 'Break 1 Finished', 'Ready to resume calls 📞');
-    }
-  } else if (lStart && lEnd && now >= lStart && now < lEnd) {
-    currentPhase = 'in_lunch';
-    targetTime = lEnd;
-    eventName = 'On Lunch';
-    eventTag = 'Back soon';
-    icon = '🍱';
-    isActive = true;
-    notifKey = 'lunch_start';
-  } else if (b2Start && now < b2Start) {
-    currentPhase = 'before_b2';
-    targetTime = b2Start;
-    eventName = 'Next: Break 2';
-    eventTag = '10m break';
-    icon = '☕';
-    if (lEnd && Math.abs(now.getTime() - lEnd.getTime()) < 3000) {
-      triggerBreakNotification('lunch_end', 'Lunch Finished', 'Ready to resume calls 📞');
-    }
-  } else if (b2Start && b2End && now >= b2Start && now < b2End) {
-    currentPhase = 'in_b2';
-    targetTime = b2End;
-    eventName = 'On Break 2';
-    eventTag = 'Back soon';
-    icon = '☕';
-    isActive = true;
-    notifKey = 'b2_start';
-  } else if (sEnd && now < sEnd) {
-    currentPhase = 'before_shift_end';
-    targetTime = sEnd;
-    eventName = 'Next: Shift End';
-    eventTag = 'End of Day';
-    icon = '🏁';
-    if (b2End && Math.abs(now.getTime() - b2End.getTime()) < 3000) {
-      triggerBreakNotification('b2_end', 'Break 2 Finished', 'Ready to resume calls 📞');
-    }
-  } else {
-    currentPhase = 'shift_done';
-    targetTime = null;
-    eventName = 'Shift Completed';
-    eventTag = 'Done';
-    icon = '🏁';
-    if (sEnd && Math.abs(now.getTime() - sEnd.getTime()) < 3000) {
-      triggerBreakNotification('shift_done', 'Shift Completed', 'Great job today! 🎉');
-    }
-  }
-
-  if (notifKey && targetTime) {
-    const diffSec = Math.floor((targetTime.getTime() - now.getTime()) / 1000);
-    if (notifKey === 'b1_start' && diffSec >= 590) {
-      triggerBreakNotification('b1_start', 'Break 1 Started', 'Time for Break 1 (10 min break) ☕');
-    } else if (notifKey === 'lunch_start' && diffSec >= 2390) {
-      triggerBreakNotification('lunch_start', 'Lunch Started', 'Time for Lunch (40 min lunch) 🍱');
-    } else if (notifKey === 'b2_start' && diffSec >= 590) {
-      triggerBreakNotification('b2_start', 'Break 2 Started', 'Time for Break 2 (10 min break) ☕');
-    }
-  }
-
-  if (breakTickerIcon) breakTickerIcon.textContent = icon;
-  if (breakTicker) breakTicker.classList.toggle('active-break', isActive);
+  const state = calculateBreakState(breakSchedule, now);
 
   const ambientBreakBar = document.getElementById('ambientBreakBar');
   const ambientBreakIcon = document.getElementById('ambientBreakIcon');
   const ambientBreakText = document.getElementById('ambientBreakText');
 
-  if (targetTime) {
-    const diffSec = Math.max(0, Math.floor((targetTime.getTime() - now.getTime()) / 1000));
-    const tickerStr = formatShortDuration(diffSec);
-    if (breakTickerText) breakTickerText.textContent = isActive ? `In: ${tickerStr}` : tickerStr;
-    if (breakCountdownBig) breakCountdownBig.textContent = formatBigCountdown(diffSec);
-    if (breakStatusSub) breakStatusSub.textContent = isActive ? `Active break ends at ${targetTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : `Scheduled for ${targetTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
-
-    if (ambientBreakBar) {
-      ambientBreakBar.style.display = 'flex';
-      if (ambientBreakIcon) ambientBreakIcon.textContent = icon;
-      if (ambientBreakText) {
-        ambientBreakText.textContent = isActive ? `${eventName} · ${tickerStr} left` : `${eventName} in ${tickerStr}`;
-      }
+  if (!state.isConfigured) {
+    if (breakTicker) {
+      breakTicker.style.display = 'inline-flex';
+      breakTicker.classList.remove('active-break');
+      breakTicker.classList.add('unconfigured');
     }
-  } else {
-    if (breakTickerText) breakTickerText.textContent = 'Done';
-    if (breakCountdownBig) breakCountdownBig.textContent = '00:00:00';
-    if (breakStatusSub) breakStatusSub.textContent = 'Shift completed for today';
-
-    if (ambientBreakBar) {
-      ambientBreakBar.style.display = 'flex';
-      if (ambientBreakIcon) ambientBreakIcon.textContent = '🏁';
-      if (ambientBreakText) ambientBreakText.textContent = 'Shift Completed';
-    }
+    if (breakTickerIcon) breakTickerIcon.textContent = '☕';
+    if (breakTickerText) breakTickerText.textContent = state.tickerText;
+    if (breakCountdownBig) breakCountdownBig.textContent = state.bigCountdown;
+    if (breakEventTitle) breakEventTitle.textContent = state.eventName;
+    if (breakEventTag) breakEventTag.textContent = state.eventTag;
+    if (breakStatusSub) breakStatusSub.textContent = state.statusSub;
+    if (breakProgressBar) breakProgressBar.style.width = '0%';
+    if (ambientBreakBar) ambientBreakBar.style.display = 'none';
+    return;
   }
 
-  if (breakEventTitle) breakEventTitle.textContent = eventName;
-  if (breakEventTag) breakEventTag.textContent = eventTag;
+  if (breakTicker) {
+    breakTicker.style.display = 'inline-flex';
+    breakTicker.classList.toggle('active-break', state.isActive);
+    breakTicker.classList.remove('unconfigured');
+  }
+  if (breakTickerIcon) breakTickerIcon.textContent = state.icon;
+  if (breakTickerText) breakTickerText.textContent = state.tickerText;
+  if (breakCountdownBig) breakCountdownBig.textContent = state.bigCountdown;
+  if (breakEventTitle) breakEventTitle.textContent = state.eventName;
+  if (breakEventTag) breakEventTag.textContent = state.eventTag;
+  if (breakStatusSub) breakStatusSub.textContent = state.statusSub;
 
-  if (b1Start && sEnd) {
-    const totalDayMs = sEnd.getTime() - b1Start.getTime();
-    const elapsedDayMs = now.getTime() - b1Start.getTime();
-    const pct = Math.max(0, Math.min(100, Math.round((elapsedDayMs / totalDayMs) * 100)));
-    if (breakProgressBar) breakProgressBar.style.width = `${pct}%`;
+  if (ambientBreakBar) {
+    ambientBreakBar.style.display = 'flex';
+    if (ambientBreakIcon) ambientBreakIcon.textContent = state.icon;
+    if (ambientBreakText) ambientBreakText.textContent = `${state.eventName} (${state.tickerText})`;
+  }
+
+  if (state.isActive && state.targetTime) {
+    const totalDurationSec = state.currentPhase === 'in_lunch' ? 40 * 60 : 10 * 60;
+    const progress = Math.max(0, Math.min(100, Math.round(((totalDurationSec - state.diffSec) / totalDurationSec) * 100)));
+    if (breakProgressBar) breakProgressBar.style.width = `${progress}%`;
+  } else if (state.targetTime && breakSchedule.shiftEnd && breakSchedule.break1) {
+    const b1Start = parseTimeToDate(breakSchedule.break1, now);
+    const sEnd = parseTimeToDate(breakSchedule.shiftEnd, now);
+    if (b1Start && sEnd) {
+      const totalDayMs = sEnd.getTime() - b1Start.getTime();
+      const elapsedDayMs = now.getTime() - b1Start.getTime();
+      const pct = Math.max(0, Math.min(100, Math.round((elapsedDayMs / totalDayMs) * 100)));
+      if (breakProgressBar) breakProgressBar.style.width = `${pct}%`;
+    }
+  } else {
+    if (breakProgressBar) breakProgressBar.style.width = '0%';
+  }
+
+  if (state.notifKey && state.targetTime) {
+    if (state.notifKey === 'b1_start' && state.diffSec >= 590) {
+      triggerBreakNotification('b1_start', 'Break 1 Started', 'Time for Break 1 (10 min break) ☕');
+    } else if (state.notifKey === 'lunch_start' && state.diffSec >= 2390) {
+      triggerBreakNotification('lunch_start', 'Lunch Started', 'Time for Lunch (40 min lunch) 🍱');
+    } else if (state.notifKey === 'b2_start' && state.diffSec >= 590) {
+      triggerBreakNotification('b2_start', 'Break 2 Started', 'Time for Break 2 (10 min break) ☕');
+    }
   }
 }
 
@@ -3305,27 +3210,27 @@ function renderSettingsView() {
   // Export Configuration & Data
   const btnExportData = document.getElementById('btnExportData');
   if (btnExportData) {
-    btnExportData.onclick = () => {
-      const payload = {
-        app: 'vetting-notepad',
-        version: 1,
-        exportedAt: new Date().toISOString(),
-        types,
-        settings,
-        savedComments,
-        activeTypeId
-      };
-      const jsonStr = JSON.stringify(payload, null, 2);
-      const blob = new Blob([jsonStr], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `vetting_notepad_config_${new Date().toISOString().slice(0, 10)}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      showBanner('Configuration exported', null, null, 2500, 'info');
+    btnExportData.onclick = async () => {
+      try {
+        const payload = buildExportPayload({
+          types,
+          settings,
+          savedComments,
+          activeTypeId
+        });
+        const result = await exportConfiguration(payload);
+        if (result.success) {
+          if (result.method === 'clipboard') {
+            showBanner('Export copied to clipboard! (Paste to save as .json)', null, null, 4000, 'info');
+          } else {
+            showBanner('Configuration exported successfully', null, null, 2500, 'info');
+          }
+        } else {
+          showBanner('Export failed: ' + (result.error?.message || 'Unknown error'), null, null, 3500, 'danger');
+        }
+      } catch (err) {
+        showBanner('Export error: ' + err.message, null, null, 3500, 'danger');
+      }
     };
   }
 
@@ -3337,13 +3242,16 @@ function renderSettingsView() {
       importFileInput.click();
     };
 
-    importFileInput.onchange = (e) => {
+    importFileInput.onchange = async (e) => {
       const file = e.target.files && e.target.files[0];
       if (!file) return;
 
-      const confirmed = window.confirm(
-        'Warning: Importing data will overwrite your current vetting types and configuration.\n\nDo you want to continue?'
-      );
+      const confirmed = await AppDialog.confirm({
+        title: 'Overwrite Configuration',
+        message: 'Importing data will overwrite your current vetting types and configuration. Do you want to continue?',
+        confirmText: 'Import & Overwrite',
+        danger: true
+      });
       if (!confirmed) {
         importFileInput.value = '';
         return;
@@ -3353,11 +3261,19 @@ function renderSettingsView() {
       reader.onload = async (evt) => {
         try {
           const raw = evt.target.result;
-          const data = JSON.parse(raw);
-          if (!data || !Array.isArray(data.types) || data.types.length === 0) {
-            throw new Error('Invalid format: types array missing');
+          let parsed;
+          try {
+            parsed = JSON.parse(raw);
+          } catch {
+            throw new Error('File does not contain valid JSON');
           }
 
+          const validation = validateImportPayload(parsed);
+          if (!validation.valid) {
+            throw new Error(validation.error);
+          }
+
+          const data = validation.payload;
           types = data.types;
           if (data.settings && typeof data.settings === 'object') {
             settings = Object.assign(settings, data.settings);
@@ -3396,8 +3312,21 @@ function renderSettingsView() {
     };
   }
 
-  document.getElementById('btnResetAll').onclick = () => {
-    if (confirm('Reset all vetting types and configuration to factory defaults?')) {
+  const btnShowShortcuts = document.getElementById('btnShowShortcuts');
+  if (btnShowShortcuts) {
+    btnShowShortcuts.onclick = () => {
+      AppDialog.shortcuts();
+    };
+  }
+
+  document.getElementById('btnResetAll').onclick = async () => {
+    const ok = await AppDialog.confirm({
+      title: 'Factory Reset',
+      message: 'Reset all vetting types and configuration to factory defaults? Your custom types will be removed.',
+      confirmText: 'Reset to Defaults',
+      danger: true
+    });
+    if (ok) {
       types = defaultVettingTypes();
       activeTypeId = types[0].id;
       formValues = {};
@@ -3412,19 +3341,83 @@ function renderSettingsView() {
 }
 
 /* ==========================================================================
-   Keyboard Shortcuts
+   Keyboard Shortcuts (Screen Switcher & Actions)
    ========================================================================== */
-document.addEventListener('keydown', (e) => {
-  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-    e.preventDefault();
+initShortcuts({
+  toggleNotes: () => {
+    if (notesView && notesView.style.display !== 'none') {
+      notesView.style.display = 'none';
+    } else {
+      openNotesView();
+    }
+  },
+  toggleCallpad: () => {
+    toggleCallPad();
+  },
+  toggleBreaks: () => {
+    if (breakNotifierView && breakNotifierView.style.display !== 'none') {
+      breakNotifierView.style.display = 'none';
+    } else if (breakNotifierView) {
+      breakNotifierView.style.display = 'flex';
+      renderBreakNotifierView();
+    }
+  },
+  toggleSettings: () => {
+    if (settingsView && settingsView.style.display !== 'none') {
+      settingsView.style.display = 'none';
+    } else if (settingsView) {
+      settingsView.style.display = 'flex';
+      renderSettingsView();
+    }
+  },
+  togglePreview: () => {
+    if (btnTogglePreview) btnTogglePreview.click();
+  },
+  handleEscape: () => {
+    if (AppDialog && AppDialog.closeActive && AppDialog.closeActive()) return;
+    if (callPadPopover && callPadPopover.style.display !== 'none') {
+      closeCallPad();
+      return;
+    }
+    if (breakNotifierView && breakNotifierView.style.display !== 'none') {
+      breakNotifierView.style.display = 'none';
+      return;
+    }
+    if (notesView && notesView.style.display !== 'none') {
+      notesView.style.display = 'none';
+      return;
+    }
+    if (settingsView && settingsView.style.display !== 'none') {
+      settingsView.style.display = 'none';
+      return;
+    }
+    if (editView && editView.style.display !== 'none') {
+      closeEditView();
+      return;
+    }
+    if (typeof closeVarFillModal === 'function') closeVarFillModal();
+    if (typeof closeTemplateEditModal === 'function') closeTemplateEditModal();
+    closeInfoPopover();
+  },
+  copyVetting: () => {
     doCopy();
-  }
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
-    e.preventDefault();
+  },
+  pasteVetting: async () => {
+    const active = document.activeElement;
+    if (active && active.classList && active.classList.contains('mat-input') && active.dataset.id) {
+      await smartPasteField(active);
+    } else {
+      doPasteWholeVetting();
+    }
+  },
+  openTypeSearch: () => {
     if (typeSelectComponent) {
       typeSelectComponent.open();
       typeSelectComponent.input.focus();
     }
+  },
+  showShortcuts: () => {
+    AppDialog.shortcuts();
   }
 });
 
@@ -3468,9 +3461,33 @@ const btnCopyNote = document.getElementById('btnCopyNote');
 const btnDeleteNote = document.getElementById('btnDeleteNote');
 const noteSelectMount = document.getElementById('noteSelectMount');
 const noteTitleInput = document.getElementById('noteTitleInput');
-const noteBodyText = document.getElementById('noteBodyText');
+const noteQuillMount = document.getElementById('noteQuillMount');
 const noteSaveStatus = document.getElementById('noteSaveStatus');
 const noteWordCharCount = document.getElementById('noteWordCharCount');
+
+let richNotepad = null;
+
+function initRichNotepadInstance() {
+  if (noteQuillMount && !richNotepad) {
+    const cur = getActiveNote();
+    richNotepad = new RichNotepad({
+      mountElement: noteQuillMount,
+      initialContent: cur ? (cur.html || cur.text || '') : '',
+      onChange: ({ html, text, chars, words }) => {
+        const active = getActiveNote();
+        if (active) {
+          active.html = html;
+          active.text = text;
+          active.updatedAt = Date.now();
+        }
+        if (noteWordCharCount) {
+          noteWordCharCount.textContent = `${words} words · ${chars} chars`;
+        }
+        scheduleSaveNotes();
+      }
+    });
+  }
+}
 
 async function loadNotes() {
   const raw = await Storage.get('vpad.notes', []);
@@ -3479,6 +3496,7 @@ async function loadNotes() {
       id: n.id || uid(),
       title: n.title || (n.text ? n.text.split('\n')[0].slice(0, 32) : 'Untitled Note'),
       text: n.text || '',
+      html: n.html || '',
       updatedAt: n.updatedAt || n.createdAt || Date.now()
     }));
   } else {
@@ -3487,6 +3505,7 @@ async function loadNotes() {
         id: uid(),
         title: 'General Notes',
         text: '',
+        html: '',
         updatedAt: Date.now()
       }
     ];
@@ -3524,9 +3543,8 @@ function getActiveNote() {
 function updateNoteCounts() {
   if (!noteWordCharCount) return;
   const cur = getActiveNote();
-  const len = cur ? cur.text.length : 0;
-  const words = cur && cur.text.trim() ? cur.text.trim().split(/\s+/).length : 0;
-  noteWordCharCount.textContent = `${words} words · ${len} chars`;
+  const stats = calculateNoteStats(cur ? (cur.text || '') : '');
+  noteWordCharCount.textContent = `${stats.words} words · ${stats.chars} chars`;
 }
 
 function switchNote(noteId) {
@@ -3536,7 +3554,9 @@ function switchNote(noteId) {
   if (!note) return;
 
   if (noteTitleInput) noteTitleInput.value = note.title || '';
-  if (noteBodyText) noteBodyText.value = note.text || '';
+  if (richNotepad) {
+    richNotepad.setContent(note.html || note.text || '');
+  }
   updateNoteCounts();
 
   if (noteSelectComponent) {
@@ -3550,26 +3570,30 @@ function createNote(title = 'Untitled Note') {
     id: uid(),
     title: title.trim() || 'Untitled Note',
     text: '',
+    html: '',
     updatedAt: Date.now()
   };
   notes.unshift(newNote);
   saveNotesImmediate();
   switchNote(newNote.id);
-  if (noteBodyText) noteBodyText.focus();
+  if (richNotepad) richNotepad.focus();
 }
 
 async function deleteActiveNote() {
   if (notes.length <= 1) {
     const onlyNote = notes[0];
     const snapText = onlyNote.text;
+    const snapHtml = onlyNote.html;
     const snapTitle = onlyNote.title;
     onlyNote.text = '';
+    onlyNote.html = '';
     onlyNote.title = 'General Notes';
     onlyNote.updatedAt = Date.now();
     await saveNotesImmediate();
     switchNote(onlyNote.id);
     showBanner('Note cleared', 'Undo', () => {
       onlyNote.text = snapText;
+      onlyNote.html = snapHtml;
       onlyNote.title = snapTitle;
       saveNotesImmediate();
       switchNote(onlyNote.id);
@@ -3596,8 +3620,8 @@ async function deleteActiveNote() {
 async function copyActiveNote() {
   const note = getActiveNote();
   if (!note) return;
-  const toCopy = (note.text || '').trim() || (note.title || '').trim();
-  if (!toCopy) {
+  const plain = (note.text || '').trim() || (note.title || '').trim();
+  if (!plain) {
     if (noteSaveStatus) {
       noteSaveStatus.textContent = 'Empty note';
       noteSaveStatus.className = 'saving';
@@ -3608,7 +3632,7 @@ async function copyActiveNote() {
     }
     return;
   }
-  await writeToClipboard(note.text);
+  await writeDualClipboard(note.html || `<p>${escapeHtml(plain)}</p>`, plain);
   if (btnCopyNote) {
     const origHtml = btnCopyNote.innerHTML;
     const origTitle = btnCopyNote.title;
@@ -3651,11 +3675,9 @@ function initNoteSelect() {
 
 function openNotesView() {
   notesView.style.display = 'flex';
+  initRichNotepadInstance();
   switchNote(activeNoteId);
-  if (noteBodyText) {
-    noteBodyText.focus();
-    noteBodyText.setSelectionRange(noteBodyText.value.length, noteBodyText.value.length);
-  }
+  if (richNotepad) richNotepad.focus();
 }
 
 function closeNotesView() {
@@ -3682,43 +3704,28 @@ if (noteTitleInput) {
   });
 }
 
-if (noteBodyText) {
-  noteBodyText.addEventListener('input', () => {
-    const note = getActiveNote();
-    if (!note) return;
-    note.text = noteBodyText.value;
-    note.updatedAt = Date.now();
-    updateNoteCounts();
-    scheduleSaveNotes();
-  });
-  noteBodyText.addEventListener('keydown', (e) => {
-    if (e.key === 'Tab') {
-      e.preventDefault();
-      const start = noteBodyText.selectionStart;
-      const end = noteBodyText.selectionEnd;
-      noteBodyText.value = noteBodyText.value.substring(0, start) + '  ' + noteBodyText.value.substring(end);
-      noteBodyText.selectionStart = noteBodyText.selectionEnd = start + 2;
-      const note = getActiveNote();
-      if (note) {
-        note.text = noteBodyText.value;
-        scheduleSaveNotes();
-      }
-    }
-  });
-}
-
 /* ==========================================================================
    Initialization
    ========================================================================== */
 async function init() {
   const configVer = await Storage.get('vpad.config_version', 0);
   const loadedTypes = await Storage.get('vpad.types', null);
+  const defaults = defaultVettingTypes();
 
-  if (configVer < 9 || !Array.isArray(loadedTypes) || loadedTypes.length < 13) {
-    types = defaultVettingTypes();
+  if (configVer < 10 || !Array.isArray(loadedTypes) || loadedTypes.length < 15) {
+    if (!Array.isArray(loadedTypes) || loadedTypes.length === 0) {
+      types = defaults;
+    } else {
+      types = [...loadedTypes];
+      defaults.forEach(defType => {
+        if (!types.some(t => t.id === defType.id)) {
+          types.push(defType);
+        }
+      });
+    }
     Storage.setMultiple({
       'vpad.types': types,
-      'vpad.config_version': 9
+      'vpad.config_version': 10
     });
   } else {
     types = loadedTypes;
@@ -3743,6 +3750,7 @@ async function init() {
   initMenu();
   await loadQuickTemplates();
   await initBreakNotifier();
+  await checkClipboardForVetting();
 }
 
 init();

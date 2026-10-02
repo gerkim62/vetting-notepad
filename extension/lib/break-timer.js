@@ -1,0 +1,187 @@
+/**
+ * Break Timer & Schedule Calculation Engine
+ * Pure functions for deterministic testing and ultra-reliable countdowns.
+ */
+
+export const DEFAULT_BREAK_SCHEDULE = {
+  break1: '',    // 10 min break
+  lunch: '',     // 40 min lunch
+  break2: '',    // 10 min break
+  shiftEnd: '',  // End of day
+  notifyDesktop: false,
+  notifyToast: true
+};
+
+export function parseTimeToDate(timeStr, now = new Date()) {
+  if (!timeStr || typeof timeStr !== 'string' || !timeStr.includes(':')) return null;
+  const [h, m] = timeStr.split(':').map(Number);
+  if (isNaN(h) || isNaN(m)) return null;
+  const d = new Date(now);
+  d.setHours(h, m, 0, 0);
+  return d;
+}
+
+export function formatShortDuration(diffSec) {
+  if (diffSec <= 0) return '0s';
+  if (diffSec < 60) return `${diffSec < 10 ? '0' : ''}${diffSec}s`;
+  const hrs = Math.floor(diffSec / 3600);
+  const mins = Math.floor((diffSec % 3600) / 60);
+  if (hrs > 0) {
+    return mins > 0 ? `${hrs}h ${mins}m` : `${hrs}h`;
+  }
+  return `${mins}m`;
+}
+
+export function formatCountdown(sec) {
+  if (sec <= 0) return '00:00';
+  const hrs = Math.floor(sec / 3600);
+  const mins = Math.floor((sec % 3600) / 60);
+  const secs = sec % 60;
+  if (hrs > 0) {
+    return `${hrs}h ${mins < 10 ? '0' : ''}${mins}m ${secs < 10 ? '0' : ''}${secs}s`;
+  }
+  return `${mins < 10 ? '0' : ''}${mins}m ${secs < 10 ? '0' : ''}${secs}s`;
+}
+
+export function formatBigCountdown(sec) {
+  if (sec <= 0) return '00:00:00';
+  const hrs = Math.floor(sec / 3600);
+  const mins = Math.floor((sec % 3600) / 60);
+  const secs = sec % 60;
+  return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+}
+
+export function calculateBreakState(schedule = DEFAULT_BREAK_SCHEDULE, now = new Date()) {
+  const b1Start = parseTimeToDate(schedule.break1, now);
+  const b1End = b1Start ? new Date(b1Start.getTime() + 10 * 60 * 1000) : null;
+
+  const lStart = parseTimeToDate(schedule.lunch, now);
+  const lEnd = lStart ? new Date(lStart.getTime() + 40 * 60 * 1000) : null;
+
+  const b2Start = parseTimeToDate(schedule.break2, now);
+  const b2End = b2Start ? new Date(b2Start.getTime() + 10 * 60 * 1000) : null;
+
+  const sEnd = parseTimeToDate(schedule.shiftEnd, now);
+
+  const hasAnySchedule = Boolean(b1Start || lStart || b2Start || sEnd);
+  if (!hasAnySchedule) {
+    return {
+      isConfigured: false,
+      currentPhase: 'unconfigured',
+      isActive: false,
+      eventName: 'No Schedule Set',
+      eventTag: 'Idle',
+      icon: '☕',
+      tickerText: 'Set Break Notifier',
+      bigCountdown: '--:--:--',
+      statusSub: 'Set your break times below to start timer',
+      diffSec: 0,
+      targetTime: null,
+      notifKey: null
+    };
+  }
+
+  let currentPhase = null;
+  let targetTime = null;
+  let eventName = '';
+  let eventTag = '';
+  let icon = '☕';
+  let isActive = false;
+  let notifKey = null;
+
+  // Check phases in chronological order
+  if (b1Start && now < b1Start) {
+    currentPhase = 'before_b1';
+    targetTime = b1Start;
+    eventName = 'Next: Break 1';
+    eventTag = '10m break';
+    icon = '☕';
+  } else if (b1Start && b1End && now >= b1Start && now < b1End) {
+    currentPhase = 'in_b1';
+    targetTime = b1End;
+    eventName = 'On Break 1';
+    eventTag = 'Back soon';
+    icon = '☕';
+    isActive = true;
+    notifKey = 'b1_start';
+  } else if (lStart && now < lStart) {
+    currentPhase = 'before_lunch';
+    targetTime = lStart;
+    eventName = 'Next: Lunch';
+    eventTag = '40m lunch';
+    icon = '🍱';
+  } else if (lStart && lEnd && now >= lStart && now < lEnd) {
+    currentPhase = 'in_lunch';
+    targetTime = lEnd;
+    eventName = 'On Lunch';
+    eventTag = 'Back soon';
+    icon = '🍱';
+    isActive = true;
+    notifKey = 'lunch_start';
+  } else if (b2Start && now < b2Start) {
+    currentPhase = 'before_b2';
+    targetTime = b2Start;
+    eventName = 'Next: Break 2';
+    eventTag = '10m break';
+    icon = '☕';
+  } else if (b2Start && b2End && now >= b2Start && now < b2End) {
+    currentPhase = 'in_b2';
+    targetTime = b2End;
+    eventName = 'On Break 2';
+    eventTag = 'Back soon';
+    icon = '☕';
+    isActive = true;
+    notifKey = 'b2_start';
+  } else if (sEnd && now < sEnd) {
+    currentPhase = 'before_shift_end';
+    targetTime = sEnd;
+    eventName = 'Next: Shift End';
+    eventTag = 'End of Day';
+    icon = '🏁';
+  } else {
+    currentPhase = 'shift_done';
+    targetTime = null;
+    eventName = 'Shift Completed';
+    eventTag = 'Done';
+    icon = '🏁';
+  }
+
+  let diffSec = 0;
+  let tickerText = '';
+  let bigCountdown = '00:00:00';
+  let statusSub = '';
+
+  if (targetTime) {
+    diffSec = Math.max(0, Math.floor((targetTime.getTime() - now.getTime()) / 1000));
+    bigCountdown = formatBigCountdown(diffSec);
+
+    if (isActive) {
+      tickerText = `Ends in: ${formatCountdown(diffSec)}`;
+      const timeStr = targetTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      statusSub = `Active break ends at ${timeStr}`;
+    } else {
+      tickerText = `Next: ${formatShortDuration(diffSec)}`;
+      const timeStr = targetTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      statusSub = `Scheduled for ${timeStr}`;
+    }
+  } else {
+    tickerText = 'Shift Done';
+    bigCountdown = '00:00:00';
+    statusSub = 'All scheduled breaks and shift ended';
+  }
+
+  return {
+    isConfigured: true,
+    currentPhase,
+    isActive,
+    eventName,
+    eventTag,
+    icon,
+    tickerText,
+    bigCountdown,
+    statusSub,
+    diffSec,
+    targetTime,
+    notifKey
+  };
+}
