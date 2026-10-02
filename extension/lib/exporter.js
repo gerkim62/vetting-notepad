@@ -6,15 +6,18 @@
  * Tier 3: Direct JSON copy to clipboard as seamless fallback
  */
 
+import { sanitizeRedacted, getAppVersion } from './utils.js';
+
 /**
  * Builds a standardized export payload with metadata.
  * @param {Object} data 
  * @returns {Object}
  */
-export function buildExportPayload({ types = [], settings = {}, savedComments = [], activeTypeId = null } = {}) {
+export function buildExportPayload({ types = [], settings = {}, savedComments = [], activeTypeId = null, appVersion = null } = {}) {
   return {
     app: 'vetting-notepad',
     version: 1,
+    appVersion: appVersion || getAppVersion(),
     exportedAt: new Date().toISOString(),
     types,
     settings,
@@ -122,4 +125,86 @@ export async function exportConfiguration(payload, options = {}) {
   }
 
   return { success: false, method: 'none', error: new Error('No viable export method available') };
+}
+
+/**
+ * Builds a comprehensive, safe debug diagnostics bundle with automated PII redaction.
+ * @param {Object} context 
+ * @returns {Object}
+ */
+export function buildDebugDiagnostics({
+  version = null,
+  types = [],
+  settings = {},
+  activeTypeId = null,
+  storageDump = {},
+  breakSchedule = null,
+  currentValues = {},
+  errors = []
+} = {}) {
+  const safeValues = {};
+  for (const [key, val] of Object.entries(currentValues)) {
+    safeValues[key] = sanitizeRedacted(val);
+  }
+
+  const storageKeys = Object.keys(storageDump);
+  const storageBytes = JSON.stringify(storageDump).length;
+
+  return {
+    app: 'vetting-notepad',
+    type: 'debug-diagnostics',
+    version: version || getAppVersion(),
+    timestamp: new Date().toISOString(),
+    exportedAt: new Date().toISOString(),
+    system: {
+      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'Unknown',
+      platform: typeof navigator !== 'undefined' ? navigator.platform : 'Unknown',
+      panelDimensions: typeof window !== 'undefined' ? {
+        innerWidth: window.innerWidth,
+        innerHeight: window.innerHeight,
+        outerWidth: window.outerWidth,
+        outerHeight: window.outerHeight,
+        devicePixelRatio: window.devicePixelRatio
+      } : {}
+    },
+    extension: {
+      activeTypeId,
+      typesCount: types.length,
+      typesSummary: types.map(t => ({
+        id: t.id,
+        name: t.name,
+        requiredCount: t.required?.length || 0,
+        optionalCount: t.optional?.length || 0
+      })),
+      settings: {
+        theme: settings.theme,
+        autoClear: settings.autoClear
+      },
+      breakNotifier: {
+        configured: Boolean(breakSchedule && Object.keys(breakSchedule).length > 0),
+        breakCount: Array.isArray(breakSchedule?.breaks) ? breakSchedule.breaks.length : 0
+      }
+    },
+    storage: {
+      keyCount: storageKeys.length,
+      keys: storageKeys,
+      approximateSizeBytes: storageBytes
+    },
+    runtime: {
+      redactedCurrentFieldValues: safeValues,
+      recentErrors: errors.slice(-10)
+    }
+  };
+}
+
+/**
+ * Exports debug diagnostics payload using the multi-tier export engine.
+ * @param {Object} diagnosticsPayload 
+ * @param {Object} [options] 
+ * @returns {Promise<{ success: boolean, method: string, filename?: string, error?: any }>}
+ */
+export async function exportDebugDiagnostics(diagnosticsPayload, options = {}) {
+  const dateStr = new Date().toISOString().slice(0, 10);
+  const filename = options.filename || `vetting-notepad-debug-${dateStr}.json`;
+  return exportConfiguration(diagnosticsPayload, { ...options, filename });
 }

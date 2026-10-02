@@ -4,15 +4,7 @@
  * accessible, theme-styled modal dialogs.
  */
 
-function escapeHtml(str) {
-  if (typeof str !== 'string') return '';
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
+import { escapeHtml } from './utils.js';
 
 function createOverlay(type, options) {
   const overlay = document.createElement('div');
@@ -233,7 +225,7 @@ export const DEFAULT_KEYBOARD_SHORTCUTS = [
       { desc: 'Scratchpad', keys: ['Alt', 'Shift', 'C'] },
       { desc: 'Break Notifier', keys: ['Alt', 'Shift', 'B'] },
       { desc: 'Settings', keys: ['Alt', 'Shift', 'S'] },
-      { desc: 'Copy Preview', keys: ['Alt', 'Shift', 'P'] }
+      { desc: 'Toggle Preview', keys: ['Alt', 'Shift', 'P'] }
     ]
   },
   {
@@ -241,6 +233,8 @@ export const DEFAULT_KEYBOARD_SHORTCUTS = [
     items: [
       { desc: 'Copy Vetting', keys: ['Ctrl', 'Enter'] },
       { desc: 'Smart Paste', keys: ['Ctrl', 'Shift', 'V'] },
+      { desc: 'Pass Field', keys: ['Alt', 'P'] },
+      { desc: 'Fail Field', keys: ['Alt', 'F'] },
       { desc: 'Search Vetting', keys: ['Ctrl', 'K'] }
     ]
   },

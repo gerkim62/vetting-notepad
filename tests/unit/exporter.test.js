@@ -2,7 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   buildExportPayload,
   validateImportPayload,
-  exportConfiguration
+  exportConfiguration,
+  buildDebugDiagnostics,
+  exportDebugDiagnostics
 } from '../../extension/lib/exporter.js';
 
 describe('Configuration Exporter & Importer', () => {
@@ -73,6 +75,55 @@ describe('Configuration Exporter & Importer', () => {
       const res = await exportConfiguration(buildExportPayload(samplePayload), { forceClipboard: true });
       expect(res.success).toBe(true);
       expect(res.method).toBe('clipboard');
+      expect(writeTextMock).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('Debug Diagnostics Exporter', () => {
+    const diagnosticContext = {
+      version: '3.0.0',
+      types: [{ id: 'sim_swap', name: 'SIM Swap', required: [{ id: 'id_num' }], optional: [] }],
+      settings: { theme: 'dark', autoClear: 0 },
+      activeTypeId: 'sim_swap',
+      storageDump: { 'vpad.types': [], 'vpad.settings': {} },
+      breakSchedule: { breaks: [{ name: 'Tea', start: '10:00', end: '10:15' }] },
+      currentValues: {
+        _comment: 'Customer called regarding PIN reset',
+        id_num: '12345678',
+        phone_num: '0722000000'
+      },
+      errors: ['Sample error log']
+    };
+
+    it('builds a diagnostic bundle with automated PII redaction', () => {
+      const diag = buildDebugDiagnostics(diagnosticContext);
+      expect(diag.app).toBe('vetting-notepad');
+      expect(diag.type).toBe('debug-diagnostics');
+      expect(diag.version).toBe('3.0.0');
+      expect(diag.timestamp).toBeDefined();
+
+      // Ensure customer values are redacted
+      expect(diag.runtime.redactedCurrentFieldValues.id_num).toBe('[REDACTED len=8]');
+      expect(diag.runtime.redactedCurrentFieldValues.phone_num).toBe('[REDACTED len=10]');
+      expect(diag.runtime.redactedCurrentFieldValues._comment).toBe('[REDACTED len=35]');
+
+      // Raw sensitive data MUST NOT appear anywhere in the values
+      const json = JSON.stringify(diag);
+      expect(json).not.toContain('12345678');
+      expect(json).not.toContain('0722000000');
+    });
+
+    it('exports diagnostics with proper debug filename prefix', async () => {
+      const writeTextMock = vi.fn().mockResolvedValue(true);
+      Object.assign(navigator, {
+        clipboard: {
+          writeText: writeTextMock
+        }
+      });
+
+      const diag = buildDebugDiagnostics(diagnosticContext);
+      const res = await exportDebugDiagnostics(diag, { forceClipboard: true });
+      expect(res.success).toBe(true);
       expect(writeTextMock).toHaveBeenCalledTimes(1);
     });
   });

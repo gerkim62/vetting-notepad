@@ -64,6 +64,22 @@ export function initShortcuts(handlers = {}) {
       return;
     }
 
+    // 5b. Alt + P (Pass Field) & Alt + F (Fail Field)
+    if (e.altKey && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+      const k = (e.key || '').toLowerCase();
+      const code = e.code || '';
+      if (k === 'p' || code === 'KeyP') {
+        e.preventDefault();
+        handlers.passField?.();
+        return;
+      }
+      if (k === 'f' || code === 'KeyF') {
+        e.preventDefault();
+        handlers.failField?.();
+        return;
+      }
+    }
+
     // 6. '?' (when not in text input) OR Ctrl/Cmd + / OR Alt+Shift+? -> Show Shortcuts
     const target = e.target;
     const isTextInput = target && (

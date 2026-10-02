@@ -12,13 +12,18 @@ import {
   formatShortDuration
 } from './lib/break-timer.js';
 import { attachAutoExpand } from './lib/multiline.js';
+import { escapeHtml, uid } from './lib/utils.js';
 import { SmartCallPad } from './lib/callpad.js';
 import { parseVettingText, isVettingClipboardText } from './lib/parser.js';
 import { initShortcuts } from './lib/shortcuts.js';
 import { RichNotepad, writeDualClipboard, calculateNoteStats } from './lib/notepad.js';
-import { buildExportPayload, validateImportPayload, exportConfiguration } from './lib/exporter.js';
-
-const uid = () => Math.random().toString(36).slice(2, 8);
+import {
+  buildExportPayload,
+  validateImportPayload,
+  exportConfiguration,
+  buildDebugDiagnostics,
+  exportDebugDiagnostics
+} from './lib/exporter.js';
 
 const Storage = {
   async get(key, fallback) {
@@ -719,7 +724,9 @@ function startAutoClear(typeId) {
       updateCommentInput();
       syncPreview();
       showClearedFeedback();
-      await checkClipboardForVetting(false);
+      setTimeout(() => {
+        checkClipboardForVetting(false);
+      }, 350);
     } else {
       clearBtnText.textContent = `Clear (${autoClearSeconds}s)`;
       if (topBannerMsg) {
@@ -741,7 +748,9 @@ btnClear.onclick = async () => {
 
   if (!hasContent) {
     showClearedFeedback('Empty');
-    await checkClipboardForVetting(false);
+    setTimeout(() => {
+      checkClipboardForVetting(false);
+    }, 350);
     return;
   }
 
@@ -772,7 +781,9 @@ btnClear.onclick = async () => {
     setMiddleActionButton('clear');
   }, 4000, 'info');
 
-  await checkClipboardForVetting(false);
+  setTimeout(() => {
+    checkClipboardForVetting(false);
+  }, 350);
 };
 
 function showClearedFeedback(label = 'Cleared') {
@@ -1360,10 +1371,6 @@ function createRowHtml(it, kind, idx) {
   `;
 }
 
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
-
 function syncAllGuides() {
   const t = curType();
   if (!t) return;
@@ -1938,7 +1945,7 @@ if (btnPaste) {
 
 let lastCheckedClip = null;
 
-async function checkClipboardForVetting(showPromptBanner = true) {
+async function checkClipboardForVetting(showPromptBanner = false) {
   try {
     if (!navigator.clipboard || !navigator.clipboard.readText) {
       setMiddleActionButton('clear');
@@ -1974,9 +1981,9 @@ async function checkClipboardForVetting(showPromptBanner = true) {
   }
 }
 
-window.addEventListener('focus', checkClipboardForVetting);
+window.addEventListener('focus', () => checkClipboardForVetting(false));
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') checkClipboardForVetting();
+  if (document.visibilityState === 'visible') checkClipboardForVetting(false);
 });
 
 /* ==========================================================================
@@ -3312,6 +3319,45 @@ function renderSettingsView() {
     };
   }
 
+  // Export Debug Diagnostics (Safe JSON with PII Redaction)
+  const btnExportDebugLogs = document.getElementById('btnExportDebugLogs');
+  if (btnExportDebugLogs) {
+    btnExportDebugLogs.onclick = async () => {
+      try {
+        let storageDump = {};
+        if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+          try {
+            storageDump = await chrome.storage.local.get(null);
+          } catch {}
+        }
+
+        const diagnostics = buildDebugDiagnostics({
+          version: '3.0.0',
+          types,
+          settings,
+          activeTypeId,
+          storageDump,
+          breakSchedule: typeof breakSchedule !== 'undefined' ? breakSchedule : null,
+          currentValues: curValues(),
+          errors: []
+        });
+
+        const result = await exportDebugDiagnostics(diagnostics);
+        if (result.success) {
+          if (result.method === 'clipboard') {
+            showBanner('Debug logs copied to clipboard ✓', null, null, 3000, 'info');
+          } else {
+            showBanner('Debug logs exported successfully ✓', null, null, 2500, 'info');
+          }
+        } else {
+          showBanner('Export failed: ' + (result.error?.message || 'Unknown error'), null, null, 3500, 'danger');
+        }
+      } catch (err) {
+        showBanner('Export error: ' + err.message, null, null, 3500, 'danger');
+      }
+    };
+  }
+
   const btnShowShortcuts = document.getElementById('btnShowShortcuts');
   if (btnShowShortcuts) {
     btnShowShortcuts.onclick = () => {
@@ -3338,6 +3384,37 @@ function renderSettingsView() {
       updateCommentInput();
     }
   };
+}
+
+function toggleFieldStatus(targetStatus = 'failed') {
+  let active = document.activeElement;
+  let row = active ? active.closest('.item-row') : null;
+  if (!row) {
+    row = mainForm.querySelector('.item-row');
+  }
+  if (!row) return;
+
+  const btn = row.querySelector('[data-status-btn="failed"]');
+  const id = row.dataset.id;
+  if (!id) return;
+
+  if (targetStatus === 'failed') {
+    if (btn) {
+      btn.click();
+    }
+  } else if (targetStatus === 'passed') {
+    if (curStatus()[id] === 'failed' && btn) {
+      btn.click();
+    } else {
+      curStatus()[id] = curStatus()[id] === 'passed' ? null : 'passed';
+      const box = row.querySelector('.material-field');
+      const track = row.querySelector('.mat-underline-track');
+      if (box) box.classList.remove('status-failed');
+      if (track) track.classList.remove('status-failed');
+      if (btn) btn.classList.remove('active');
+      syncPreview();
+    }
+  }
 }
 
 /* ==========================================================================
@@ -3372,6 +3449,12 @@ initShortcuts({
   },
   togglePreview: () => {
     if (btnTogglePreview) btnTogglePreview.click();
+  },
+  passField: () => {
+    toggleFieldStatus('passed');
+  },
+  failField: () => {
+    toggleFieldStatus('failed');
   },
   handleEscape: () => {
     if (AppDialog && AppDialog.closeActive && AppDialog.closeActive()) return;

@@ -16,7 +16,9 @@ describe('Central Keyboard Shortcuts Engine', () => {
       copyVetting: vi.fn(),
       pasteVetting: vi.fn(),
       openTypeSearch: vi.fn(),
-      showShortcuts: vi.fn()
+      showShortcuts: vi.fn(),
+      passField: vi.fn(),
+      failField: vi.fn()
     };
     destroy = initShortcuts(handlers);
   });
@@ -178,5 +180,29 @@ describe('Central Keyboard Shortcuts Engine', () => {
     });
     document.dispatchEvent(event);
     expect(handlers.showShortcuts).toHaveBeenCalledTimes(1);
+  });
+
+  it('triggers passField on Alt+P', () => {
+    const event = new KeyboardEvent('keydown', {
+      key: 'p',
+      code: 'KeyP',
+      altKey: true,
+      bubbles: true,
+      cancelable: true
+    });
+    document.dispatchEvent(event);
+    expect(handlers.passField).toHaveBeenCalledTimes(1);
+  });
+
+  it('triggers failField on Alt+F', () => {
+    const event = new KeyboardEvent('keydown', {
+      key: 'f',
+      code: 'KeyF',
+      altKey: true,
+      bubbles: true,
+      cancelable: true
+    });
+    document.dispatchEvent(event);
+    expect(handlers.failField).toHaveBeenCalledTimes(1);
   });
 });

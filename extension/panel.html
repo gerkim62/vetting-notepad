@@ -20,6 +20,7 @@
           <path d="M18 6 6 18M6 6l12 12" />
         </svg>
       </button>
+      <div class="top-banner-progress" id="topBannerProgress"></div>
     </div>
 
     <!-- Main Views Container -->
@@ -57,6 +58,7 @@
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
           </svg>
           <span>Quick SMS</span>
+          <kbd class="menu-kbd">Alt+Shift+M</kbd>
         </button>
         <button type="button" class="menu-item" id="menuItemQuickInteraction" role="menuitem">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -131,19 +133,21 @@
               <circle cx="12" cy="12" r="3" />
             </svg>
           </button>
-          <button class="btn-action btn-clear" id="btnClear" title="Clear filled items">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" />
-            </svg>
-            <span id="clearBtnText">Clear</span>
-          </button>
-          <button class="btn-action btn-paste" id="btnPaste" title="Paste vetting data from clipboard (Ctrl+Shift+V)" style="display:none;">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
-              <rect x="8" y="2" width="8" height="4" rx="1" />
-            </svg>
-            <span id="pasteBtnText">Paste</span>
-          </button>
+          <div class="middle-action-wrap">
+            <button class="btn-action btn-clear flip-visible" id="btnClear" title="Clear filled items">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14" />
+              </svg>
+              <span id="clearBtnText">Clear</span>
+            </button>
+            <button class="btn-action btn-paste flip-hidden" id="btnPaste" title="Paste vetting data from clipboard (Ctrl+Shift+V)">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" />
+                <rect x="8" y="2" width="8" height="4" rx="1" />
+              </svg>
+              <span id="pasteBtnText">Paste</span>
+            </button>
+          </div>
           <button class="btn-action btn-copy" id="btnCopy" title="Copy to clipboard (Ctrl+Enter)">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="9" y="9" width="11" height="11" rx="2" />
@@ -212,6 +216,16 @@
             </button>
             <input type="file" id="importFileInput" accept=".json,application/json" style="display:none;">
           </div>
+          <button class="btn-action" id="btnExportDebugLogs" style="width:100%;margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:6px;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+              <polyline points="10 9 9 9 8 9"/>
+            </svg>
+            Export Debug Diagnostics
+          </button>
 
           <div class="section-head" style="margin-top:14px;">Keyboard Shortcuts</div>
           <button type="button" class="btn-action" id="btnShowShortcuts" style="width:100%;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
