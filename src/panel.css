@@ -2311,6 +2311,13 @@ textarea.mat-input.vfield-textarea::-webkit-resizer {
   min-width: 0;
   position: relative;
 }
+.var-input-title-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  flex: 1;
+}
 .var-input-label {
   font-size: 10px;
   font-weight: 600;
@@ -2323,6 +2330,196 @@ textarea.mat-input.vfield-textarea::-webkit-resizer {
   min-width: 0;
   flex: 1;
   cursor: default;
+}
+/* Warning button for high churn transient fields */
+.var-churn-btn {
+  border: none;
+  background: transparent;
+  outline: none;
+  box-shadow: none;
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-warn);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  flex-shrink: 0;
+  padding: 0;
+  border-radius: var(--radius-xs, 3px);
+  animation: varPulse 2.4s infinite ease-in-out;
+}
+.var-churn-btn:focus,
+.var-churn-btn:focus-visible {
+  outline: none;
+  box-shadow: none;
+  background: var(--color-warn-soft);
+}
+.var-churn-btn:hover {
+  background: var(--color-warn-soft);
+  color: var(--color-warn);
+}
+@keyframes varPulse {
+  0%, 100% { transform: scale(1); opacity: 0.85; }
+  50% { transform: scale(1.08); opacity: 1; }
+}
+
+/* KISS High-churn field popover bubble */
+.var-churn-fly {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  padding: 8px;
+  background: var(--bg-panel-alt, #20252d);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 9px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5);
+  z-index: 130;
+  opacity: 0;
+  transform: translateY(4px);
+  pointer-events: none;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+  box-sizing: border-box;
+}
+
+[data-theme="light"] .var-churn-fly {
+  background: #ffffff;
+  border: 1px solid var(--border-line);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.14);
+}
+
+.var-churn-fly.open {
+  opacity: 1;
+  transform: none;
+  pointer-events: auto;
+}
+
+.var-churn-caret {
+  position: absolute;
+  top: -5px;
+  width: 8px;
+  height: 8px;
+  background: var(--bg-panel-alt, #20252d);
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  transform: rotate(45deg);
+  pointer-events: none;
+}
+
+[data-theme="light"] .var-churn-caret {
+  background: #ffffff;
+  border-left: 1px solid var(--border-line);
+  border-top: 1px solid var(--border-line);
+}
+
+.var-churn-fly.flipped .var-churn-caret {
+  top: auto;
+  bottom: -5px;
+  border-left: none;
+  border-top: none;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="light"] .var-churn-fly.flipped .var-churn-caret {
+  border-right: 1px solid var(--border-line);
+  border-bottom: 1px solid var(--border-line);
+}
+
+.var-churn-ft {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 2px;
+  margin: 0 0 8px;
+}
+
+.var-churn-ft b {
+  display: block;
+  font-family: var(--font-mono, 'IBM Plex Mono', monospace, ui-monospace);
+  font-size: 10.5px;
+  line-height: 14px;
+  font-weight: 600;
+  color: var(--text-main, #e6e8ec);
+  letter-spacing: 0.04em;
+}
+
+.var-churn-ft span {
+  font-size: 11px;
+  line-height: 14px;
+  color: var(--text-muted, #8d95a5);
+}
+
+.var-churn-fly button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: background 0.15s ease, transform 0.1s ease;
+  height: 28px;
+  border-radius: 6px;
+  white-space: nowrap;
+  cursor: pointer;
+  font-family: inherit;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.var-churn-fly button:active {
+  transform: scale(0.97);
+}
+
+.var-churn-fly button:focus-visible {
+  outline: 2px solid rgba(232, 166, 74, 0.8);
+  outline-offset: -2px;
+}
+
+.var-churn-fly button svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+}
+
+.var-churn-b1 {
+  border: 1px solid rgba(232, 166, 74, 0.45);
+  background: rgba(232, 166, 74, 0.16);
+  color: #f2bd6b;
+  font-weight: 600;
+  font-size: 11.5px;
+}
+
+.var-churn-b1:hover {
+  background: rgba(232, 166, 74, 0.24);
+}
+
+.var-churn-two {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin-top: 5px;
+}
+
+.var-churn-b2 {
+  border: 1px solid var(--border-line, #2a2f3a);
+  background: transparent;
+  color: #c4cad6;
+  font-weight: 500;
+  font-size: 11px;
+}
+
+.var-churn-b2:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+[data-theme="light"] .var-churn-b2 {
+  color: var(--text-main);
+  border-color: var(--border-line);
+}
+
+[data-theme="light"] .var-churn-b2:hover {
+  background: var(--bg-hover);
 }
 /* Floating tooltip bubble for truncated labels */
 .var-label-tooltip {

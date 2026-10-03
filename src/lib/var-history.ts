@@ -16,6 +16,7 @@ export interface VarRecord {
 export interface VarPreferences {
   remember: Record<string, boolean>;
   usageValues: Record<string, string[]>;
+  ignoredWarnings?: Record<string, boolean>;
 }
 
 export interface VarSuggestionItem {
@@ -119,6 +120,89 @@ export function getVarSuggestions(
 }
 
 /**
+ * Evaluates whether a variable exhibits high churn (one-time values that change on almost every use)
+ * using data-driven distribution analysis (zero keyword regex guessing).
+ */
+export function isVarHighChurn(
+  history: VarRecord[],
+  varName: string,
+  prefs?: VarPreferences | null
+): boolean {
+  if (!varName || !isVarRemembered(varName, prefs)) return false;
+  const key = varName.trim();
+  if (prefs?.ignoredWarnings && prefs.ignoredWarnings[key]) return false;
+  if (!Array.isArray(history) || history.length === 0) return false;
+
+  const recordsWithVar = history.filter(
+    r => r?.values?.[key] && typeof r.values[key] === 'string' && r.values[key].trim().length > 0
+  );
+  if (recordsWithVar.length < 3) return false;
+
+  const valueCounts = new Map<string, number>();
+  let totalUsage = 0;
+
+  for (const r of recordsWithVar) {
+    const val = r.values[key].trim().toLowerCase();
+    const count = Math.max(1, r.useCount || 1);
+    valueCounts.set(val, (valueCounts.get(val) || 0) + count);
+    totalUsage += count;
+  }
+
+  const uniqueCount = valueCounts.size;
+  if (uniqueCount < 3) return false;
+
+  const churnRatio = uniqueCount / totalUsage;
+
+  let maxCount = 0;
+  for (const count of valueCounts.values()) {
+    if (count > maxCount) maxCount = count;
+  }
+  const topDominance = maxCount / totalUsage;
+
+  // Reusable fields naturally have an anchor/default value that was reused 3+ times or dominates >= 40%
+  const hasSettledAnchor = maxCount >= 3;
+  if (hasSettledAnchor || topDominance > 0.40) return false;
+
+  const recent = prefs?.usageValues?.[key] || [];
+  const recentUnique = new Set(recent.map(s => s.trim().toLowerCase())).size;
+  const isRecentConsecutiveChurn = recent.length >= 3 && recentUnique === recent.length;
+
+  if (uniqueCount === 3) {
+    return churnRatio >= 0.85 && isRecentConsecutiveChurn;
+  }
+
+  return churnRatio >= 0.80;
+}
+
+/**
+ * Purges a specific variable from all records in history.
+ * If removing this variable leaves a record with zero variables, the record is removed entirely.
+ */
+export function purgeVarFromHistory(history: VarRecord[], varName: string): VarRecord[] {
+  if (!Array.isArray(history) || !varName) return history || [];
+  const key = varName.trim();
+
+  const updated: VarRecord[] = [];
+  for (const record of history) {
+    if (!record || !record.values) continue;
+    if (record.values[key] !== undefined) {
+      const remainingValues = { ...record.values };
+      delete remainingValues[key];
+      if (Object.keys(remainingValues).length > 0) {
+        updated.push({
+          ...record,
+          values: remainingValues
+        });
+      }
+    } else {
+      updated.push(record);
+    }
+  }
+
+  return updated;
+}
+
+/**
  * Saves or updates variable records in history upon copying.
  * Evaluates usage frequency to detect transient variables that change on every use.
  */
@@ -130,7 +214,8 @@ export function saveVarRecord(
 ): { updatedHistory: VarRecord[]; updatedPrefs: VarPreferences; autoMutedVars: string[] } {
   const updatedPrefs: VarPreferences = {
     remember: { ...(prefs.remember || {}) },
-    usageValues: { ...(prefs.usageValues || {}) }
+    usageValues: { ...(prefs.usageValues || {}) },
+    ignoredWarnings: { ...(prefs.ignoredWarnings || {}) }
   };
   const autoMutedVars: string[] = [];
 
@@ -147,9 +232,10 @@ export function saveVarRecord(
     if (prevValues.length > 5) prevValues.shift();
     updatedPrefs.usageValues[k] = prevValues;
 
-    // Check if variable changed on every single use (at least 3 unique values)
+    // Safety fallback: Check if variable changed on 5 consecutive uses without explicit override or dismissed warning
     const isExplicit = updatedPrefs.remember[k] !== undefined;
-    if (!isExplicit && prevValues.length >= 3) {
+    const isIgnored = Boolean(updatedPrefs.ignoredWarnings && updatedPrefs.ignoredWarnings[k]);
+    if (!isExplicit && !isIgnored && prevValues.length >= 5) {
       const uniqueCount = new Set(prevValues).size;
       if (uniqueCount === prevValues.length) {
         // Automatically mute this field

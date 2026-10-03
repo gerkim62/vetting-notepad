@@ -33,6 +33,8 @@ import {
   saveVarRecord,
   deleteVarRecord,
   isVarRemembered,
+  isVarHighChurn,
+  purgeVarFromHistory,
   migrateLegacyVars
 } from './lib/var-history.js';
 
@@ -2771,7 +2773,7 @@ let quickSmsTemplates = [];
 let quickInteractionTemplates = [];
 let rememberedTemplateVars = {};
 let varHistory = [];
-let varPreferences = { remember: {}, usageValues: {} };
+let varPreferences = { remember: {}, usageValues: {}, ignoredWarnings: {} };
 
 const quickSmsListEl = document.getElementById('quickSmsList');
 const quickInteractionListEl = document.getElementById('quickInteractionList');
@@ -2799,7 +2801,8 @@ async function loadQuickTemplates() {
 
   rememberedTemplateVars = (await Storage.get('vpad.remembered_vars', {})) || {};
   varHistory = (await Storage.get('vpad.var_history', [])) || [];
-  varPreferences = (await Storage.get('vpad.var_prefs', { remember: {}, usageValues: {} })) || { remember: {}, usageValues: {} };
+  varPreferences = (await Storage.get('vpad.var_prefs', { remember: {}, usageValues: {}, ignoredWarnings: {} })) || { remember: {}, usageValues: {}, ignoredWarnings: {} };
+  if (!varPreferences.ignoredWarnings) varPreferences.ignoredWarnings = {};
 
   if (varHistory.length === 0 && Object.keys(rememberedTemplateVars).length > 0) {
     varHistory = migrateLegacyVars(rememberedTemplateVars);
@@ -3068,10 +3071,19 @@ function openVarFillModal(tpl, _type) {
   if (varInputsList) {
     varInputsList.innerHTML = vars.map(v => {
       const isRem = isVarRemembered(v, varPreferences);
+      const isChurn = isVarHighChurn(varHistory, v, varPreferences);
       return `
         <div class="var-input-row ${isRem ? '' : 'transient'}" data-var-name="${escapeHtml(v)}">
           <div class="var-input-header">
-            <label class="var-input-label" title="${escapeHtml(v)}">${escapeHtml(v)}</label>
+            <div class="var-input-title-group">
+              <label class="var-input-label" title="${escapeHtml(v)}">${escapeHtml(v)}</label>
+              ${isChurn ? `
+                <button type="button" class="var-churn-btn" data-var-name="${escapeHtml(v)}"
+                  title="Frequently changing field detected (click to review)">
+                  ${renderIcon('AlertCircle', { size: 12 })}
+                </button>
+              ` : ''}
+            </div>
             <button type="button" class="var-pin-btn ${isRem ? 'active' : ''}" data-var-name="${escapeHtml(v)}"
               aria-pressed="${isRem}"
               title="${isRem ? 'Pinned to history (click to unpin)' : 'Unpinned — not saved to history (click to pin)'}">
@@ -3094,6 +3106,7 @@ function openVarFillModal(tpl, _type) {
       const inp = row.querySelector('.var-input');
       const btnPaste = row.querySelector('.var-paste-btn');
       const btnPin = row.querySelector('.var-pin-btn');
+      const btnChurn = row.querySelector('.var-churn-btn');
       const dropdown = row.querySelector('.var-suggestions-dropdown');
 
 
@@ -3257,10 +3270,138 @@ function openVarFillModal(tpl, _type) {
 
           if (!nowPinned) {
             hideDropdown();
+            btnChurn?.remove();
+            varFillModal?.querySelector('.var-churn-fly')?.remove();
           } else {
             renderSuggestions();
           }
         };
+      }
+
+      if (btnChurn) {
+        btnChurn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          e.preventDefault();
+
+          // If this flyout is already open for this button, close it
+          const existingFly = varFillModal?.querySelector('.var-churn-fly') as HTMLElement | null;
+          if (existingFly) {
+            existingFly.remove();
+            if (existingFly.dataset.varName === v) return;
+          }
+
+          const fly = document.createElement('div');
+          fly.className = 'var-churn-fly';
+          fly.dataset.varName = v;
+          fly.setAttribute('role', 'dialog');
+          fly.setAttribute('aria-label', `Frequently changing field ${v}`);
+          fly.innerHTML = `
+            <div class="var-churn-caret"></div>
+            <div class="var-churn-ft">
+              <b>${escapeHtml(v)}</b>
+              <span>is changing too often</span>
+            </div>
+            <button type="button" class="var-churn-b1" data-action="unpin" title="Stop remembering this field">
+              ${renderIcon('PinOff', { size: 12 })}
+              <span>Unpin</span>
+            </button>
+            <div class="var-churn-two">
+              <button type="button" class="var-churn-b2" data-action="keep" title="Keep this field pinned">
+                ${renderIcon('Pin', { size: 12 })}
+                <span>Keep pinned</span>
+              </button>
+            </div>
+          `;
+
+          varFillModal?.appendChild(fly);
+
+          // Position bubble relative to warning icon and modal card
+          const btnRect = btnChurn.getBoundingClientRect();
+          const modalRect = varFillModal?.getBoundingClientRect() || { top: 0, bottom: window.innerHeight, left: 0, width: 220, height: 300 };
+
+          const flyHeight = 115;
+          const spaceBelow = modalRect.bottom - btnRect.bottom;
+          const isFlipped = spaceBelow < flyHeight + 15;
+
+          let top = 0;
+          if (isFlipped) {
+            top = (btnRect.top - modalRect.top) - flyHeight - 6;
+            fly.classList.add('flipped');
+          } else {
+            top = (btnRect.bottom - modalRect.top) + 6;
+            fly.classList.remove('flipped');
+          }
+
+          const minTop = 38;
+          const maxTop = (modalRect.height || 300) - flyHeight - 8;
+          top = Math.max(minTop, Math.min(top, maxTop));
+          fly.style.top = `${Math.round(top)}px`;
+
+          // Position caret pointing at icon
+          const caret = fly.querySelector('.var-churn-caret') as HTMLElement | null;
+          if (caret) {
+            const iconCenter = btnRect.left + (btnRect.width / 2);
+            let caretLeft = iconCenter - (modalRect.left + 8) - 4;
+            const maxCaret = (modalRect.width - 16) - 18;
+            caretLeft = Math.max(12, Math.min(caretLeft, maxCaret));
+            caret.style.left = `${Math.round(caretLeft)}px`;
+          }
+
+          requestAnimationFrame(() => {
+            fly.classList.add('open');
+          });
+
+          let isClosing = false;
+          const closeFly = () => {
+            if (isClosing) return;
+            isClosing = true;
+            document.removeEventListener('click', onDocClick);
+            fly.classList.remove('open');
+            setTimeout(() => fly.remove(), 160);
+          };
+
+          const onDocClick = (ev: MouseEvent) => {
+            const target = ev.target as Node;
+            if (!fly.contains(target) && target !== btnChurn && !btnChurn.contains(target)) {
+              closeFly();
+            }
+          };
+
+          setTimeout(() => {
+            document.addEventListener('click', onDocClick);
+          }, 10);
+
+          const btnUnpin = fly.querySelector('.var-churn-b1') as HTMLElement | null;
+          const btnKeep = fly.querySelector('.var-churn-b2') as HTMLElement | null;
+
+          if (btnKeep) {
+            btnKeep.onclick = (ev) => {
+              ev.stopPropagation();
+              closeFly();
+            };
+          }
+
+          if (btnUnpin) {
+            btnUnpin.onclick = (ev) => {
+              ev.stopPropagation();
+
+              varPreferences.remember[v] = false;
+              varHistory = purgeVarFromHistory(varHistory, v);
+              persistVarHistory();
+
+              btnPin?.classList.remove('active');
+              btnPin?.setAttribute('aria-pressed', 'false');
+              if (btnPin) btnPin.title = 'Unpinned — not saved to history (click to pin)';
+              row.classList.add('transient');
+
+              hideDropdown();
+              btnChurn.remove();
+              closeFly();
+
+              showBanner(`Unpinned '${v}' and cleaned history`, null, null, 2500, 'info');
+            };
+          }
+        });
       }
 
       if (inp) {
@@ -3323,6 +3464,14 @@ function openVarFillModal(tpl, _type) {
                 }
               }
               hideDropdown();
+            }
+          } else if (e.key === 'Escape') {
+            e.preventDefault();
+            const activeFly = varFillModal?.querySelector('.var-churn-fly');
+            if (activeFly) {
+              activeFly.remove();
+            } else {
+              closeVarFillModal();
             }
           } else if (e.key === 'Enter') {
             // When dropdown is closed, Enter triggers Copy Text
@@ -3415,6 +3564,7 @@ function openVarFillModal(tpl, _type) {
 
 function closeVarFillModal() {
   resetCopyResolvedBtn(); // Always reset button state when closing
+  varFillModal?.querySelector('.var-churn-fly')?.remove();
   if (varFillOverlay) varFillOverlay.style.display = 'none';
   if (varFillModal) varFillModal.style.display = 'none';
   activeVarTemplate = null;

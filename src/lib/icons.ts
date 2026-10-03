@@ -4,6 +4,7 @@
  */
 
 import {
+  AlertCircle,
   AlertTriangle,
   Ban,
   Bookmark,
@@ -45,6 +46,7 @@ import {
 import { logger } from './logger.js';
 
 export const SUPPORTED_ICONS: Record<string, IconNode> = {
+  AlertCircle,
   AlertTriangle,
   Ban,
   Bookmark,
@@ -81,6 +83,7 @@ export const SUPPORTED_ICONS: Record<string, IconNode> = {
   Utensils,
   X,
   // kebab-case mappings for data-lucide attributes or kebab-case calls
+  'alert-circle': AlertCircle,
   'alert-triangle': AlertTriangle,
   'ban': Ban,
   'bookmark': Bookmark,

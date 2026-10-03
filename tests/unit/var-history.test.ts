@@ -6,6 +6,8 @@ import {
   saveVarRecord,
   deleteVarRecord,
   migrateLegacyVars,
+  isVarHighChurn,
+  purgeVarFromHistory,
   VarRecord,
   VarPreferences
 } from '../../src/lib/var-history.js';
@@ -169,29 +171,39 @@ describe('Variable History & Autocomplete Engine', () => {
     });
   });
 
-  describe('Frequency-Based Auto-Mute Heuristic', () => {
-    it('auto-mutes a variable if it changes on 3 consecutive usages', () => {
+  describe('Frequency-Based Auto-Mute Fallback Heuristic', () => {
+    it('auto-mutes a variable if it changes on 5 consecutive usages', () => {
       let history: VarRecord[] = [];
       let prefs: VarPreferences = { remember: {}, usageValues: {} };
 
-      // 1st use
-      const s1 = saveVarRecord(history, { 'SESSION_ID': 'ABC1' }, prefs);
-      history = s1.updatedHistory;
-      prefs = s1.updatedPrefs;
-      expect(s1.autoMutedVars).toEqual([]);
+      for (let i = 1; i <= 4; i++) {
+        const s = saveVarRecord(history, { 'SESSION_ID': `ABC${i}` }, prefs);
+        history = s.updatedHistory;
+        prefs = s.updatedPrefs;
+        expect(s.autoMutedVars).toEqual([]);
+      }
 
-      // 2nd use
-      const s2 = saveVarRecord(history, { 'SESSION_ID': 'ABC2' }, prefs);
-      history = s2.updatedHistory;
-      prefs = s2.updatedPrefs;
-      expect(s2.autoMutedVars).toEqual([]);
+      // 5th use with another unique value
+      const s5 = saveVarRecord(history, { 'SESSION_ID': 'ABC5' }, prefs);
+      expect(s5.autoMutedVars).toContain('SESSION_ID');
+      expect(s5.updatedPrefs.remember['SESSION_ID']).toBe(false);
+    });
 
-      // 3rd use with another unique value
-      const s3 = saveVarRecord(history, { 'SESSION_ID': 'ABC3' }, prefs);
-      history = s3.updatedHistory;
-      prefs = s3.updatedPrefs;
-      expect(s3.autoMutedVars).toContain('SESSION_ID');
-      expect(prefs.remember['SESSION_ID']).toBe(false);
+    it('does not auto-mute if warning was ignored', () => {
+      let history: VarRecord[] = [];
+      let prefs: VarPreferences = {
+        remember: {},
+        usageValues: {},
+        ignoredWarnings: { 'SESSION_ID': true }
+      };
+
+      for (let i = 1; i <= 5; i++) {
+        const s = saveVarRecord(history, { 'SESSION_ID': `ABC${i}` }, prefs);
+        history = s.updatedHistory;
+        prefs = s.updatedPrefs;
+      }
+
+      expect(prefs.remember['SESSION_ID']).toBeUndefined();
     });
 
     it('does not auto-mute if values are repeated', () => {
@@ -212,6 +224,124 @@ describe('Variable History & Autocomplete Engine', () => {
 
       expect(s3.autoMutedVars).toEqual([]);
       expect(prefs.remember['AGENT']).toBeUndefined();
+    });
+  });
+
+  describe('Data-Driven High Churn Detection (isVarHighChurn)', () => {
+    it('detects high churn when 4 distinct values exist across 4 uses (100% churn)', () => {
+      const history: VarRecord[] = [
+        { id: '1', values: { 'TXN CODE': '5', ORG: 'kcb' }, lastUsed: 1, useCount: 1 },
+        { id: '2', values: { 'TXN CODE': '3', ORG: 'kcb' }, lastUsed: 2, useCount: 1 },
+        { id: '3', values: { 'TXN CODE': '2', ORG: 'kcb' }, lastUsed: 3, useCount: 1 },
+        { id: '4', values: { 'TXN CODE': '1', ORG: 'kcb' }, lastUsed: 4, useCount: 1 }
+      ];
+
+      expect(isVarHighChurn(history, 'TXN CODE')).toBe(true);
+      // ORG has only 1 distinct value across 4 uses, so it is NOT high churn
+      expect(isVarHighChurn(history, 'ORG')).toBe(false);
+    });
+
+    it('tolerates one accidental duplicate copy (e.g. 4 unique out of 5 uses = 80%)', () => {
+      const history: VarRecord[] = [
+        { id: '1', values: { 'REF': 'A1' }, lastUsed: 1, useCount: 2 }, // used twice
+        { id: '2', values: { 'REF': 'A2' }, lastUsed: 2, useCount: 1 },
+        { id: '3', values: { 'REF': 'A3' }, lastUsed: 3, useCount: 1 },
+        { id: '4', values: { 'REF': 'A4' }, lastUsed: 4, useCount: 1 }
+      ];
+
+      expect(isVarHighChurn(history, 'REF')).toBe(true);
+    });
+
+    it('does not flag fields with an anchor/default value that dominates usage', () => {
+      const history: VarRecord[] = [
+        { id: '1', values: { 'CURRENCY CODE': 'KES' }, lastUsed: 1, useCount: 8 },
+        { id: '2', values: { 'CURRENCY CODE': 'USD' }, lastUsed: 2, useCount: 2 },
+        { id: '3', values: { 'CURRENCY CODE': 'EUR' }, lastUsed: 3, useCount: 1 }
+      ];
+
+      // KES was used 8 times (domination > 40% and count >= 3)
+      expect(isVarHighChurn(history, 'CURRENCY CODE')).toBe(false);
+    });
+
+    it('evaluates 3 entries with recent consecutive usage check', () => {
+      const history: VarRecord[] = [
+        { id: '1', values: { 'TOKEN': 'T1' }, lastUsed: 1, useCount: 1 },
+        { id: '2', values: { 'TOKEN': 'T2' }, lastUsed: 2, useCount: 1 },
+        { id: '3', values: { 'TOKEN': 'T3' }, lastUsed: 3, useCount: 1 }
+      ];
+
+      const prefsWithConsecutive: VarPreferences = {
+        remember: {},
+        usageValues: { 'TOKEN': ['T1', 'T2', 'T3'] }
+      };
+
+      const prefsWithoutConsecutive: VarPreferences = {
+        remember: {},
+        usageValues: { 'TOKEN': ['T1', 'T1', 'T2'] }
+      };
+
+      expect(isVarHighChurn(history, 'TOKEN', prefsWithConsecutive)).toBe(true);
+      expect(isVarHighChurn(history, 'TOKEN', prefsWithoutConsecutive)).toBe(false);
+    });
+
+    it('returns false if variable warning is ignored in preferences', () => {
+      const history: VarRecord[] = [
+        { id: '1', values: { 'TXN CODE': '1' }, lastUsed: 1, useCount: 1 },
+        { id: '2', values: { 'TXN CODE': '2' }, lastUsed: 2, useCount: 1 },
+        { id: '3', values: { 'TXN CODE': '3' }, lastUsed: 3, useCount: 1 },
+        { id: '4', values: { 'TXN CODE': '4' }, lastUsed: 4, useCount: 1 }
+      ];
+
+      const prefs: VarPreferences = {
+        remember: {},
+        usageValues: {},
+        ignoredWarnings: { 'TXN CODE': true }
+      };
+
+      expect(isVarHighChurn(history, 'TXN CODE', prefs)).toBe(false);
+    });
+
+    it('returns false if variable is already unpinned', () => {
+      const history: VarRecord[] = [
+        { id: '1', values: { 'TXN CODE': '1' }, lastUsed: 1, useCount: 1 },
+        { id: '2', values: { 'TXN CODE': '2' }, lastUsed: 2, useCount: 1 },
+        { id: '3', values: { 'TXN CODE': '3' }, lastUsed: 3, useCount: 1 },
+        { id: '4', values: { 'TXN CODE': '4' }, lastUsed: 4, useCount: 1 }
+      ];
+
+      const prefs: VarPreferences = {
+        remember: { 'TXN CODE': false },
+        usageValues: {}
+      };
+
+      expect(isVarHighChurn(history, 'TXN CODE', prefs)).toBe(false);
+    });
+  });
+
+  describe('History Variable Purging (purgeVarFromHistory)', () => {
+    it('removes target variable while keeping accompanying variables intact', () => {
+      const history: VarRecord[] = [
+        { id: '1', values: { 'TXN CODE': '101', ORG: 'kcb', PHONE: '100' }, lastUsed: 1, useCount: 1 },
+        { id: '2', values: { 'TXN CODE': '102', ORG: 'kcb', PHONE: '100' }, lastUsed: 2, useCount: 1 }
+      ];
+
+      const cleaned = purgeVarFromHistory(history, 'TXN CODE');
+      expect(cleaned.length).toBe(2);
+      expect(cleaned[0].values['TXN CODE']).toBeUndefined();
+      expect(cleaned[0].values.ORG).toBe('kcb');
+      expect(cleaned[0].values.PHONE).toBe('100');
+    });
+
+    it('removes records completely if they only contained the purged variable', () => {
+      const history: VarRecord[] = [
+        { id: '1', values: { 'TXN CODE': '101' }, lastUsed: 1, useCount: 1 },
+        { id: '2', values: { 'TXN CODE': '102', ORG: 'kcb' }, lastUsed: 2, useCount: 1 }
+      ];
+
+      const cleaned = purgeVarFromHistory(history, 'TXN CODE');
+      expect(cleaned.length).toBe(1);
+      expect(cleaned[0].id).toBe('2');
+      expect(cleaned[0].values).toEqual({ ORG: 'kcb' });
     });
   });
 
