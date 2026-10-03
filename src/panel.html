@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="auto">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Vetting Notepad</title>
+  <link rel="stylesheet" href="panel.css">
+</head>
+
+<body>
+  <div id="app">
+    <!-- Static Topbar Alert / Message Banner with Shake Effect -->
+    <div class="top-banner" id="topBanner" style="display:none;" role="alert">
+      <span class="top-banner-msg" id="topBannerMsg"></span>
+      <button type="button" class="top-banner-btn" id="topBannerBtn" style="display:none;"></button>
+      <button type="button" class="top-banner-close" id="topBannerClose" title="Dismiss" aria-label="Dismiss message">
+        <i data-lucide="x" style="width:12px;height:12px;"></i>
+      </button>
+      <div class="top-banner-progress" id="topBannerProgress"></div>
+    </div>
+
+    <!-- Main Views Container -->
+    <div class="views-root">
+      <!-- Top Navigation Bar with Creatable Select -->
+      <header class="top-nav">
+        <div id="typeSelectMount" class="c-select"></div>
+
+        <!-- Hamburger Menu Icon -->
+        <button class="ibtn" id="btnMenu" title="Menu" aria-label="Menu">
+          <i data-lucide="menu" style="width:14px;height:14px;"></i>
+        </button>
+      </header>
+
+      <!-- Hamburger Menu Dropdown Popover -->
+      <div class="menu-dropdown" id="menuDropdown" style="display:none;" role="menu">
+        <button type="button" class="menu-item" id="menuItemNotes" role="menuitem">
+          <i data-lucide="file-text" style="width:13px;height:13px;"></i>
+          <span>Notes</span>
+          <kbd class="menu-kbd">Alt+Shift+N</kbd>
+        </button>
+        <button type="button" class="menu-item" id="menuItemQuickSms" role="menuitem">
+          <i data-lucide="message-square" style="width:13px;height:13px;"></i>
+          <span>Quick SMS</span>
+          <kbd class="menu-kbd">Alt+Shift+M</kbd>
+        </button>
+        <button type="button" class="menu-item" id="menuItemQuickInteraction" role="menuitem">
+          <i data-lucide="message-circle" style="width:13px;height:13px;"></i>
+          <span>Quick Interaction</span>
+        </button>
+        <button type="button" class="menu-item" id="menuItemBreakNotifier" role="menuitem">
+          <i data-lucide="clock" style="width:13px;height:13px;"></i>
+          <span>Break Notifier</span>
+          <kbd class="menu-kbd">Alt+Shift+B</kbd>
+        </button>
+        <button type="button" class="menu-item" id="menuItemEditType" role="menuitem">
+          <i data-lucide="pencil" style="width:13px;height:13px;"></i>
+          <span>Edit Vetting Items</span>
+        </button>
+        <button type="button" class="menu-item" id="menuItemShortcuts" role="menuitem">
+          <i data-lucide="keyboard" style="width:13px;height:13px;"></i>
+          <span>Shortcuts</span>
+          <kbd class="menu-kbd">?</kbd>
+        </button>
+        <button type="button" class="menu-item" id="menuItemSettings" role="menuitem">
+          <i data-lucide="settings" style="width:13px;height:13px;"></i>
+          <span>Settings</span>
+          <kbd class="menu-kbd">Alt+Shift+S</kbd>
+        </button>
+      </div>
+
+      <!-- Main Scrollable Form Area -->
+      <div class="scroll-pane" id="mainForm"></div>
+
+      <!-- Compact Footer -->
+      <footer class="footer-bar">
+        <!-- Collapsible Preview Drawer -->
+        <div class="preview-drawer" id="previewDrawer">
+          <pre id="previewText" class="empty">Nothing filled yet</pre>
+        </div>
+
+        <!-- Material Underline Comment Input with Suggestions -->
+        <div class="field-container comment-container">
+          <div class="material-field" id="commentFieldBox">
+            <label class="mat-label" for="commentInput">Comment (optional)</label>
+            <textarea class="mat-input vfield-textarea" id="commentInput" rows="1" data-max-lines="5" autocomplete="off" spellcheck="false"></textarea>
+            <div class="mat-underline-continuous"></div>
+          </div>
+          <ul class="comment-suggestions-menu" id="commentSuggestionsMenu" role="listbox"></ul>
+        </div>
+
+        <!-- Action Row -->
+        <div class="action-row">
+          <button class="btn-action btn-eye" id="btnTogglePreview" title="Toggle copy preview (Alt+Shift+P)"
+            aria-label="Toggle preview">
+            <i data-lucide="eye" style="width:14px;height:14px;"></i>
+          </button>
+          <div class="middle-action-wrap">
+            <button class="btn-action btn-clear flip-visible" id="btnClear" title="Clear filled items">
+              <i data-lucide="trash-2" style="width:12px;height:12px;"></i>
+              <span id="clearBtnText">Clear</span>
+            </button>
+            <button class="btn-action btn-paste flip-hidden" id="btnPaste" title="Paste vetting data from clipboard (Ctrl+Shift+V)">
+              <i data-lucide="clipboard-paste" style="width:12px;height:12px;"></i>
+              <span id="pasteBtnText">Paste</span>
+            </button>
+          </div>
+          <button class="btn-action btn-copy" id="btnCopy" title="Copy to clipboard (Ctrl+Enter)">
+            <i data-lucide="copy" style="width:12px;height:12px;"></i>
+            <span id="copyBtnText">Copy</span>
+          </button>
+        </div>
+      </footer>
+
+      <!-- Ambient Minimal Break Bar at Bottom -->
+      <div class="ambient-break-bar" id="ambientBreakBar" style="display:none;" title="Click to view Break Schedule">
+        <span class="ambient-break-icon" id="ambientBreakIcon" style="display:inline-flex;align-items:center;">
+          <i data-lucide="coffee" style="width:13px;height:13px;"></i>
+        </span>
+        <span class="ambient-break-text" id="ambientBreakText">--</span>
+      </div>
+
+      <!-- Sub-view: Settings & Theme Screen -->
+      <div class="view-sub" id="settingsView" style="display:none;">
+        <div class="view-header">
+          <button class="ibtn" id="btnBackSettings" title="Back to main">
+            <i data-lucide="chevron-left" style="width:13px;height:13px;"></i>
+          </button>
+          <span class="view-title">Settings</span>
+        </div>
+        <div class="scroll-pane" style="padding:8px 10px;">
+          <div class="section-head">Appearance Theme</div>
+          <div class="setting-chips" id="themeChips">
+            <button class="chip" data-theme-val="auto">Auto (System)</button>
+            <button class="chip" data-theme-val="light">Light</button>
+            <button class="chip" data-theme-val="dark">Dark</button>
+          </div>
+
+          <div class="section-head" style="margin-top:14px;">Auto-Clear Details After Copy</div>
+          <p style="font-size:10.5px;color:var(--text-muted);margin-bottom:6px;">Wipes customer data after a countdown.
+            Typing or clicking Cancel in the top banner halts it.</p>
+          <div class="setting-chips" id="autoClearChips">
+            <button class="chip" data-ac="0">Off (Default)</button>
+            <button class="chip" data-ac="5">5s</button>
+            <button class="chip" data-ac="10">10s</button>
+            <button class="chip" data-ac="15">15s</button>
+            <button class="chip" data-ac="30">30s</button>
+            <button class="chip" data-ac="60">1m</button>
+          </div>
+
+          <div class="section-head" style="margin-top:16px;">Configuration & Data</div>
+          <div style="display:flex;gap:6px;margin-bottom:8px;">
+            <button class="btn-action" id="btnExportData" style="flex:1;display:flex;align-items:center;justify-content:center;gap:4px;">
+              <i data-lucide="download" style="width:12px;height:12px;"></i>
+              <span>Export Data</span>
+            </button>
+            <button class="btn-action" id="btnImportData" style="flex:1;display:flex;align-items:center;justify-content:center;gap:4px;">
+              <i data-lucide="upload" style="width:12px;height:12px;"></i>
+              <span>Import Data</span>
+            </button>
+            <input type="file" id="importFileInput" accept=".json,application/json" style="display:none;">
+          </div>
+          <button class="btn-action" id="btnExportDebugLogs" style="width:100%;margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:6px;">
+            <i data-lucide="bug" style="width:12px;height:12px;"></i>
+            <span>Export Debug Diagnostics</span>
+          </button>
+
+          <div class="section-head" style="margin-top:14px;">Keyboard Shortcuts</div>
+          <button type="button" class="btn-action" id="btnShowShortcuts" style="width:100%;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
+            <span style="display:flex;align-items:center;gap:6px;">
+              <i data-lucide="keyboard" style="width:12px;height:12px;"></i>
+              Shortcuts Cheatsheet
+            </span>
+            <kbd class="menu-kbd">?</kbd>
+          </button>
+
+          <button class="btn-action" id="btnResetAll"
+            style="width:100%;color:var(--color-danger);border-color:var(--border-line);display:flex;align-items:center;justify-content:center;gap:6px;">
+            <i data-lucide="rotate-ccw" style="width:12px;height:12px;"></i>
+            <span>Reset Vetting Types to Defaults</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Sub-view: Edit Vetting Items Screen -->
+      <div class="view-sub" id="editView" style="display:none;">
+        <div class="view-header">
+          <button class="ibtn" id="btnBackEdit" title="Back to main">
+            <i data-lucide="chevron-left" style="width:13px;height:13px;"></i>
+          </button>
+          <span class="view-title">Edit Vetting Items</span>
+        </div>
+        <div class="scroll-pane" style="padding:8px 10px;" id="editPane"></div>
+      </div>
+
+      <!-- Sub-view: Notes Screen -->
+      <div class="view-sub" id="notesView" style="display:none;">
+        <div class="view-header">
+          <button class="ibtn" id="btnBackNotes" title="Back" aria-label="Back">
+            <i data-lucide="chevron-left" style="width:13px;height:13px;"></i>
+          </button>
+          <div id="noteSelectMount" class="c-select note-c-select"></div>
+          <button class="ibtn primary" id="btnNewNote" title="New Note" aria-label="New Note">
+            <i data-lucide="plus" style="width:13px;height:13px;"></i>
+          </button>
+          <button class="ibtn" id="btnCopyNote" title="Copy Note" aria-label="Copy Note">
+            <i data-lucide="copy" style="width:13px;height:13px;"></i>
+          </button>
+          <button class="ibtn" id="btnDeleteNote" title="Delete Note" aria-label="Delete Note">
+            <i data-lucide="trash-2" style="width:13px;height:13px;"></i>
+          </button>
+        </div>
+        <div class="note-canvas-wrap">
+          <input type="text" class="note-title-input" id="noteTitleInput" placeholder="Untitled Note" autocomplete="off"
+            spellcheck="false">
+          <div class="note-editor-container" id="noteEditorContainer">
+            <div id="noteQuillMount"></div>
+          </div>
+          <div class="note-status-bar">
+            <span id="noteSaveStatus">Saved</span>
+            <span id="noteWordCharCount">0 chars</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sub-view: Quick SMS Screen -->
+      <div class="view-sub" id="quickSmsView" style="display:none;">
+        <div class="view-header">
+          <button class="ibtn" id="btnBackQuickSms" title="Back to main">
+            <i data-lucide="chevron-left" style="width:13px;height:13px;"></i>
+          </button>
+          <span class="view-title">Quick SMS</span>
+          <button class="ibtn primary" id="btnNewSmsTemplate" title="New SMS Template" aria-label="New SMS Template">
+            <i data-lucide="plus" style="width:13px;height:13px;"></i>
+          </button>
+        </div>
+        <div class="scroll-pane" style="padding:8px 10px;" id="quickSmsList"></div>
+      </div>
+
+      <!-- Sub-view: Quick Interaction Screen -->
+      <div class="view-sub" id="quickInteractionView" style="display:none;">
+        <div class="view-header">
+          <button class="ibtn" id="btnBackQuickInteraction" title="Back to main">
+            <i data-lucide="chevron-left" style="width:13px;height:13px;"></i>
+          </button>
+          <span class="view-title">Quick Interaction</span>
+          <button class="ibtn primary" id="btnNewInteractionTemplate" title="New Interaction Template"
+            aria-label="New Interaction Template">
+            <i data-lucide="plus" style="width:13px;height:13px;"></i>
+          </button>
+        </div>
+        <div class="scroll-pane" style="padding:8px 10px;" id="quickInteractionList"></div>
+      </div>
+
+      <!-- Sub-view: Break Notifier Screen -->
+      <div class="view-sub" id="breakNotifierView" style="display:none;">
+        <div class="view-header">
+          <button class="ibtn" id="btnBackBreakNotifier" title="Back to main">
+            <i data-lucide="chevron-left" style="width:13px;height:13px;"></i>
+          </button>
+          <span class="view-title">Break Notifier</span>
+        </div>
+        <div class="scroll-pane" style="padding:8px 10px;">
+          <!-- Live Status Card -->
+          <div class="break-status-card" id="breakStatusCard">
+            <div class="break-status-top">
+              <span class="break-status-label" id="breakEventTitle">Next Event</span>
+              <span class="break-status-tag" id="breakEventTag">Schedule</span>
+            </div>
+            <div class="break-countdown-big" id="breakCountdownBig">--:--:--</div>
+            <div class="break-progress-wrap">
+              <div class="break-progress-bar" id="breakProgressBar" style="width:0%;"></div>
+            </div>
+            <div class="break-status-sub" id="breakStatusSub">Configure your schedule below</div>
+          </div>
+
+          <!-- Schedule Times Form -->
+          <div class="section-head" style="margin-top:12px;">Shift & Break Schedule</div>
+          <div class="break-schedule-grid">
+            <div class="break-time-row">
+              <div class="break-time-label">
+                <span>Break 1 Start</span>
+                <span class="break-fixed-dur">10 min break</span>
+              </div>
+              <input type="time" class="break-time-input" id="break1Start" step="60">
+            </div>
+
+            <div class="break-time-row">
+              <div class="break-time-label">
+                <span>Lunch Start</span>
+                <span class="break-fixed-dur">40 min lunch</span>
+              </div>
+              <input type="time" class="break-time-input" id="lunchStart" step="60">
+            </div>
+
+            <div class="break-time-row">
+              <div class="break-time-label">
+                <span>Break 2 Start</span>
+                <span class="break-fixed-dur">10 min break</span>
+              </div>
+              <input type="time" class="break-time-input" id="break2Start" step="60">
+            </div>
+
+            <div class="break-time-row">
+              <div class="break-time-label">
+                <span>Shift End</span>
+                <span class="break-fixed-dur">End of day</span>
+              </div>
+              <input type="time" class="break-time-input" id="shiftEnd" step="60">
+            </div>
+          </div>
+
+          <!-- Notification Toggles -->
+          <div class="section-head" style="margin-top:14px;">Notification Alerts</div>
+          <div class="break-toggles-list">
+            <label class="break-toggle-row">
+              <span>Desktop System Notification</span>
+              <input type="checkbox" id="chkNotifyDesktop" class="custom-chk">
+            </label>
+            <label class="break-toggle-row">
+              <span>In-UI Toast Banner</span>
+              <input type="checkbox" id="chkNotifyToast" class="custom-chk" checked>
+            </label>
+          </div>
+        </div>
+      </div>
+    </div> <!-- /.views-root -->
+
+    <!-- Variable Fill Modal for Quick SMS / Quick Interaction -->
+    <div class="modal-overlay" id="varFillOverlay" style="display:none;"></div>
+    <div class="modal-card var-fill-modal" id="varFillModal" style="display:none;" role="dialog"
+      aria-label="Fill Variables">
+      <div class="modal-header">
+        <span class="modal-title" id="varFillTitle">Template</span>
+        <button type="button" class="modal-close-btn" id="varFillClose" title="Close" aria-label="Close">
+          <i data-lucide="x" style="width:12px;height:12px;"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="var-inputs-list" id="varInputsList"></div>
+        <div class="var-preview-box">
+          <div class="var-preview-label">Live Preview</div>
+          <div class="var-preview-text" id="varPreviewText"></div>
+        </div>
+        <div class="var-modal-footer">
+          <label class="var-remember-label">
+            <input type="checkbox" id="chkRememberVars" class="custom-chk" checked>
+            <span>Remember values</span>
+          </label>
+          <button type="button" class="btn-action primary" id="btnCopyResolved" style="display:flex;align-items:center;gap:4px;">
+            <i data-lucide="copy" style="width:12px;height:12px;"></i>
+            <span>Copy Text</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Template Create / Edit Modal -->
+    <div class="modal-overlay" id="templateEditOverlay" style="display:none;"></div>
+    <div class="modal-card template-edit-modal" id="templateEditModal" style="display:none;" role="dialog"
+      aria-label="Edit Template">
+      <div class="modal-header">
+        <span class="modal-title" id="templateEditModalTitle">Edit Template</span>
+        <button type="button" class="modal-close-btn" id="templateEditClose" title="Close" aria-label="Close">
+          <i data-lucide="x" style="width:12px;height:12px;"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-form-group">
+          <label class="modal-field-label">Template Title</label>
+          <input type="text" class="modal-text-input" id="templateTitleInput" placeholder="e.g. Paybill Reversal"
+            autocomplete="off" spellcheck="false">
+        </div>
+        <div class="modal-form-group">
+          <label class="modal-field-label">Template Message (Use {VARIABLE} for dynamic fields)</label>
+          <textarea class="template-body-textarea" id="templateBodyInput"
+            placeholder="Dear Customer, kindly contact {ORGANIZATION} on {Phone Number}..." autocomplete="off"
+            spellcheck="false"></textarea>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:4px;">
+          <button type="button" class="btn-action" id="btnCancelTemplate">Cancel</button>
+          <button type="button" class="btn-action primary" id="btnSaveTemplate">Save Template</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Call-Wide Floating Key-Value Notepad (Call Companion) -->
+    <div class="callpad-overlay" id="callPadOverlay" style="display:none;"></div>
+    <div class="callpad-popover" id="callPadPopover" style="display:none;" role="dialog" aria-label="Call Items">
+      <div class="callpad-header">
+        <div class="callpad-title" style="display:flex;align-items:center;gap:6px;">
+          <i data-lucide="phone" style="width:12px;height:12px;"></i>
+          <span>Call Items</span>
+        </div>
+        <button type="button" class="callpad-close" id="callPadClose" title="Close" aria-label="Close">
+          <i data-lucide="x" style="width:12px;height:12px;"></i>
+        </button>
+      </div>
+      <div class="callpad-body" id="callPadBody"></div>
+    </div>
+
+    <!-- Draggable Floating Action Button (FAB) -->
+    <button type="button" class="callpad-fab" id="callPadFab" title="Callpad Scratchpad (Alt+Shift+C)" aria-label="Call Items">
+      <i data-lucide="phone" style="width:14px;height:14px;"></i>
+    </button>
+  </div> <!-- /#app -->
+
+  <script type="module" src="./panel.ts"></script>
+</body>
+
+</html>
