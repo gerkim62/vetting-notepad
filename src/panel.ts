@@ -45,6 +45,10 @@ function renderBreakIcon(icon: string, size = 13): string {
   return renderIcon('Coffee', { size });
 }
 
+const morphTimers = new WeakMap<HTMLElement, ReturnType<typeof setTimeout>>();
+const copyFeedbackTimers = new WeakMap<HTMLElement, ReturnType<typeof setTimeout>>();
+const autoExpanders = new WeakMap<HTMLTextAreaElement, { adjustHeight: () => void }>();
+
 const Storage = {
   async get(key, fallback) {
     if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
@@ -128,7 +132,7 @@ const Storage = {
           const v = localStorage.getItem(k);
           if (v !== null) res[k] = JSON.parse(v);
         } catch (e) {
-          // ignore
+          logger.captureError('storage', e, { action: 'getMultiple-localStorage', key: k });
         }
       }
       return res;
@@ -234,7 +238,11 @@ class CreatableSelect {
     this.box.addEventListener('click', () => this.open());
     this.root.querySelector('.tog').addEventListener('click', (e) => {
       e.stopPropagation();
-      this.isOpen ? this.close() : this.open();
+      if (this.isOpen) {
+        this.close();
+      } else {
+        this.open();
+      }
     });
 
     this.list.addEventListener('mousedown', e => e.preventDefault());
@@ -345,12 +353,12 @@ class CreatableSelect {
     if (it.create !== undefined) {
       o = { value: uid(), label: it.create };
       this.opts.push(o);
-      this.o.onCreate && this.o.onCreate(o);
+      this.o.onCreate?.(o);
     }
     this.val = o.value;
     this.close();
     this.sync();
-    this.o.onChange && this.o.onChange(this.val, this);
+    this.o.onChange?.(this.val, this);
   }
 
   key(e) {
@@ -524,19 +532,21 @@ function morphButton(btn: HTMLElement | null, text: string, iconName = 'Check', 
   const icon = renderIcon(iconName, { size: 12, strokeWidth: 2.2 });
   btn.innerHTML = `${icon}<span>${escapeHtml(text)}</span>`;
 
-  if ((btn as any)._morphTimer) clearTimeout((btn as any)._morphTimer);
-  (btn as any)._morphTimer = setTimeout(() => {
+  const existingTimer = morphTimers.get(btn);
+  if (existingTimer) clearTimeout(existingTimer);
+  const timer = setTimeout(() => {
     btn.classList.remove('morph-success', 'morph-error');
     btn.innerHTML = originalHtml;
     delete btn.dataset.origHtml;
-    (btn as any)._morphTimer = null;
+    morphTimers.delete(btn);
   }, durationMs);
+  morphTimers.set(btn, timer);
 }
 
 function shakeForm() {
   if (!mainForm) return;
   mainForm.classList.remove('form-subtle-shake');
-  void (mainForm as HTMLElement).offsetWidth;
+  void mainForm.offsetWidth;
   mainForm.classList.add('form-subtle-shake');
   setTimeout(() => {
     mainForm.classList.remove('form-subtle-shake');
@@ -643,7 +653,6 @@ function parseLabel(raw) {
 function isVettingItem(it) {
   if (!it) return false;
   const lbl = (it.label || '').toLowerCase();
-  const id = (it.id || '').toLowerCase();
   if (
     lbl.includes('calling number') ||
     lbl.includes('line to swap') ||
@@ -1450,7 +1459,7 @@ function initCallPadFabDrag() {
 
   callPadFab.addEventListener('mousedown', onPointerDown);
   callPadFab.addEventListener('touchstart', onPointerDown, { passive: false });
-  callPadFab.addEventListener('click', (e) => {
+  callPadFab.addEventListener('click', () => {
     if (hasMoved) {
       hasMoved = false;
       return;
@@ -1534,10 +1543,10 @@ function renderDiyChips(t) {
     `;
   }).join('');
 
-  diyRow.querySelectorAll('.diy-chip').forEach(chipEl => {
-    (chipEl as HTMLElement).onclick = async (e) => {
+  diyRow.querySelectorAll<HTMLElement>('.diy-chip').forEach(chipEl => {
+    chipEl.onclick = async (e) => {
       e.stopPropagation();
-      const diyId = (chipEl as HTMLElement).dataset.diyId;
+      const diyId = chipEl.dataset.diyId;
       if (!diyId) return;
 
       if (!activeDiyState[t.id]) activeDiyState[t.id] = [];
@@ -1580,7 +1589,7 @@ function renderDiyChips(t) {
         openVarFillModal(foundTpl, 'sms');
       } else {
         await writeToClipboard(smsText);
-        const updatedChip = diyRow.querySelector(`.diy-chip[data-diy-id="${diyId}"]`) as HTMLElement | null;
+        const updatedChip = diyRow.querySelector<HTMLElement>(`.diy-chip[data-diy-id="${diyId}"]`);
         if (updatedChip) {
           updatedChip.classList.remove('chip-copied');
           void updatedChip.offsetWidth;
@@ -1594,7 +1603,7 @@ function renderDiyChips(t) {
   });
 }
 
-function createRowHtml(it, kind, idx) {
+function createRowHtml(it, kind, _idx) {
   let val = curValues()[it.id];
   const hasStatus = !!curStatus()[it.id];
   if ((val === undefined || (val === '' && it.defaultValue && !hasStatus))) {
@@ -1717,7 +1726,7 @@ function updateRowGuide(itemId) {
   const row = mainForm.querySelector(`.item-row[data-id="${itemId}"]`);
   if (!row) return;
 
-  const input = row.querySelector('.mat-input') as HTMLInputElement | HTMLTextAreaElement | null;
+  const input = row.querySelector<HTMLInputElement | HTMLTextAreaElement>('.mat-input');
   const fieldBox = row.querySelector('.material-field');
   if (!input || !fieldBox) return;
 
@@ -1777,8 +1786,8 @@ function bindFormEvents() {
       }
     });
 
-    input.addEventListener('paste', (e) => {
-      const pasteText = (e as ClipboardEvent).clipboardData?.getData('text');
+    input.addEventListener('paste', (e: ClipboardEvent) => {
+      const pasteText = e.clipboardData?.getData('text');
       if (!pasteText) return;
       const t = curType();
       const allItems = t ? [...(t.required || []), ...(t.optional || [])] : [];
@@ -1822,10 +1831,10 @@ function bindFormEvents() {
 
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
-        if (input.tagName.toLowerCase() === 'textarea') {
+        if (input instanceof HTMLTextAreaElement) {
           if (e.shiftKey) {
             setTimeout(() => {
-              const expander = (input as any)._autoExpander;
+              const expander = autoExpanders.get(input);
               if (expander) expander.adjustHeight();
               else {
                 input.style.height = 'auto';
@@ -1847,15 +1856,15 @@ function bindFormEvents() {
     });
   });
 
-  mainForm.querySelectorAll('textarea.vfield-textarea').forEach(tx => {
-    const expander = attachAutoExpand(tx as HTMLTextAreaElement, (tx as HTMLElement).dataset.maxLines ? parseInt((tx as HTMLElement).dataset.maxLines, 10) : 4);
-    (tx as any)._autoExpander = expander;
+  mainForm.querySelectorAll<HTMLTextAreaElement>('textarea.vfield-textarea').forEach(tx => {
+    const expander = attachAutoExpand(tx, tx.dataset.maxLines ? parseInt(tx.dataset.maxLines, 10) : 4);
+    autoExpanders.set(tx, expander);
   });
 
-  mainForm.querySelectorAll('[data-policy-flag]').forEach(btn => {
-    (btn as HTMLElement).onclick = () => {
+  mainForm.querySelectorAll<HTMLElement>('[data-policy-flag]').forEach(btn => {
+    btn.onclick = () => {
       stopAutoClear();
-      const id = (btn as HTMLElement).dataset.policyFlag;
+      const id = btn.dataset.policyFlag;
       if (!id) return;
       const cur = curStatus()[id];
       const newStatus = cur === 'failed' ? null : 'failed';
@@ -1875,10 +1884,10 @@ function bindFormEvents() {
     };
   });
 
-  mainForm.querySelectorAll('[data-action-id]').forEach(btn => {
-    (btn as HTMLElement).onclick = () => {
+  mainForm.querySelectorAll<HTMLElement>('[data-action-id]').forEach(btn => {
+    btn.onclick = () => {
       stopAutoClear();
-      const id = (btn as HTMLElement).dataset.actionId;
+      const id = btn.dataset.actionId;
       if (!id) return;
       const cur = curStatus()[id];
       const newStatus = cur === 'passed' ? null : 'passed';
@@ -2065,7 +2074,7 @@ async function smartPasteField(input) {
 /* ==========================================================================
    Comment Handling & Suggestions Dropdown with Instant Deletion
    ========================================================================== */
-const commentInput = document.getElementById('commentInput') as HTMLTextAreaElement | null;
+const commentInput = document.querySelector<HTMLTextAreaElement>('#commentInput');
 const commentFieldBox = document.getElementById('commentFieldBox');
 const commentSuggestionsMenu = document.getElementById('commentSuggestionsMenu');
 const notesLinePicker = document.getElementById('notesLinePicker');
@@ -2126,22 +2135,22 @@ if (commentInput && notesLinePicker) {
     e.preventDefault();
     if (!notesMultilineEnabled) return;
     const curLines = notesMaxLinesValue;
-    notesLinePicker.querySelectorAll('.nlp-btn').forEach(btn => {
-      btn.classList.toggle('active', parseInt((btn as HTMLElement).dataset.lines || '0', 10) === curLines);
+    notesLinePicker.querySelectorAll<HTMLElement>('.nlp-btn').forEach(btn => {
+      btn.classList.toggle('active', parseInt(btn.dataset.lines || '0', 10) === curLines);
     });
     notesLinePicker.style.display = 'flex';
   });
 
   document.addEventListener('click', (e) => {
-    if (notesLinePicker && !notesLinePicker.contains(e.target as Node) && e.target !== commentInput) {
+    if (notesLinePicker && e.target instanceof Node && !notesLinePicker.contains(e.target) && e.target !== commentInput) {
       notesLinePicker.style.display = 'none';
     }
   });
 
-  notesLinePicker.querySelectorAll('.nlp-btn').forEach(btn => {
-    (btn as HTMLElement).onclick = (e) => {
+  notesLinePicker.querySelectorAll<HTMLElement>('.nlp-btn').forEach(btn => {
+    btn.onclick = (e) => {
       e.stopPropagation();
-      const lines = parseInt((btn as HTMLElement).dataset.lines || '0', 10);
+      const lines = parseInt(btn.dataset.lines || '0', 10);
       if (lines) {
         notesMaxLinesValue = lines;
         Storage.set('vpad.notes_max_lines', lines);
@@ -2374,19 +2383,6 @@ function syncPreview() {
 }
 
 const btnCopy = document.getElementById('btnCopy');
-const copyBtnText = document.getElementById('copyBtnText');
-let copyBtnTimer: ReturnType<typeof setTimeout> | null = null;
-
-function resetCopyBtn() {
-  if (copyBtnTimer) {
-    clearTimeout(copyBtnTimer);
-    copyBtnTimer = null;
-  }
-  if (btnCopy) {
-    btnCopy.classList.remove('copied-success');
-    btnCopy.innerHTML = `${renderIcon('Copy', { size: 12 })}<span id="copyBtnText">Copy</span>`;
-  }
-}
 
 function hasFormContent(t) {
   if (!t) return false;
@@ -2450,7 +2446,6 @@ async function doCopy() {
 if (btnCopy) btnCopy.onclick = doCopy;
 
 const btnPaste = document.getElementById('btnPaste');
-const pasteBtnText = document.getElementById('pasteBtnText');
 let pasteCooldown = false;
 let pasteBtnTimer: ReturnType<typeof setTimeout> | null = null;
 
@@ -2928,9 +2923,9 @@ function bindEditEvents() {
         });
         saveTypes();
         renderEditView();
-      } else if (e.target.closest('.btn-edit-linked-sms')) {
-        const btn = e.target.closest('.btn-edit-linked-sms') as HTMLElement;
-        const smsId = btn.dataset.smsId;
+      } else if (e.target instanceof HTMLElement && e.target.closest('.btn-edit-linked-sms')) {
+        const btn = e.target.closest<HTMLElement>('.btn-edit-linked-sms');
+        const smsId = btn?.dataset.smsId;
         if (smsId) {
           const tpl = quickSmsTemplates.find(s => s.id === smsId);
           if (tpl) {
@@ -3070,7 +3065,8 @@ function bindEditEvents() {
     }
   };
 
-  editPane.oninput = (e: any) => {
+  editPane.oninput = (e: Event) => {
+    if (!(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement)) return;
     if (e.target.classList.contains('diy-edit-label')) {
       const dIdx = parseInt(e.target.dataset.diyIdx, 10);
       if (t.diyActions && t.diyActions[dIdx]) {
@@ -3195,13 +3191,13 @@ function bindEditEvents() {
       const item = list.find(x => x.id === group.dataset.id);
       if (!item) return;
       const val = e.target.value;
-      item.itemType = (val === 'input' ? undefined : val as 'policy' | 'action');
+      item.itemType = val === 'policy' ? 'policy' : val === 'action' ? 'action' : undefined;
       if (item.itemType === 'policy' || item.itemType === 'action') {
         item.excludeFromCount = true;
       }
-      const violRow = group.querySelector(`#violation_row_${item.id}`);
-      if (violRow) (violRow as HTMLElement).style.display = item.itemType === 'policy' ? 'flex' : 'none';
-      const exclCountBox = group.querySelector('.el-exclude-count') as HTMLInputElement | null;
+      const violRow = group.querySelector<HTMLElement>(`#violation_row_${item.id}`);
+      if (violRow) violRow.style.display = item.itemType === 'policy' ? 'flex' : 'none';
+      const exclCountBox = group.querySelector<HTMLInputElement>('.el-exclude-count');
       if (exclCountBox && item.excludeFromCount) exclCountBox.checked = true;
       const btn = group.querySelector('.btn-toggle-drawer');
       if (btn) btn.classList.toggle('has-rich', !!(item.article || item.info || item.v360 || item.defaultValue || item.excludeFromCount || item.multiline || item.itemType));
@@ -3219,8 +3215,8 @@ function bindEditEvents() {
   };
 
   // Mount custom searchable select for DIY Linked Customer SMS
-  editPane.querySelectorAll('.diy-c-select-mount').forEach((mount: any) => {
-    const dIdx = parseInt(mount.dataset.diyIdx, 10);
+  editPane.querySelectorAll<HTMLElement>('.diy-c-select-mount').forEach(mount => {
+    const dIdx = parseInt(mount.dataset.diyIdx || '0', 10);
     const diy = t.diyActions?.[dIdx];
     if (!diy) return;
 
@@ -3237,14 +3233,14 @@ function bindEditEvents() {
         const cleanVal = val ? val.trim() : '';
         diy.smsId = cleanVal || undefined;
         saveTypes();
-        const extBtn = mount.parentElement?.querySelector('.btn-edit-linked-sms') as HTMLElement;
+        const extBtn = mount.parentElement?.querySelector<HTMLElement>('.btn-edit-linked-sms');
         if (extBtn) {
           extBtn.dataset.smsId = cleanVal || '';
           extBtn.style.display = cleanVal ? '' : 'none';
         }
       },
       onCreate: (opt: { value: string; label: string }) => {
-        const newTpl: any = {
+        const newTpl: QuickSmsTemplate = {
           id: opt.value,
           title: opt.label,
           text: ''
@@ -3253,7 +3249,7 @@ function bindEditEvents() {
         saveQuickSmsTemplates();
         diy.smsId = opt.value;
         saveTypes();
-        const extBtn = mount.parentElement?.querySelector('.btn-edit-linked-sms') as HTMLElement;
+        const extBtn = mount.parentElement?.querySelector<HTMLElement>('.btn-edit-linked-sms');
         if (extBtn) {
           extBtn.dataset.smsId = opt.value;
           extBtn.style.display = '';
@@ -3445,7 +3441,7 @@ const DEFAULT_QUICK_SMS = [
   }
 ];
 
-const DEFAULT_QUICK_INTERACTION = [];
+const _DEFAULT_QUICK_INTERACTION = [];
 
 let quickSmsTemplates = [];
 let quickInteractionTemplates = [];
@@ -3562,14 +3558,14 @@ function triggerSmsCardCopyFeedback(card: HTMLElement, textToCopy: string) {
   card.classList.add('card-copied');
 
   // Morph copy button
-  const btnCopy = card.querySelector('.copy-tpl-btn') as HTMLElement | null;
+  const btnCopy = card.querySelector<HTMLElement>('.copy-tpl-btn');
   if (btnCopy) {
     btnCopy.classList.add('copied');
     btnCopy.innerHTML = renderIcon('Check', { size: 11, strokeWidth: 2.5 });
   }
 
   // Morph footer action hint
-  const hint = card.querySelector('.sms-action-hint') as HTMLElement | null;
+  const hint = card.querySelector<HTMLElement>('.sms-action-hint');
   const originalHintText = hint?.getAttribute('data-orig-hint') || hint?.textContent || 'Click to copy';
   if (hint) {
     if (!hint.hasAttribute('data-orig-hint')) {
@@ -3580,10 +3576,10 @@ function triggerSmsCardCopyFeedback(card: HTMLElement, textToCopy: string) {
   }
 
   // Clear existing timer if any
-  const existingTimer = (card as any)._copyFeedbackTimer;
+  const existingTimer = copyFeedbackTimers.get(card);
   if (existingTimer) clearTimeout(existingTimer);
 
-  (card as any)._copyFeedbackTimer = setTimeout(() => {
+  const timer = setTimeout(() => {
     pop.remove();
     card.classList.remove('card-copied');
     if (btnCopy) {
@@ -3594,8 +3590,9 @@ function triggerSmsCardCopyFeedback(card: HTMLElement, textToCopy: string) {
       hint.classList.remove('copied');
       hint.textContent = hint.getAttribute('data-orig-hint') || originalHintText;
     }
-    (card as any)._copyFeedbackTimer = null;
+    copyFeedbackTimers.delete(card);
   }, 1350);
+  copyFeedbackTimers.set(card, timer);
 }
 
 function renderTemplateCards(container, list, type) {
@@ -3667,7 +3664,7 @@ function renderTemplateCards(container, list, type) {
     `;
   }).join('');
 
-  container.querySelectorAll('.template-card').forEach(card => {
+  container.querySelectorAll<HTMLElement>('.template-card').forEach(card => {
     const id = card.dataset.templateId;
     const tpl = list.find(t => t.id === id);
     if (!tpl) return;
@@ -3676,31 +3673,32 @@ function renderTemplateCards(container, list, type) {
 
     // Card click: instant copy if no vars, else open fill modal
     card.onclick = (e) => {
-      const target = e.target as HTMLElement;
-      if (target.closest('.copy-tpl-btn') || target.closest('.edit-tpl-btn') || target.closest('.del-tpl-btn') || target.closest('.sms-diy-chip')) return;
+      if (e.target instanceof HTMLElement) {
+        if (e.target.closest('.copy-tpl-btn') || e.target.closest('.edit-tpl-btn') || e.target.closest('.del-tpl-btn') || e.target.closest('.sms-diy-chip')) return;
+      }
       if (vars.length > 0) {
         openVarFillModal(tpl, type);
       } else {
-        triggerSmsCardCopyFeedback(card as HTMLElement, tpl.text || '');
+        triggerSmsCardCopyFeedback(card, tpl.text || '');
       }
     };
 
     // Copy button click
-    const btnCopy = card.querySelector('.copy-tpl-btn');
+    const btnCopy = card.querySelector<HTMLElement>('.copy-tpl-btn');
     if (btnCopy) {
       btnCopy.onclick = (e) => {
         e.stopPropagation();
         if (vars.length > 0) {
           openVarFillModal(tpl, type);
         } else {
-          triggerSmsCardCopyFeedback(card as HTMLElement, tpl.text || '');
+          triggerSmsCardCopyFeedback(card, tpl.text || '');
         }
       };
     }
 
     // DIY Chip click: Switch directly to that vetting type
-    card.querySelectorAll('.sms-diy-chip').forEach((diyBtn: any) => {
-      diyBtn.onclick = (e: any) => {
+    card.querySelectorAll<HTMLElement>('.sms-diy-chip').forEach(diyBtn => {
+      diyBtn.onclick = (e) => {
         e.stopPropagation();
         const typeId = diyBtn.dataset.typeId;
         if (typeId && types.some(t => t.id === typeId)) {
@@ -3714,7 +3712,7 @@ function renderTemplateCards(container, list, type) {
       };
     });
 
-    const btnEdit = card.querySelector('.edit-tpl-btn');
+    const btnEdit = card.querySelector<HTMLElement>('.edit-tpl-btn');
     if (btnEdit) {
       btnEdit.onclick = (e) => {
         e.stopPropagation();
@@ -3722,7 +3720,7 @@ function renderTemplateCards(container, list, type) {
       };
     }
 
-    const btnDel = card.querySelector('.del-tpl-btn');
+    const btnDel = card.querySelector<HTMLElement>('.del-tpl-btn');
     if (btnDel) {
       btnDel.onclick = async (e) => {
         e.stopPropagation();
@@ -3732,7 +3730,7 @@ function renderTemplateCards(container, list, type) {
   });
 }
 
-function matchesTemplateSearch(t: any, query: string): boolean {
+function matchesTemplateSearch(t: QuickSmsTemplate | QuickInteractionTemplate, query: string): boolean {
   if (!query) return true;
   const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
   if (!terms.length) return true;
@@ -3813,7 +3811,7 @@ function renderQuickSmsList() {
   if (tabDiy) tabDiy.innerHTML = `${renderIcon('Zap', { size: 10 })} <span>DIY Actions (${diyFiltered.length})</span>`;
   if (tabCustom) tabCustom.textContent = `Custom (${customFiltered.length})`;
 
-  document.querySelectorAll('#smsFilterTabs .sms-filter-tab').forEach((tab: any) => {
+  document.querySelectorAll<HTMLElement>('#smsFilterTabs .sms-filter-tab').forEach(tab => {
     tab.classList.toggle('active', tab.dataset.filter === quickSmsFilter);
   });
 
@@ -3912,10 +3910,12 @@ function initQuickSmsSearch() {
 
   const filterTabs = document.getElementById('smsFilterTabs');
   if (filterTabs) {
-    filterTabs.onclick = (e: any) => {
-      const tab = e.target.closest('.sms-filter-tab');
-      if (tab && tab.dataset.filter) {
-        quickSmsFilter = tab.dataset.filter as any;
+    filterTabs.onclick = (e) => {
+      if (!(e.target instanceof HTMLElement)) return;
+      const tab = e.target.closest<HTMLElement>('.sms-filter-tab');
+      const filter = tab?.dataset.filter;
+      if (filter === 'all' || filter === 'diy' || filter === 'custom') {
+        quickSmsFilter = filter;
         renderQuickSmsList();
       }
     };
@@ -3990,7 +3990,7 @@ const varInputsList = document.getElementById('varInputsList');
 const varPreviewText = document.getElementById('varPreviewText');
 const btnCopyResolved = document.getElementById('btnCopyResolved');
 
-let activeVarTemplate = null;
+let _activeVarTemplate: unknown = null;
 let isCopyingResolved = false;
 let copyResolvedTimer = null;
 
@@ -4030,7 +4030,7 @@ function highlightVarQuery(label, query) {
 function openVarFillModal(tpl, _type) {
   const vars = parseTemplateVariables(tpl.text);
   if (vars.length === 0) {
-    const card = document.querySelector(`.template-card[data-template-id="${tpl.id}"]`) as HTMLElement | null;
+    const card = document.querySelector<HTMLElement>(`.template-card[data-template-id="${tpl.id}"]`);
     if (card) {
       triggerSmsCardCopyFeedback(card, tpl.text);
     } else {
@@ -4039,7 +4039,7 @@ function openVarFillModal(tpl, _type) {
     return;
   }
 
-  activeVarTemplate = tpl;
+  _activeVarTemplate = tpl;
   resetCopyResolvedBtn(); // Always start with a clean button
   if (varFillTitle) varFillTitle.textContent = tpl.title;
   if (varFillOverlay) varFillOverlay.style.display = 'block';
@@ -4275,7 +4275,7 @@ function openVarFillModal(tpl, _type) {
           e.preventDefault();
 
           // If this flyout is already open for this button, close it
-          const existingFly = varFillModal?.querySelector('.var-churn-fly') as HTMLElement | null;
+          const existingFly = varFillModal?.querySelector<HTMLElement>('.var-churn-fly');
           if (existingFly) {
             existingFly.remove();
             if (existingFly.dataset.varName === v) return;
@@ -4329,7 +4329,7 @@ function openVarFillModal(tpl, _type) {
           fly.style.top = `${Math.round(top)}px`;
 
           // Position caret pointing at icon
-          const caret = fly.querySelector('.var-churn-caret') as HTMLElement | null;
+          const caret = fly.querySelector<HTMLElement>('.var-churn-caret');
           if (caret) {
             const iconCenter = btnRect.left + (btnRect.width / 2);
             let caretLeft = iconCenter - (modalRect.left + 8) - 4;
@@ -4352,8 +4352,7 @@ function openVarFillModal(tpl, _type) {
           };
 
           const onDocClick = (ev: MouseEvent) => {
-            const target = ev.target as Node;
-            if (!fly.contains(target) && target !== btnChurn && !btnChurn.contains(target)) {
+            if (ev.target instanceof Node && !fly.contains(ev.target) && ev.target !== btnChurn && !btnChurn.contains(ev.target)) {
               closeFly();
             }
           };
@@ -4362,8 +4361,8 @@ function openVarFillModal(tpl, _type) {
             document.addEventListener('click', onDocClick);
           }, 10);
 
-          const btnUnpin = fly.querySelector('.var-churn-b1') as HTMLElement | null;
-          const btnKeep = fly.querySelector('.var-churn-b2') as HTMLElement | null;
+          const btnUnpin = fly.querySelector<HTMLElement>('.var-churn-b1');
+          const btnKeep = fly.querySelector<HTMLElement>('.var-churn-b2');
 
           if (btnKeep) {
             btnKeep.onclick = (ev) => {
@@ -4493,6 +4492,7 @@ function openVarFillModal(tpl, _type) {
             }
           } catch (err) {
             logger.captureError('templates', err, { action: 'pasteVariable' });
+            showToast('Clipboard access denied', null, null, 2500, 'warn');
           }
         };
       }
@@ -4558,7 +4558,7 @@ function closeVarFillModal() {
   varFillModal?.querySelector('.var-churn-fly')?.remove();
   if (varFillOverlay) varFillOverlay.style.display = 'none';
   if (varFillModal) varFillModal.style.display = 'none';
-  activeVarTemplate = null;
+  _activeVarTemplate = null;
 }
 
 if (varFillClose) varFillClose.onclick = closeVarFillModal;
@@ -4786,10 +4786,12 @@ function bindBreakScheduleEvents() {
               }
               return;
             }
-          } catch (_err) {
+          } catch (err) {
+            logger.captureError('notifications', err, { action: 'requestDesktopNotificationPermission' });
             chkNotifyDesktop.checked = false;
             updateNotifPermissionUi();
             save();
+            showBanner('Failed to request desktop notification permission.', 'Dismiss', null, 5000, 'warn');
             return;
           }
         }
@@ -4844,6 +4846,9 @@ function triggerBreakNotification(key, title, body) {
         new Notification(title, { body: body, icon: 'icons/icon48.png' });
       } catch (err) {
         logger.captureError('notifications', err, { action: 'showDesktopNotification' });
+        if (!breakSchedule.notifyToast) {
+          showBanner(`${title}: ${body}`, 'Dismiss', null, 8000, 'warning');
+        }
       }
     }
   }
@@ -4976,7 +4981,7 @@ function renderSettingsView() {
     };
   }
 
-  const chkNotesMultiline = document.getElementById('chkNotesMultiline') as HTMLInputElement | null;
+  const chkNotesMultiline = document.querySelector<HTMLInputElement>('#chkNotesMultiline');
   const notesMaxLinesSettingRow = document.getElementById('notesMaxLinesSettingRow');
   const notesMaxLinesChips = document.getElementById('notesMaxLinesChips');
 
@@ -4994,10 +4999,10 @@ function renderSettingsView() {
   }
 
   if (notesMaxLinesChips) {
-    notesMaxLinesChips.querySelectorAll('.chip').forEach(c => {
-      const lines = parseInt((c as HTMLElement).dataset.lines || '4', 10);
+    notesMaxLinesChips.querySelectorAll<HTMLElement>('.chip').forEach(c => {
+      const lines = parseInt(c.dataset.lines || '4', 10);
       c.classList.toggle('active', lines === notesMaxLinesValue);
-      (c as HTMLElement).onclick = () => {
+      c.onclick = () => {
         notesMaxLinesValue = lines;
         Storage.set('vpad.notes_max_lines', lines);
         applyNotesMultilineState(notesMultilineEnabled, notesMaxLinesValue);
@@ -5781,11 +5786,12 @@ async function init() {
               smsId: d.smsId
             }));
           }
-          ['required', 'optional'].forEach(sec => {
-            const defSec = (defType as any)[sec] || [];
-            const exSec = (existing as any)[sec] || [];
-            defSec.forEach((defItem: any) => {
-              const exItem = exSec.find((x: any) => x.id === defItem.id);
+          const sections: Array<'required' | 'optional'> = ['required', 'optional'];
+          sections.forEach(sec => {
+            const defSec = defType[sec] || [];
+            const exSec = existing[sec] || [];
+            defSec.forEach(defItem => {
+              const exItem = exSec.find(x => x.id === defItem.id);
               if (exItem) {
                 if (defItem.defaultValue !== undefined) exItem.defaultValue = defItem.defaultValue;
                 if (defItem.omitDefault !== undefined) exItem.omitDefault = defItem.omitDefault;
@@ -5799,7 +5805,7 @@ async function init() {
       types.forEach(t => {
         if (Array.isArray(t.diyActions)) {
           t.diyActions.forEach(d => {
-            delete (d as any).smsText;
+            Reflect.deleteProperty(d, 'smsText');
           });
         }
       });

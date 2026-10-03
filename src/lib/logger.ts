@@ -67,8 +67,9 @@ export class Logger {
         } else if (typeof reason === 'object' && reason !== null) {
           try {
             message = JSON.stringify(reason);
-          } catch {
-            message = Object.prototype.toString.call(reason);
+          } catch (jsonErr) {
+            const errStr = jsonErr instanceof Error ? jsonErr.message : String(jsonErr);
+            message = `[Unserializable rejection: ${errStr}] ${Object.prototype.toString.call(reason)}`;
           }
         }
 
@@ -90,6 +91,13 @@ export class Logger {
           stack = reason.stack;
         } else if (typeof reason === 'string') {
           message = reason;
+        } else if (typeof reason === 'object' && reason !== null) {
+          try {
+            message = JSON.stringify(reason);
+          } catch (jsonErr) {
+            const errStr = jsonErr instanceof Error ? jsonErr.message : String(jsonErr);
+            message = `[Unserializable rejection: ${errStr}] ${Object.prototype.toString.call(reason)}`;
+          }
         }
 
         this.addEntry('error', 'service-worker-unhandled-rejection', message, undefined, stack);
@@ -101,18 +109,16 @@ export class Logger {
    * Intercepts console.error and console.warn while delegating to original implementations.
    */
   public interceptConsole(): void {
-    const self = this;
-
-    console.error = function (...args: unknown[]) {
-      self.origError(...args);
-      if (self.isInternalLogging) return;
-      self.captureConsoleArgs('error', args);
+    console.error = (...args: unknown[]) => {
+      this.origError(...args);
+      if (this.isInternalLogging) return;
+      this.captureConsoleArgs('error', args);
     };
 
-    console.warn = function (...args: unknown[]) {
-      self.origWarn(...args);
-      if (self.isInternalLogging) return;
-      self.captureConsoleArgs('warn', args);
+    console.warn = (...args: unknown[]) => {
+      this.origWarn(...args);
+      if (this.isInternalLogging) return;
+      this.captureConsoleArgs('warn', args);
     };
   }
 
@@ -144,8 +150,9 @@ export class Logger {
       } else if (typeof arg === 'object' && arg !== null) {
         try {
           formattedParts.push(JSON.stringify(arg));
-        } catch {
-          formattedParts.push(Object.prototype.toString.call(arg));
+        } catch (jsonErr) {
+          const errStr = jsonErr instanceof Error ? jsonErr.message : String(jsonErr);
+          formattedParts.push(`[Unserializable argument: ${errStr}] ${Object.prototype.toString.call(arg)}`);
         }
       } else {
         formattedParts.push(String(arg));
@@ -155,7 +162,7 @@ export class Logger {
     let message = formattedParts.join(' ');
 
     // Extract leading tag e.g. "[storage] Connection failed"
-    const tagMatch = message.match(/^\[([a-zA-Z0-9_\-]+)\]\s*(.*)$/);
+    const tagMatch = message.match(/^\[([a-zA-Z0-9_-]+)\]\s*(.*)$/);
     if (tagMatch) {
       context = tagMatch[1] ?? 'console';
       message = tagMatch[2] ?? message;
@@ -236,8 +243,9 @@ export class Logger {
     } else if (typeof err === 'object' && err !== null) {
       try {
         message = JSON.stringify(err);
-      } catch {
-        message = Object.prototype.toString.call(err);
+      } catch (jsonErr) {
+        const errStr = jsonErr instanceof Error ? jsonErr.message : String(jsonErr);
+        message = `[Unserializable error object: ${errStr}] ${Object.prototype.toString.call(err)}`;
       }
     }
 

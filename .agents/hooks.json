@@ -1,0 +1,12 @@
+{
+  "quality-gate": {
+    "enabled": true,
+    "Stop": [
+      {
+        "type": "command",
+        "command": "node scripts/quality-gate.cjs 2>/dev/null || node .agents/scripts/quality-gate.cjs",
+        "timeout": 120
+      }
+    ]
+  }
+}

@@ -478,11 +478,11 @@ export const AppDialog = {
   closeActive(): boolean {
     const overlay = document.querySelector('.app-dialog-overlay');
     if (overlay) {
-      const cancelBtn = overlay.querySelector('.app-dialog-btn-cancel, #shortcutsDialogClose') as HTMLElement | null;
+      const cancelBtn = overlay.querySelector<HTMLElement>('.app-dialog-btn-cancel, #shortcutsDialogClose');
       if (cancelBtn) {
         cancelBtn.click();
       } else {
-        const confirmBtn = overlay.querySelector('.app-dialog-btn-confirm') as HTMLElement | null;
+        const confirmBtn = overlay.querySelector<HTMLElement>('.app-dialog-btn-confirm');
         if (confirmBtn) {
           confirmBtn.click();
         } else {

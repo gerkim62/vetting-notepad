@@ -70,8 +70,13 @@ export async function writeDualClipboard(html?: string | null, plainText?: strin
     }
 
     if (navigator.clipboard.writeText) {
-      await navigator.clipboard.writeText(plain);
-      return true;
+      try {
+        await navigator.clipboard.writeText(plain);
+        return true;
+      } catch (err) {
+        logger.captureError('notepad', err, { action: 'writeDualClipboardFallback' });
+        return false;
+      }
     }
   }
   return false;
@@ -79,7 +84,7 @@ export async function writeDualClipboard(html?: string | null, plainText?: strin
 
 export function isMarkdownText(text?: string | null): boolean {
   if (!text || typeof text !== 'string') return false;
-  return /(?:^#{1,6}\s+|^\s*[\*\-]\s+|^\s*\d+\.\s+|\*\*.*?\*\*|\*.*?\*|`.*?`|^>\s+|^-{3,})/m.test(text);
+  return /(?:^#{1,6}\s+|^\s*[*-]\s+|^\s*\d+\.\s+|\*\*.*?\*\*|\*.*?\*|`.*?`|^>\s+|^-{3,})/m.test(text);
 }
 
 export function markdownToHtml(md?: string | null): string {

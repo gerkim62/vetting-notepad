@@ -83,6 +83,13 @@ export function buildExportPayload({
   };
 }
 
+function isTemplateItem<T extends { id: string; title: string; text: string }>(s: unknown): s is T {
+  return typeof s === 'object' && s !== null &&
+    'id' in s && typeof s.id === 'string' &&
+    'title' in s && typeof s.title === 'string' &&
+    'text' in s && typeof s.text === 'string';
+}
+
 /**
  * Validates whether an incoming payload is a valid Vetting Notepad export file (supports v1 & v2).
  */
@@ -117,10 +124,10 @@ export function validateImportPayload(data: unknown): ValidationResult {
     savedComments: Array.isArray(record.savedComments) ? record.savedComments.filter((c): c is string => typeof c === 'string') : [],
     activeTypeId: typeof record.activeTypeId === 'string' ? record.activeTypeId : null,
     quickSmsTemplates: Array.isArray(record.quickSmsTemplates)
-      ? record.quickSmsTemplates.filter((s): s is QuickSmsTemplate => typeof s === 'object' && s !== null && typeof (s as any).id === 'string' && typeof (s as any).title === 'string' && typeof (s as any).text === 'string')
+      ? record.quickSmsTemplates.filter(isTemplateItem<QuickSmsTemplate>)
       : undefined,
     quickInteractionTemplates: Array.isArray(record.quickInteractionTemplates)
-      ? record.quickInteractionTemplates.filter((s): s is QuickInteractionTemplate => typeof s === 'object' && s !== null && typeof (s as any).id === 'string' && typeof (s as any).title === 'string' && typeof (s as any).text === 'string')
+      ? record.quickInteractionTemplates.filter(isTemplateItem<QuickInteractionTemplate>)
       : undefined
   };
 

@@ -61,7 +61,7 @@ export function splitMergePaste(
  * Old keys: vpad.callpad_text, vpad.callpad_freetext, vpad.callpad_keys.
  * Never returns empty array (defaults to ['']).
  */
-export function migrateCallpadStorage(storage: Record<string, any>): {
+export function migrateCallpadStorage(storage: Record<string, unknown>): {
   lines: string[];
   keysToRemove: string[];
 } {
@@ -78,31 +78,34 @@ export function migrateCallpadStorage(storage: Record<string, any>): {
     };
   }
 
-  if (typeof storage['vpad.callpad_text'] === 'string') {
+  const padText = storage['vpad.callpad_text'];
+  if (typeof padText === 'string') {
     keysToRemove.push('vpad.callpad_text');
     if ('vpad.callpad_freetext' in storage) keysToRemove.push('vpad.callpad_freetext');
     if ('vpad.callpad_keys' in storage) keysToRemove.push('vpad.callpad_keys');
-    const split = storage['vpad.callpad_text'].split(/\r?\n/);
+    const split = padText.split(/\r?\n/);
     return {
       lines: split.length > 0 ? split : [''],
       keysToRemove
     };
   }
 
-  if (typeof storage['vpad.callpad_freetext'] === 'string') {
+  const freeText = storage['vpad.callpad_freetext'];
+  if (typeof freeText === 'string') {
     keysToRemove.push('vpad.callpad_freetext');
     if ('vpad.callpad_keys' in storage) keysToRemove.push('vpad.callpad_keys');
-    const split = storage['vpad.callpad_freetext'].split(/\r?\n/);
+    const split = freeText.split(/\r?\n/);
     return {
       lines: split.length > 0 ? split : [''],
       keysToRemove
     };
   }
 
-  if (Array.isArray(storage['vpad.callpad_keys']) && storage['vpad.callpad_keys'].length > 0) {
+  const padKeys = storage['vpad.callpad_keys'];
+  if (Array.isArray(padKeys) && padKeys.length > 0) {
     keysToRemove.push('vpad.callpad_keys');
-    const legacyLines = storage['vpad.callpad_keys']
-      .map((k: any) => (typeof k?.key === 'string' ? k.key : ''))
+    const legacyLines = padKeys
+      .map((k: unknown) => (typeof k === 'object' && k !== null && 'key' in k && typeof k.key === 'string' ? k.key : ''))
       .filter((k: string) => k && k.trim());
     return {
       lines: legacyLines.length > 0 ? legacyLines : [''],
@@ -244,7 +247,7 @@ export class SmartCallPad {
 
     this.onDocClick = (e: MouseEvent) => {
       if (this.clearBtn && this.clearBtn.classList.contains('armed')) {
-        if (!this.clearBtn.contains(e.target as Node)) {
+        if (e.target instanceof Node && !this.clearBtn.contains(e.target)) {
           this.disarmClear();
         }
       }
@@ -255,8 +258,8 @@ export class SmartCallPad {
 
     // 1. Delegated typing (input)
     this.linesBox.addEventListener('input', (e) => {
-      const target = e.target as HTMLElement;
-      if (!(target instanceof HTMLTextAreaElement)) return;
+      if (!(e.target instanceof HTMLTextAreaElement)) return;
+      const target = e.target;
       const i = this.rowIndexOf(target);
       if (i < 0) return;
 
@@ -276,8 +279,8 @@ export class SmartCallPad {
 
     // 2. Delegated paste (multi-line split/merge)
     this.linesBox.addEventListener('paste', (e: ClipboardEvent) => {
-      const target = e.target as HTMLElement;
-      if (!(target instanceof HTMLTextAreaElement)) return;
+      if (!(e.target instanceof HTMLTextAreaElement)) return;
+      const target = e.target;
       const clip = e.clipboardData;
       const text = clip ? clip.getData('text') : '';
       if (!/[\r\n]/.test(text)) return;
@@ -301,8 +304,8 @@ export class SmartCallPad {
 
     // 3. Delegated keyboard navigation & editing
     this.linesBox.addEventListener('keydown', (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement;
-      if (!(target instanceof HTMLTextAreaElement)) return;
+      if (!(e.target instanceof HTMLTextAreaElement)) return;
+      const target = e.target;
       const i = this.rowIndexOf(target);
       if (i < 0) return;
 
@@ -342,8 +345,8 @@ export class SmartCallPad {
 
     // 4. Delegated per-row copy
     this.linesBox.addEventListener('click', (e) => {
-      const target = e.target as HTMLElement;
-      const btn = target.closest('.callpad-cp-btn') as HTMLElement | null;
+      if (!(e.target instanceof HTMLElement)) return;
+      const btn = e.target.closest<HTMLElement>('.callpad-cp-btn');
       if (!btn) return;
       const i = this.rowIndexOf(btn);
       if (i < 0) return;
@@ -362,7 +365,8 @@ export class SmartCallPad {
 
     // 5. Delegated click-anywhere-to-type
     this.linesBox.addEventListener('mousedown', (e) => {
-      const target = e.target as HTMLElement;
+      if (!(e.target instanceof HTMLElement)) return;
+      const target = e.target;
       if (target.tagName === 'TEXTAREA' || target.closest('.callpad-cp-btn')) {
         return;
       }
@@ -483,7 +487,7 @@ export class SmartCallPad {
 
   rows(): HTMLElement[] {
     if (!this.linesBox) return [];
-    return Array.from(this.linesBox.children) as HTMLElement[];
+    return Array.from(this.linesBox.children).filter((el): el is HTMLElement => el instanceof HTMLElement);
   }
 
   ta(i: number): HTMLTextAreaElement | null {
@@ -506,8 +510,8 @@ export class SmartCallPad {
 
   rowIndexOf(el: Element): number {
     const row = el.closest('.callpad-row');
-    if (!row) return -1;
-    return this.rows().indexOf(row as HTMLElement);
+    if (!(row instanceof HTMLElement)) return -1;
+    return this.rows().indexOf(row);
   }
 
   updateCount(): void {

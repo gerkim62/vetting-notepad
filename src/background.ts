@@ -163,7 +163,11 @@ chrome.windows.onBoundsChanged.addListener(async (win) => {
       width: Math.max(200, win.width ?? 200),
       height: Math.max(400, win.height ?? 400)
     };
-    await chrome.storage.local.set({ 'vpad.windowBounds': bounds });
+    try {
+      await chrome.storage.local.set({ 'vpad.windowBounds': bounds });
+    } catch (err) {
+      logger.captureError('background', err, { action: 'saveWindowBounds', bounds });
+    }
   }
 });
 
