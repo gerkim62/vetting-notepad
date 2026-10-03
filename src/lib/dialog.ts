@@ -12,6 +12,8 @@ export type ShortcutExecuteHandler = (action: string, item: ShortcutItem) => voi
 export interface DialogOptions {
   title?: string;
   message?: string;
+  items?: string[];
+  footer?: string;
   confirmText?: string;
   cancelText?: string;
   okText?: string;
@@ -75,6 +77,14 @@ function createOverlay(type: 'confirm' | 'alert' | 'prompt', options: PromptOpti
     iconSvg = renderIcon('Info', { size: 20, class: 'app-dialog-icon info' });
   }
 
+  const itemsHtml = options.items && options.items.length > 0
+    ? `<ul class="app-dialog-list">${options.items.map(it => `<li><span>${escapeHtml(it)}</span></li>`).join('')}</ul>`
+    : '';
+
+  const footerHtml = options.footer
+    ? `<p class="app-dialog-msg app-dialog-footer-msg">${escapeHtml(options.footer)}</p>`
+    : '';
+
   overlay.innerHTML = `
     <div class="app-dialog-card" role="dialog" aria-modal="true" aria-labelledby="appDialogTitle">
       <div class="app-dialog-header">
@@ -83,6 +93,8 @@ function createOverlay(type: 'confirm' | 'alert' | 'prompt', options: PromptOpti
       </div>
       <div class="app-dialog-body">
         <p class="app-dialog-msg">${escapeHtml(options.message || '')}</p>
+        ${itemsHtml}
+        ${footerHtml}
         ${isPrompt ? `
           <div class="app-dialog-input-wrap">
             <input type="text" class="app-dialog-input" value="${escapeHtml(options.defaultValue || '')}" placeholder="${escapeHtml(options.placeholder || '')}" autocomplete="off" spellcheck="false">

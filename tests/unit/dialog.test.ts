@@ -178,4 +178,37 @@ describe('AppDialog Component', () => {
     await promise;
     expect(document.querySelector('.shortcuts-dialog-overlay')).toBeNull();
   });
+
+  it('renders structured items bullet list and footer in confirm dialog', async () => {
+    const promise = AppDialog.confirm({
+      title: 'Delete Linked SMS Template?',
+      message: 'This SMS template is linked to the following actions:',
+      items: [
+        'M-PESA & Airtime Reversal (Hakikisha)',
+        'PUK Retrieval (DIY PUK (*100#))'
+      ],
+      footer: 'Deleting it will detach these actions.',
+      confirmText: 'Delete & Detach',
+      danger: true
+    });
+
+    const overlay = document.querySelector('.app-dialog-overlay');
+    expect(overlay).not.toBeNull();
+    const list = overlay.querySelector('.app-dialog-list');
+    expect(list).not.toBeNull();
+
+    const items = list.querySelectorAll('li');
+    expect(items.length).toBe(2);
+    expect(items[0].textContent).toBe('M-PESA & Airtime Reversal (Hakikisha)');
+    expect(items[1].textContent).toBe('PUK Retrieval (DIY PUK (*100#))');
+
+    const footer = overlay.querySelector('.app-dialog-footer-msg');
+    expect(footer).not.toBeNull();
+    expect(footer.textContent).toBe('Deleting it will detach these actions.');
+
+    const confirmBtn = overlay.querySelector('.app-dialog-btn-confirm') as HTMLButtonElement;
+    confirmBtn.click();
+    const result = await promise;
+    expect(result).toBe(true);
+  });
 });

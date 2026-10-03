@@ -1542,12 +1542,20 @@ function renderDiyChips(t) {
 
       await writeToClipboard(smsText);
 
+      const chipEl = (copyBtn as HTMLElement).closest('.diy-chip') as HTMLElement | null;
+      if (chipEl) {
+        chipEl.classList.remove('chip-copied');
+        void chipEl.offsetWidth;
+        chipEl.classList.add('chip-copied');
+      }
+
       copyBtn.classList.add('copied');
       copyBtn.innerHTML = renderIcon('Check', { size: 10, strokeWidth: 2.5 });
       setTimeout(() => {
         copyBtn.classList.remove('copied');
         copyBtn.innerHTML = renderIcon('Copy', { size: 10 });
-      }, 1200);
+        if (chipEl) chipEl.classList.remove('chip-copied');
+      }, 1250);
     };
   });
 }
@@ -3258,6 +3266,60 @@ function highlightVariables(text) {
 
 let quickSmsFilter: 'all' | 'diy' | 'custom' = 'all';
 
+function triggerSmsCardCopyFeedback(card: HTMLElement, textToCopy: string) {
+  writeToClipboard(textToCopy);
+
+  // Remove existing pop badge if present
+  card.querySelectorAll('.sms-copied-pop').forEach(el => el.remove());
+
+  // Create visible floating pop badge
+  const pop = document.createElement('div');
+  pop.className = 'sms-copied-pop';
+  pop.innerHTML = `${renderIcon('Check', { size: 12, strokeWidth: 2.5 })}<span>Copied to Clipboard!</span>`;
+  card.appendChild(pop);
+
+  // Pulse & glow card
+  card.classList.remove('card-copied');
+  void card.offsetWidth;
+  card.classList.add('card-copied');
+
+  // Morph copy button
+  const btnCopy = card.querySelector('.copy-tpl-btn') as HTMLElement | null;
+  if (btnCopy) {
+    btnCopy.classList.add('copied');
+    btnCopy.innerHTML = renderIcon('Check', { size: 11, strokeWidth: 2.5 });
+  }
+
+  // Morph footer action hint
+  const hint = card.querySelector('.sms-action-hint') as HTMLElement | null;
+  const originalHintText = hint?.getAttribute('data-orig-hint') || hint?.textContent || 'Click to copy';
+  if (hint) {
+    if (!hint.hasAttribute('data-orig-hint')) {
+      hint.setAttribute('data-orig-hint', originalHintText);
+    }
+    hint.classList.add('copied');
+    hint.textContent = '✓ Copied to clipboard!';
+  }
+
+  // Clear existing timer if any
+  const existingTimer = (card as any)._copyFeedbackTimer;
+  if (existingTimer) clearTimeout(existingTimer);
+
+  (card as any)._copyFeedbackTimer = setTimeout(() => {
+    pop.remove();
+    card.classList.remove('card-copied');
+    if (btnCopy) {
+      btnCopy.classList.remove('copied');
+      btnCopy.innerHTML = renderIcon('Copy', { size: 11 });
+    }
+    if (hint) {
+      hint.classList.remove('copied');
+      hint.textContent = hint.getAttribute('data-orig-hint') || originalHintText;
+    }
+    (card as any)._copyFeedbackTimer = null;
+  }, 1350);
+}
+
 function renderTemplateCards(container, list, type) {
   if (!container) return;
   if (!list || list.length === 0) {
@@ -3337,15 +3399,12 @@ function renderTemplateCards(container, list, type) {
 
     // Card click: instant copy if no vars, else open fill modal
     card.onclick = (e) => {
-      if (e.target.closest('.copy-tpl-btn') || e.target.closest('.edit-tpl-btn') || e.target.closest('.del-tpl-btn') || e.target.closest('.sms-diy-chip')) return;
+      const target = e.target as HTMLElement;
+      if (target.closest('.copy-tpl-btn') || target.closest('.edit-tpl-btn') || target.closest('.del-tpl-btn') || target.closest('.sms-diy-chip')) return;
       if (vars.length > 0) {
         openVarFillModal(tpl, type);
       } else {
-        navigator.clipboard.writeText(tpl.text || '');
-        card.classList.remove('card-copied');
-        void (card as HTMLElement).offsetWidth;
-        card.classList.add('card-copied');
-        showToast(`Copied "${tpl.title}"`, null, null, 1500, 'info');
+        triggerSmsCardCopyFeedback(card as HTMLElement, tpl.text || '');
       }
     };
 
@@ -3357,14 +3416,7 @@ function renderTemplateCards(container, list, type) {
         if (vars.length > 0) {
           openVarFillModal(tpl, type);
         } else {
-          navigator.clipboard.writeText(tpl.text || '');
-          btnCopy.innerHTML = renderIcon('Check', { size: 11, strokeWidth: 2.5 });
-          (btnCopy as HTMLElement).style.color = 'var(--saf-emerald)';
-          setTimeout(() => {
-            btnCopy.innerHTML = renderIcon('Copy', { size: 11 });
-            (btnCopy as HTMLElement).style.color = '';
-          }, 1400);
-          showToast(`Copied "${tpl.title}"`, null, null, 1500, 'info');
+          triggerSmsCardCopyFeedback(card as HTMLElement, tpl.text || '');
         }
       };
     }
@@ -3403,62 +3455,128 @@ function renderTemplateCards(container, list, type) {
   });
 }
 
+function matchesTemplateSearch(t: any, query: string): boolean {
+  if (!query) return true;
+  const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+  if (!terms.length) return true;
+
+  // Build a rich search token corpus for this template
+  const corpusParts: string[] = [
+    t.title || '',
+    t.text || '',
+    t.id || ''
+  ];
+
+  // 1. Template Variables (raw and sanitized)
+  const vars = parseTemplateVariables(t.text || '');
+  for (const v of vars) {
+    corpusParts.push(v);
+    corpusParts.push(v.replace(/[{}]/g, ''));
+  }
+
+  // 2. DIY Actions, Advice summaries, Vetting Types, Field labels & Field Hints
+  for (const vt of types) {
+    let isLinked = false;
+    if (Array.isArray(vt.diyActions)) {
+      for (const diy of vt.diyActions) {
+        if (diy.smsId === t.id) {
+          isLinked = true;
+          corpusParts.push(diy.label || '');
+          corpusParts.push(diy.adviceText || '');
+          if (diy.id) corpusParts.push(diy.id);
+        }
+      }
+    }
+
+    if (isLinked) {
+      corpusParts.push(vt.name || '');
+      if (vt.description) corpusParts.push(vt.description);
+
+      // Collect all field hints, labels, articles, and info from this linked vetting type
+      const fields = [...(vt.required || []), ...(vt.optional || [])];
+      for (const f of fields) {
+        if (f.label) {
+          corpusParts.push(f.label);
+          if (f.label.includes('//')) {
+            const parts = f.label.split('//');
+            corpusParts.push(parts[0].trim());
+            corpusParts.push(parts[1].trim());
+          }
+        }
+        if (f.info) corpusParts.push(f.info);
+        if (f.article) corpusParts.push(f.article);
+        if (f.v360) corpusParts.push(f.v360);
+      }
+    }
+  }
+
+  const corpus = corpusParts.join(' ').toLowerCase();
+
+  // Every term in multi-word query must match somewhere in the corpus
+  return terms.every(term => corpus.includes(term));
+}
+
 function renderQuickSmsList() {
-  const allCount = quickSmsTemplates.length;
-  const diyTemplates = quickSmsTemplates.filter(t =>
+  const query = (quickSmsSearchQuery || '').trim();
+
+  // Evaluate matches across all templates with full corpus
+  const allFiltered = quickSmsTemplates.filter(t => matchesTemplateSearch(t, query));
+  const diyFiltered = allFiltered.filter(t =>
     types.some(vt => Array.isArray(vt.diyActions) && vt.diyActions.some(d => d.smsId === t.id))
   );
-  const diyCount = diyTemplates.length;
-  const customCount = allCount - diyCount;
+  const customFiltered = allFiltered.filter(t =>
+    !types.some(vt => Array.isArray(vt.diyActions) && vt.diyActions.some(d => d.smsId === t.id))
+  );
 
   // Update tab counters & active states
   const tabAll = document.querySelector('#smsFilterTabs [data-filter="all"]');
   const tabDiy = document.querySelector('#smsFilterTabs [data-filter="diy"]');
   const tabCustom = document.querySelector('#smsFilterTabs [data-filter="custom"]');
-  if (tabAll) tabAll.textContent = `All (${allCount})`;
-  if (tabDiy) tabDiy.innerHTML = `${renderIcon('Zap', { size: 10 })} <span>DIY Actions (${diyCount})</span>`;
-  if (tabCustom) tabCustom.textContent = `Custom (${customCount})`;
+  if (tabAll) tabAll.textContent = `All (${allFiltered.length})`;
+  if (tabDiy) tabDiy.innerHTML = `${renderIcon('Zap', { size: 10 })} <span>DIY Actions (${diyFiltered.length})</span>`;
+  if (tabCustom) tabCustom.textContent = `Custom (${customFiltered.length})`;
 
   document.querySelectorAll('#smsFilterTabs .sms-filter-tab').forEach((tab: any) => {
     tab.classList.toggle('active', tab.dataset.filter === quickSmsFilter);
   });
 
-  let list = quickSmsTemplates;
+  let list = allFiltered;
   if (quickSmsFilter === 'diy') {
-    list = diyTemplates;
+    list = diyFiltered;
   } else if (quickSmsFilter === 'custom') {
-    list = quickSmsTemplates.filter(t => !diyTemplates.some(d => d.id === t.id));
-  }
-
-  const query = (quickSmsSearchQuery || '').trim().toLowerCase();
-  if (query) {
-    list = list.filter(t => {
-      const titleMatch = (t.title || '').toLowerCase().includes(query);
-      const textMatch = (t.text || '').toLowerCase().includes(query);
-      const vars = parseTemplateVariables(t.text || '');
-      const varMatch = vars.some(v => v.toLowerCase().includes(query));
-      const diyMatch = types.some(vt =>
-        vt.name.toLowerCase().includes(query) &&
-        Array.isArray(vt.diyActions) && vt.diyActions.some(d => d.smsId === t.id && (d.label || '').toLowerCase().includes(query))
-      );
-      return titleMatch || textMatch || varMatch || diyMatch;
-    });
+    list = customFiltered;
   }
 
   if (list.length === 0) {
     if (quickSmsListEl) {
       if (query) {
-        quickSmsListEl.innerHTML = `
-          <div style="text-align:center;padding:24px 10px;font-size:11px;color:var(--text-muted);">
-            <p>No SMS templates matching "<b>${escapeHtml(query)}</b>"</p>
-            <button type="button" class="btn-action" id="btnClearSmsSearch" style="margin-top:8px;">Clear Search</button>
-          </div>
-        `;
-        const btnClearSearch = quickSmsListEl.querySelector('#btnClearSmsSearch');
-        if (btnClearSearch) {
-          btnClearSearch.onclick = () => {
-            clearQuickSmsSearch();
-          };
+        if (allFiltered.length > 0) {
+          quickSmsListEl.innerHTML = `
+            <div style="text-align:center;padding:24px 10px;font-size:11px;color:var(--text-muted);">
+              <p>No matches in <b>${quickSmsFilter === 'diy' ? 'DIY Actions' : 'Custom'}</b>, but found <b>${allFiltered.length}</b> in other tabs.</p>
+              <button type="button" class="btn-action primary" id="btnShowAllSmsMatches" style="margin-top:8px;">Show All Matches</button>
+            </div>
+          `;
+          const btnShowAll = quickSmsListEl.querySelector('#btnShowAllSmsMatches');
+          if (btnShowAll) {
+            btnShowAll.onclick = () => {
+              quickSmsFilter = 'all';
+              renderQuickSmsList();
+            };
+          }
+        } else {
+          quickSmsListEl.innerHTML = `
+            <div style="text-align:center;padding:24px 10px;font-size:11px;color:var(--text-muted);">
+              <p>No SMS templates matching "<b>${escapeHtml(query)}</b>"</p>
+              <button type="button" class="btn-action" id="btnClearSmsSearch" style="margin-top:8px;">Clear Search</button>
+            </div>
+          `;
+          const btnClearSearch = quickSmsListEl.querySelector('#btnClearSmsSearch');
+          if (btnClearSearch) {
+            btnClearSearch.onclick = () => {
+              clearQuickSmsSearch();
+            };
+          }
         }
       } else if (quickSmsFilter === 'diy') {
         quickSmsListEl.innerHTML = `
@@ -3547,7 +3665,9 @@ async function deleteTemplate(id, type) {
     if (linkedUsages.length > 0) {
       const confirmed = await AppDialog.confirm({
         title: 'Delete Linked SMS Template?',
-        message: `This SMS template is currently linked to the following DIY checklist action(s):\n• ${linkedUsages.join('\n• ')}\n\nDeleting it will remove the template and detach it from these actions. Do you want to proceed?`,
+        message: 'This SMS template is currently linked to the following DIY checklist action(s):',
+        items: linkedUsages,
+        footer: 'Deleting it will remove the template and detach it from these actions. Do you want to proceed?',
         confirmText: 'Delete & Detach',
         danger: true
       });
@@ -3633,8 +3753,12 @@ function highlightVarQuery(label, query) {
 function openVarFillModal(tpl, _type) {
   const vars = parseTemplateVariables(tpl.text);
   if (vars.length === 0) {
-    writeToClipboard(tpl.text);
-    showBanner(`Copied ${tpl.title}`, null, null, 1500, 'info');
+    const card = document.querySelector(`.template-card[data-template-id="${tpl.id}"]`) as HTMLElement | null;
+    if (card) {
+      triggerSmsCardCopyFeedback(card, tpl.text);
+    } else {
+      writeToClipboard(tpl.text);
+    }
     return;
   }
 
