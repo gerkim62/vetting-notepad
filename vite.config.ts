@@ -7,6 +7,7 @@ export default defineConfig({
     crx({ manifest }),
   ],
   build: {
+    modulePreload: false,
     outDir: 'dist',
     emptyOutDir: true,
     sourcemap: false,
