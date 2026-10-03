@@ -941,12 +941,8 @@ function startAutoClear(typeId) {
 btnClear.onclick = async () => {
   stopAutoClear();
 
-  const v = curValues();
-  const st = curStatus();
-  const commentVal = (commentInput ? commentInput.value : (v._comment || '')).trim();
-  const hasValues = Object.entries(v).some(([k, val]) => k !== '_comment' && val && String(val).trim().length > 0);
-  const hasStatus = Object.values(st).some(Boolean);
-  const hasContent = hasValues || hasStatus || commentVal.length > 0;
+  const t = curType();
+  const hasContent = hasFormContent(t);
 
   if (!hasContent) {
     showClearedFeedback('Empty');
@@ -1769,6 +1765,31 @@ function bindFormEvents() {
     input.addEventListener('focus', () => {
       box.classList.add('is-focused', 'expanded');
       updateRowGuide(id);
+      const t = curType();
+      const allItems = t ? [...(t.required || []), ...(t.optional || [])] : [];
+      const it = allItems.find(x => x.id === id);
+      if (it?.defaultValue && input.value === it.defaultValue) {
+        setTimeout(() => {
+          if (document.activeElement === input) {
+            input.setSelectionRange(input.value.length, input.value.length);
+          }
+        }, 0);
+      }
+    });
+
+    input.addEventListener('paste', (e) => {
+      const pasteText = (e as ClipboardEvent).clipboardData?.getData('text');
+      if (!pasteText) return;
+      const t = curType();
+      const allItems = t ? [...(t.required || []), ...(t.optional || [])] : [];
+      const it = allItems.find(x => x.id === id);
+      const normalized = normalizePastedValue(it, pasteText);
+      if (normalized !== null) {
+        e.preventDefault();
+        input.value = normalized;
+        curValues()[id] = normalized;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+      }
     });
 
     input.addEventListener('blur', () => {
@@ -1921,6 +1942,34 @@ function bindFormEvents() {
     };
   }
 
+function normalizePastedValue(item, rawText) {
+  if (!item || !rawText) return null;
+  const defVal = (item.defaultValue || '').trim().replace(/[\s-]+/g, '');
+  const targetLen = item.len || 0;
+
+  if (defVal && targetLen > defVal.length) {
+    const cleaned = rawText.replace(/[\s-]+/g, '');
+    const isDigitsOnly = /^\d+$/.test(defVal);
+
+    if (isDigitsOnly && /^\d+$/.test(cleaned)) {
+      const remainderLen = targetLen - defVal.length;
+      if (cleaned.length === remainderLen) {
+        return defVal + cleaned;
+      }
+      for (let k = 1; k < defVal.length; k++) {
+        const subPrefix = defVal.slice(k);
+        if (cleaned.length === targetLen - k && cleaned.startsWith(subPrefix)) {
+          return defVal.slice(0, k) + cleaned;
+        }
+      }
+    }
+    if (cleaned.length === targetLen && cleaned.startsWith(defVal)) {
+      return cleaned;
+    }
+  }
+  return null;
+}
+
 async function smartPasteField(input) {
   if (!input) return false;
   const id = input.dataset.id;
@@ -1946,6 +1995,11 @@ async function smartPasteField(input) {
       }
     } else {
       textToPaste = rawClipboard.replace(/\s*[\r\n]+\s*/g, ' ').trim();
+    }
+
+    const normalized = normalizePastedValue(item, textToPaste);
+    if (normalized !== null) {
+      textToPaste = normalized;
     }
 
     input.value = textToPaste;
@@ -2338,7 +2392,17 @@ function hasFormContent(t) {
   if (!t) return false;
   const v = curValues();
   const st = curStatus();
-  const hasValues = Object.entries(v).some(([k, val]) => k !== '_comment' && val && String(val).trim().length > 0);
+  const allItems = [...(t.required || []), ...(t.optional || [])];
+  const itemMap = new Map(allItems.map(it => [it.id, it]));
+
+  const hasValues = Object.entries(v).some(([k, val]) => {
+    if (k === '_comment' || !val || String(val).trim().length === 0) return false;
+    const it = itemMap.get(k);
+    if (it && it.defaultValue && it.omitDefault && String(val).trim() === it.defaultValue.trim() && !st[k]) {
+      return false;
+    }
+    return true;
+  });
   const hasStatus = Object.values(st).some(Boolean);
   const hasComment = Boolean((v._comment || '').trim());
   const hasDiy = (activeDiyState[t.id] || []).length > 0;
@@ -5699,7 +5763,7 @@ async function init() {
   const loadedTypes = await Storage.get('vpad.types', null);
   const defaults = defaultVettingTypes();
 
-  if (configVer < 12 || !Array.isArray(loadedTypes) || loadedTypes.length < 15) {
+  if (configVer < 13 || !Array.isArray(loadedTypes) || loadedTypes.length < 15) {
     if (!Array.isArray(loadedTypes) || loadedTypes.length === 0) {
       types = defaults;
     } else {
@@ -5708,13 +5772,28 @@ async function init() {
         const existing = types.find(t => t.id === defType.id);
         if (!existing) {
           types.push(defType);
-        } else if (defType.diyActions) {
-          existing.diyActions = defType.diyActions.map(d => ({
-            id: d.id,
-            label: d.label,
-            adviceText: d.adviceText,
-            smsId: d.smsId
-          }));
+        } else {
+          if (defType.diyActions) {
+            existing.diyActions = defType.diyActions.map(d => ({
+              id: d.id,
+              label: d.label,
+              adviceText: d.adviceText,
+              smsId: d.smsId
+            }));
+          }
+          ['required', 'optional'].forEach(sec => {
+            const defSec = (defType as any)[sec] || [];
+            const exSec = (existing as any)[sec] || [];
+            defSec.forEach((defItem: any) => {
+              const exItem = exSec.find((x: any) => x.id === defItem.id);
+              if (exItem) {
+                if (defItem.defaultValue !== undefined) exItem.defaultValue = defItem.defaultValue;
+                if (defItem.omitDefault !== undefined) exItem.omitDefault = defItem.omitDefault;
+                if (defItem.itemType !== undefined) exItem.itemType = defItem.itemType;
+                if (defItem.violationAdvice !== undefined) exItem.violationAdvice = defItem.violationAdvice;
+              }
+            });
+          });
         }
       });
       types.forEach(t => {
@@ -5727,7 +5806,7 @@ async function init() {
     }
     Storage.setMultiple({
       'vpad.types': types,
-      'vpad.config_version': 12
+      'vpad.config_version': 13
     });
   } else {
     types = loadedTypes;

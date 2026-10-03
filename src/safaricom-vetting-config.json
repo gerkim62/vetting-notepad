@@ -51,6 +51,8 @@
           "id": "sw_simex",
           "label": "New SIMEX Serial",
           "len": 20,
+          "defaultValue": "89254021",
+          "omitDefault": true,
           "info": "[SAKA SSCB-0006]\n20-digit serial number from replacement SIM card retailing at KES 100."
         }
       ],
@@ -923,6 +925,8 @@
           "id": "upg_simex",
           "label": "New SIMEX Serial",
           "len": 20,
+          "defaultValue": "89254021",
+          "omitDefault": true,
           "info": "[SAKA SSCB-0006]\n20-digit serial number from the new 4G/5G upgrade SIM card."
         }
       ],
@@ -998,6 +1002,8 @@
           "id": "pol_old_simex",
           "label": "Old SIMEX Serial // Match CRM",
           "len": 20,
+          "defaultValue": "89254021",
+          "omitDefault": true,
           "info": "[SAKA SRFB-0005]\nMandatory: Customer must provide the old SIM serial that was attached to the line; must match CRM records."
         }
       ],
@@ -1014,6 +1020,8 @@
           "id": "pol_new_simex",
           "label": "New SIMEX Serial",
           "len": 20,
+          "defaultValue": "89254021",
+          "omitDefault": true,
           "info": "[SAKA SRFB-0005]\nNew SIM replacement card serial if doing immediate swap."
         },
         {

@@ -85,4 +85,23 @@ describe('SAKA Vetting Configuration', () => {
     expect(barApps).toBeDefined();
     expect(barApps?.itemType).toBe('action');
   });
+
+  it('verifies SIMEX serial fields have defaultValue 89254021, omitDefault true, and len 20', () => {
+    const simexFields: Array<{ typeId: string; fieldId: string; item: any }> = [];
+    config.types.forEach(t => {
+      [...t.required, ...t.optional].forEach(f => {
+        if (f.id.includes('simex') || f.label.toLowerCase().includes('simex')) {
+          simexFields.push({ typeId: t.id, fieldId: f.id, item: f });
+        }
+      });
+    });
+
+    expect(simexFields.length).toBeGreaterThanOrEqual(4);
+    simexFields.forEach(({ typeId, fieldId, item }) => {
+      expect(item.len, `${typeId}.${fieldId} len`).toBe(20);
+      expect(item.defaultValue, `${typeId}.${fieldId} defaultValue`).toBe('89254021');
+      expect(item.omitDefault, `${typeId}.${fieldId} omitDefault`).toBe(true);
+    });
+  });
 });
+
