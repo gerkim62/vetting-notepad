@@ -1530,7 +1530,8 @@ textarea.mat-input.vfield-textarea::-webkit-resizer {
   left: 6px;
   right: 6px;
   bottom: 48px;
-  top: 30px;
+  height: auto;
+  max-height: calc(100% - 60px);
   background: var(--bg-panel);
   border: 1px solid var(--border-line);
   border-radius: 8px;
@@ -1591,13 +1592,28 @@ textarea.mat-input.vfield-textarea::-webkit-resizer {
   opacity: 1;
 }
 .callpad-lines {
-  flex: 1;
-  min-height: 180px;
+  flex: 1 1 auto;
+  min-height: 96px;
   overflow-y: auto;
-  padding: 4px 4px;
+  padding: 4px 4px 76px 4px;
   counter-reset: ln;
   cursor: text;
   background: linear-gradient(var(--border-line), var(--border-line)) 16px 0/1px 100% no-repeat local;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-line) transparent;
+}
+.callpad-lines::-webkit-scrollbar {
+  width: 4px;
+}
+.callpad-lines::-webkit-scrollbar-track {
+  background: transparent;
+}
+.callpad-lines::-webkit-scrollbar-thumb {
+  background: var(--border-line);
+  border-radius: 4px;
+}
+.callpad-lines::-webkit-scrollbar-thumb:hover {
+  background: var(--text-dim);
 }
 .callpad-row {
   display: flex;
@@ -1684,9 +1700,23 @@ textarea.mat-input.vfield-textarea::-webkit-resizer {
 .callpad-cp-btn:hover {
   color: var(--saf-emerald);
 }
-.callpad-cp-btn.done {
+.callpad-cp-btn.done,
+.callpad-cp-btn.copied-success {
   color: var(--color-ok, #10b981);
   font-weight: 700;
+}
+.callpad-cp-btn svg,
+.callpad-btn-primary svg {
+  transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.18s ease;
+}
+.callpad-cp-btn.done svg,
+.callpad-btn-primary.done svg {
+  animation: iconPop 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes iconPop {
+  0% { transform: scale(0.6) rotate(-15deg); }
+  60% { transform: scale(1.15) rotate(5deg); }
+  100% { transform: scale(1) rotate(0deg); }
 }
 .callpad-footer {
   display: flex;
@@ -1714,6 +1744,10 @@ textarea.mat-input.vfield-textarea::-webkit-resizer {
   cursor: pointer;
   line-height: 1.2;
   transition: all 0.12s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
 }
 .callpad-btn-primary {
   background: var(--saf-emerald);
@@ -1723,18 +1757,44 @@ textarea.mat-input.vfield-textarea::-webkit-resizer {
 .callpad-btn-primary:hover {
   background: var(--saf-emerald-hover);
 }
-.callpad-btn-primary.done {
+.callpad-btn-primary.done,
+.callpad-btn-primary.copied-success {
   background: var(--color-ok, #10b981);
   border-color: var(--color-ok, #10b981);
   color: #ffffff;
 }
-.callpad-btn-danger {
-  background: var(--color-danger, #dc2626);
-  border-color: var(--color-danger, #dc2626);
-  color: #ffffff;
+.callpad-btn-trash {
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border-radius: 5px;
+  border: 1px solid var(--border-line);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.18s ease;
 }
-.callpad-btn-danger:hover {
-  opacity: 0.9;
+.callpad-btn-trash:hover {
+  color: var(--color-danger, #dc2626);
+  border-color: color-mix(in srgb, var(--color-danger, #dc2626) 35%, var(--border-line));
+  background: var(--color-danger-soft, #fee2e2);
+}
+.callpad-btn-trash .trash-lid {
+  transform-origin: 3px 6px;
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.callpad-btn-trash.armed {
+  color: var(--color-danger, #dc2626);
+  border-color: var(--color-danger, #dc2626);
+  background: var(--color-danger-soft, #fee2e2);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--color-danger, #dc2626) 30%, transparent);
+}
+.callpad-btn-trash.armed .trash-lid {
+  transform: rotate(-35deg) translateY(-2px);
 }
 
 /* SAKA Callback & Referral Banner (minute UI) */

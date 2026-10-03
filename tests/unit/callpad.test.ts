@@ -141,7 +141,7 @@ describe('Smart CallPad Component & Helpers', () => {
       expect(charCountEl?.textContent).toBe(String('0722000000'.length + 'ID: 12345678'.length));
     });
 
-    it('inserts a new line when Enter is pressed and focuses it', () => {
+    it('inserts a new line when fresh Enter is pressed and focuses it', () => {
       const pad = new SmartCallPad({
         container,
         initialLines: ['First line'],
@@ -149,7 +149,7 @@ describe('Smart CallPad Component & Helpers', () => {
       });
 
       const firstTa = container.querySelector<HTMLTextAreaElement>('.callpad-row textarea')!;
-      const enterEvent = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+      const enterEvent = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true, repeat: false });
       firstTa.dispatchEvent(enterEvent);
 
       const textareas = container.querySelectorAll<HTMLTextAreaElement>('.callpad-row textarea');
@@ -157,6 +157,21 @@ describe('Smart CallPad Component & Helpers', () => {
       expect(textareas[0].value).toBe('First line');
       expect(textareas[1].value).toBe('');
       expect(document.activeElement).toBe(textareas[1]);
+    });
+
+    it('does NOT insert a line when Enter event.repeat is true (held key safety)', () => {
+      const pad = new SmartCallPad({
+        container,
+        initialLines: ['First line'],
+        onSave
+      });
+
+      const firstTa = container.querySelector<HTMLTextAreaElement>('.callpad-row textarea')!;
+      const repeatEnter = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true, repeat: true });
+      firstTa.dispatchEvent(repeatEnter);
+
+      const textareas = container.querySelectorAll<HTMLTextAreaElement>('.callpad-row textarea');
+      expect(textareas.length).toBe(1);
     });
 
     it('removes empty line on Backspace on a fresh press when multiple lines exist', () => {
@@ -365,7 +380,7 @@ describe('Smart CallPad Component & Helpers', () => {
       expect(lines).toEqual(['Prefix A', 'BSuffix']);
     });
 
-    it('copies single line and flashes checkmark on row copy button click', async () => {
+    it('copies single line and morphs to check icon on row copy button click', () => {
       const pad = new SmartCallPad({
         container,
         initialLines: ['Copy me please'],
@@ -373,18 +388,21 @@ describe('Smart CallPad Component & Helpers', () => {
       });
 
       const cpBtn = container.querySelector<HTMLButtonElement>('.callpad-cp-btn')!;
+      expect(cpBtn.querySelector('svg.lucide-copy')).toBeTruthy();
+
       cpBtn.click();
 
       expect(onCopy).toHaveBeenCalledWith('Copy me please');
       expect(cpBtn.classList.contains('done')).toBe(true);
-      expect(cpBtn.textContent).toBe('✓');
+      expect(cpBtn.classList.contains('copied-success')).toBe(true);
+      expect(cpBtn.querySelector('svg.lucide-check')).toBeTruthy();
 
       vi.advanceTimersByTime(1100);
       expect(cpBtn.classList.contains('done')).toBe(false);
-      expect(cpBtn.textContent).toBe('⧉');
+      expect(cpBtn.querySelector('svg.lucide-copy')).toBeTruthy();
     });
 
-    it('copies all non-empty lines on Copy All button click', async () => {
+    it('copies all non-empty lines on Copy All button click and morphs icon/text', () => {
       const pad = new SmartCallPad({
         container,
         initialLines: ['Line 1', '', 'Line 2'],
@@ -392,54 +410,61 @@ describe('Smart CallPad Component & Helpers', () => {
       });
 
       const copyAllBtn = container.querySelector<HTMLButtonElement>('#callpadBtnCopyAll')!;
+      expect(copyAllBtn.querySelector('svg.lucide-copy')).toBeTruthy();
+      expect(copyAllBtn.textContent?.trim()).toBe('Copy All');
+
       copyAllBtn.click();
 
       expect(onCopy).toHaveBeenCalledWith('Line 1\nLine 2');
       expect(copyAllBtn.classList.contains('done')).toBe(true);
-      expect(copyAllBtn.textContent).toBe('Copied ✓');
+      expect(copyAllBtn.classList.contains('copied-success')).toBe(true);
+      expect(copyAllBtn.querySelector('svg.lucide-check')).toBeTruthy();
+      expect(copyAllBtn.textContent?.trim()).toBe('Copied');
 
       vi.advanceTimersByTime(1100);
       expect(copyAllBtn.classList.contains('done')).toBe(false);
-      expect(copyAllBtn.textContent).toBe('Copy All');
+      expect(copyAllBtn.querySelector('svg.lucide-copy')).toBeTruthy();
+      expect(copyAllBtn.textContent?.trim()).toBe('Copy All');
     });
 
-    it('clears all lines when Clear button is confirmed', async () => {
-      const onClearConfirm = vi.fn().mockResolvedValue(true);
+    it('two-step clear: 1st click arms the trash icon, 2nd click executes clear', () => {
       const pad = new SmartCallPad({
         container,
         initialLines: ['Line 1', 'Line 2'],
-        onClearConfirm,
         onSave
       });
 
       const clearBtn = container.querySelector<HTMLButtonElement>('#callpadBtnClear')!;
+      expect(clearBtn.classList.contains('armed')).toBe(false);
+
+      // Step 1: Click once to arm
       clearBtn.click();
+      expect(clearBtn.classList.contains('armed')).toBe(true);
+      expect(pad.getLines()).toEqual(['Line 1', 'Line 2']); // Not cleared yet
 
-      // Let promise resolve
-      await Promise.resolve();
-
-      expect(onClearConfirm).toHaveBeenCalledTimes(1);
+      // Step 2: Click while armed to confirm clear
+      clearBtn.click();
+      expect(clearBtn.classList.contains('armed')).toBe(false);
       expect(pad.getLines()).toEqual(['']);
       const textareas = container.querySelectorAll('.callpad-row textarea');
       expect(textareas.length).toBe(1);
     });
 
-    it('does NOT clear lines when Clear button confirmation is cancelled', async () => {
-      const onClearConfirm = vi.fn().mockResolvedValue(false);
+    it('two-step clear: automatically disarms if 2.5s passes without 2nd click', () => {
       const pad = new SmartCallPad({
         container,
         initialLines: ['Line 1', 'Line 2'],
-        onClearConfirm,
         onSave
       });
 
       const clearBtn = container.querySelector<HTMLButtonElement>('#callpadBtnClear')!;
       clearBtn.click();
+      expect(clearBtn.classList.contains('armed')).toBe(true);
 
-      await Promise.resolve();
-
-      expect(onClearConfirm).toHaveBeenCalledTimes(1);
-      expect(pad.getLines()).toEqual(['Line 1', 'Line 2']);
+      // Advance 2500ms
+      vi.advanceTimersByTime(2500);
+      expect(clearBtn.classList.contains('armed')).toBe(false);
+      expect(pad.getLines()).toEqual(['Line 1', 'Line 2']); // Not cleared
     });
   });
 });

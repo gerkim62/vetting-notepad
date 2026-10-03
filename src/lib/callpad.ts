@@ -1,10 +1,11 @@
 /**
  * Smart Free-Text CallPad Component
  * Floating scratchpad with gutter line numbers, per-line copy, wrap mode,
- * debounced storage sync, and compact 200px responsive layout.
+ * debounced storage sync, dynamic height, two-step animated trash clear,
+ * and compact 200px responsive layout.
  */
 
-import { AppDialog } from './dialog.js';
+import { renderIcon } from './icons.js';
 
 export interface CallPadOptions {
   container: HTMLElement;
@@ -13,7 +14,6 @@ export interface CallPadOptions {
   onSave?: (lines: string[]) => void;
   onSaveWrap?: (wrap: boolean) => void;
   onCopy?: (text: string) => Promise<boolean>;
-  onClearConfirm?: () => Promise<boolean>;
 }
 
 /**
@@ -135,10 +135,11 @@ export class SmartCallPad {
   onSave: (lines: string[]) => void;
   onSaveWrap: (wrap: boolean) => void;
   onCopy: (text: string) => Promise<boolean>;
-  onClearConfirm: () => Promise<boolean>;
 
   saveTimeout: ReturnType<typeof setTimeout> | null = null;
   saveBadgeTimer: ReturnType<typeof setTimeout> | null = null;
+  clearArmTimer: ReturnType<typeof setTimeout> | null = null;
+  onDocClick: ((e: MouseEvent) => void) | null = null;
 
   wrapBtn: HTMLButtonElement | null = null;
   saveBadge: HTMLElement | null = null;
@@ -160,15 +161,6 @@ export class SmartCallPad {
       }
       return false;
     });
-    this.onClearConfirm = options.onClearConfirm ?? (async () => {
-      return AppDialog.confirm({
-        title: 'Clear all lines?',
-        message: "This can't be undone.",
-        confirmText: 'Clear All',
-        cancelText: 'Cancel',
-        danger: true
-      });
-    });
 
     this.initDOM();
   }
@@ -185,8 +177,18 @@ export class SmartCallPad {
       <div class="callpad-lines ${this.wrap ? 'wrap' : ''}" id="callpadLines"></div>
       <div class="callpad-footer">
         <span class="callpad-char-count" id="callpadCharCount">0</span>
-        <button type="button" class="callpad-btn callpad-btn-danger" id="callpadBtnClear">Clear</button>
-        <button type="button" class="callpad-btn callpad-btn-primary" id="callpadBtnCopyAll">Copy All</button>
+        <button type="button" class="callpad-btn callpad-btn-trash" id="callpadBtnClear" title="Clear all lines" aria-label="Clear all lines">
+          <svg class="trash-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path class="trash-lid" d="M3 6h18M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
+            <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
+            <line x1="10" x2="10" y1="11" y2="17"></line>
+            <line x1="14" x2="14" y1="11" y2="17"></line>
+          </svg>
+        </button>
+        <button type="button" class="callpad-btn callpad-btn-primary" id="callpadBtnCopyAll">
+          ${renderIcon('Copy', { size: 11 })}
+          <span>Copy All</span>
+        </button>
       </div>
     `;
 
@@ -215,21 +217,39 @@ export class SmartCallPad {
           this.onCopy(text);
         }
         if (this.copyAllBtn) {
-          this.flash(this.copyAllBtn, 'Copied ✓', 'Copy All');
+          this.copyAllBtn.classList.add('done', 'copied-success');
+          this.copyAllBtn.innerHTML = `${renderIcon('Check', { size: 11, strokeWidth: 2.5 })}<span>Copied</span>`;
+          setTimeout(() => {
+            if (this.copyAllBtn) {
+              this.copyAllBtn.classList.remove('done', 'copied-success');
+              this.copyAllBtn.innerHTML = `${renderIcon('Copy', { size: 11 })}<span>Copy All</span>`;
+            }
+          }, 1100);
         }
       });
     }
 
     if (this.clearBtn) {
-      this.clearBtn.addEventListener('click', async () => {
-        const confirmed = await this.onClearConfirm();
-        if (confirmed) {
-          this.lines = [''];
-          this.render(0, true);
-          this.debounceSave();
+      this.clearBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (!this.clearBtn) return;
+        if (this.clearBtn.classList.contains('armed')) {
+          this.disarmClear();
+          this.clearAll();
+        } else {
+          this.armClear();
         }
       });
     }
+
+    this.onDocClick = (e: MouseEvent) => {
+      if (this.clearBtn && this.clearBtn.classList.contains('armed')) {
+        if (!this.clearBtn.contains(e.target as Node)) {
+          this.disarmClear();
+        }
+      }
+    };
+    document.addEventListener('click', this.onDocClick);
 
     if (!this.linesBox) return;
 
@@ -288,6 +308,7 @@ export class SmartCallPad {
 
       if (e.key === 'Enter') {
         e.preventDefault();
+        if (e.repeat) return; // Held Enter: do not repeat or spawn infinite rows
         this.lines.splice(i + 1, 0, '');
         this.render(i + 1, true);
         this.debounceSave();
@@ -331,7 +352,12 @@ export class SmartCallPad {
       if (lineText) {
         this.onCopy(lineText);
       }
-      this.flash(btn, '✓', '⧉');
+      btn.classList.add('done', 'copied-success');
+      btn.innerHTML = renderIcon('Check', { size: 11, strokeWidth: 2.5 });
+      setTimeout(() => {
+        btn.classList.remove('done', 'copied-success');
+        btn.innerHTML = renderIcon('Copy', { size: 11 });
+      }, 1100);
     });
 
     // 5. Delegated click-anywhere-to-type
@@ -361,6 +387,27 @@ export class SmartCallPad {
     });
   }
 
+  armClear(): void {
+    if (!this.clearBtn) return;
+    this.clearBtn.classList.add('armed');
+    this.clearBtn.title = 'Click again to confirm clear';
+    if (this.clearArmTimer) clearTimeout(this.clearArmTimer);
+    this.clearArmTimer = setTimeout(() => {
+      this.disarmClear();
+    }, 2500);
+  }
+
+  disarmClear(): void {
+    if (this.clearArmTimer) {
+      clearTimeout(this.clearArmTimer);
+      this.clearArmTimer = null;
+    }
+    if (this.clearBtn) {
+      this.clearBtn.classList.remove('armed');
+      this.clearBtn.title = 'Clear all lines';
+    }
+  }
+
   render(focusIdx?: number, focusEnd: boolean = true): void {
     if (!this.linesBox) return;
 
@@ -383,7 +430,7 @@ export class SmartCallPad {
       const cpBtn = document.createElement('button');
       cpBtn.type = 'button';
       cpBtn.className = 'callpad-cp-btn';
-      cpBtn.textContent = '⧉';
+      cpBtn.innerHTML = renderIcon('Copy', { size: 11 });
       cpBtn.title = 'Copy line';
       cpBtn.setAttribute('aria-label', 'Copy line');
 
@@ -486,18 +533,28 @@ export class SmartCallPad {
     }, 900);
   }
 
-  flash(el: HTMLElement, txt: string, orig: string): void {
-    el.classList.add('done');
-    el.textContent = txt;
-    setTimeout(() => {
-      el.classList.remove('done');
-      el.textContent = orig;
-    }, 1100);
-  }
-
   clearAll(): void {
     this.lines = [''];
     this.render(0, true);
     this.debounceSave();
+  }
+
+  destroy(): void {
+    if (this.onDocClick) {
+      document.removeEventListener('click', this.onDocClick);
+      this.onDocClick = null;
+    }
+    if (this.clearArmTimer) {
+      clearTimeout(this.clearArmTimer);
+      this.clearArmTimer = null;
+    }
+    if (this.saveTimeout) {
+      clearTimeout(this.saveTimeout);
+      this.saveTimeout = null;
+    }
+    if (this.saveBadgeTimer) {
+      clearTimeout(this.saveBadgeTimer);
+      this.saveBadgeTimer = null;
+    }
   }
 }
