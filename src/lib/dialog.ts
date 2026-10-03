@@ -461,5 +461,24 @@ export const AppDialog = {
         doneBtn.focus();
       }
     });
+  },
+
+  closeActive(): boolean {
+    const overlay = document.querySelector('.app-dialog-overlay');
+    if (overlay) {
+      const cancelBtn = overlay.querySelector('.app-dialog-btn-cancel, #shortcutsDialogClose') as HTMLElement | null;
+      if (cancelBtn) {
+        cancelBtn.click();
+      } else {
+        const confirmBtn = overlay.querySelector('.app-dialog-btn-confirm') as HTMLElement | null;
+        if (confirmBtn) {
+          confirmBtn.click();
+        } else {
+          overlay.remove();
+        }
+      }
+      return true;
+    }
+    return false;
   }
 };

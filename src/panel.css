@@ -1488,32 +1488,31 @@ textarea.mat-input.vfield-textarea::-webkit-resizer {
    Vetting Notepad v2 — Additional Styles
    ========================================================================== */
 
-/* Call-Wide Key-Value Notepad (Call Companion) */
+/* Callpad Floating Scratchpad */
 .callpad-fab {
   position: absolute;
-  right: 12px;
-  bottom: 50px;
-  width: 28px;
-  height: 28px;
+  right: 8px;
+  bottom: 8px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
+  border: 0;
+  background: var(--saf-emerald);
+  color: var(--saf-emerald-ink, #ffffff);
+  font-size: 15px;
+  cursor: grab;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg-panel-alt);
-  border: 1px solid var(--border-line);
-  color: var(--saf-emerald);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
-  cursor: grab;
   z-index: 80;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
   user-select: none;
   touch-action: none;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 .callpad-fab:hover {
   transform: scale(1.08);
-  border-color: var(--saf-emerald);
-  background: var(--bg-hover);
-  box-shadow: 0 4px 18px rgba(0, 135, 81, 0.28);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.35);
 }
 .callpad-fab:active, .callpad-fab.is-dragging {
   cursor: grabbing;
@@ -1528,179 +1527,214 @@ textarea.mat-input.vfield-textarea::-webkit-resizer {
 }
 .callpad-popover {
   position: absolute;
-  left: 10px;
-  right: 10px;
-  bottom: 46px;
-  max-height: calc(100% - 90px);
+  left: 6px;
+  right: 6px;
+  bottom: 48px;
+  top: 30px;
   background: var(--bg-panel);
   border: 1px solid var(--border-line);
-  border-radius: var(--radius-lg);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
-  z-index: 90;
-  display: flex;
+  border-radius: 8px;
+  display: none;
   flex-direction: column;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  z-index: 90;
   overflow: hidden;
-  animation: callPadPop 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  font-size: 11px;
 }
-@keyframes callPadPop {
-  from { opacity: 0; transform: translateY(8px) scale(0.98); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+.callpad-popover.open {
+  display: flex;
 }
 .callpad-header {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  padding: 7px 10px;
-  background: var(--bg-panel-alt);
+  align-items: center;
+  padding: 5px 7px;
   border-bottom: 1px solid var(--border-line);
+  font-weight: 600;
+  background: var(--bg-panel);
+  flex-shrink: 0;
 }
-.callpad-title {
-  font-size: 11px;
-  font-weight: 700;
-  color: var(--saf-emerald);
+.callpad-title-wrap {
   display: flex;
   align-items: center;
   gap: 5px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  color: var(--text-main);
+  font-size: 11px;
 }
-.callpad-close {
+.callpad-wrap-btn {
+  border: 1px solid var(--border-line);
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 9px;
+  cursor: pointer;
+  line-height: 14px;
+  transition: all 0.15s ease;
+}
+.callpad-wrap-btn[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--saf-emerald) 12%, transparent);
+  border-color: color-mix(in srgb, var(--saf-emerald) 35%, var(--border-line));
+  color: var(--saf-emerald);
+}
+.callpad-save-status {
+  font-weight: 400;
+  color: var(--color-ok, #10b981);
+  font-size: 10px;
+  opacity: 0;
+  transition: opacity 0.2s;
+  pointer-events: none;
+  user-select: none;
+}
+.callpad-save-status.on {
+  opacity: 1;
+}
+.callpad-lines {
+  flex: 1;
+  min-height: 180px;
+  overflow-y: auto;
+  padding: 4px 4px;
+  counter-reset: ln;
+  cursor: text;
+  background: linear-gradient(var(--border-line), var(--border-line)) 16px 0/1px 100% no-repeat local;
+}
+.callpad-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 2px;
+  border-radius: 4px;
+  counter-increment: ln;
+  transition: background 0.1s ease;
+}
+.callpad-row:hover {
+  background: color-mix(in srgb, var(--saf-emerald) 8%, transparent);
+}
+.callpad-row:focus-within {
+  background: color-mix(in srgb, var(--saf-emerald) 12%, transparent);
+}
+.callpad-row::before {
+  content: counter(ln);
+  flex: none;
+  align-self: stretch;
+  box-sizing: border-box;
+  width: 12px;
+  padding: 4px 3px 0 0;
+  font-size: 9px;
+  line-height: 16px;
+  text-align: right;
+  color: color-mix(in srgb, var(--text-main) 55%, transparent);
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+  pointer-events: none;
+}
+.callpad-row:focus-within::before {
+  color: var(--saf-emerald);
+  font-weight: 700;
+}
+.callpad-row textarea {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-main);
+  font: inherit;
+  font-size: 11px;
+  line-height: 16px;
+  height: 24px;
+  padding: 4px 3px 4px 6px;
+  outline: 0;
+  resize: none;
+  overflow: hidden;
+  white-space: pre;
+  display: block;
+}
+.callpad-lines.wrap .callpad-row textarea {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.callpad-row textarea:focus {
+  box-shadow: inset 2px 0 0 var(--saf-emerald);
+}
+.callpad-cp-btn {
+  margin-top: 2px;
   width: 20px;
   height: 20px;
-  border-radius: var(--radius-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
   border: 0;
   background: transparent;
   color: var(--text-muted);
   cursor: pointer;
-  transition: all 0.15s ease;
-}
-.callpad-close:hover {
-  color: var(--text-main);
-  background: var(--bg-hover);
-}
-.callpad-body {
-  padding: 8px 10px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  max-height: 270px;
-}
-.callpad-toolbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 4px 8px;
-  background: var(--bg-panel-alt);
-  border-bottom: 1px solid var(--border-line);
-}
-.callpad-line-count-badge {
-  font-size: 10px;
-  color: var(--text-dim);
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-.callpad-actions {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-.btn-callpad-action {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  font-size: 10.5px;
-  font-weight: 600;
-  padding: 2px 7px;
-  border-radius: var(--radius-sm);
-  background: var(--bg-hover);
-  color: var(--text-main);
-  border: 1px solid var(--border-line);
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-.btn-callpad-action:hover {
-  background: var(--border-line);
-}
-.btn-callpad-action.copied {
-  background: var(--saf-emerald-soft);
-  color: var(--saf-emerald);
-  border-color: var(--saf-emerald);
-}
-.btn-callpad-clear:hover {
-  color: var(--color-danger);
-  border-color: var(--color-danger);
-}
-.callpad-lines-list {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 4px 6px;
-  overflow-y: auto;
-  max-height: 240px;
-}
-.callpad-smart-line {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 2px 6px;
-  border-radius: var(--radius-sm);
-  border: 1px solid transparent;
-  transition: all 0.15s ease;
-}
-.callpad-smart-line:hover {
-  background: var(--bg-hover);
-}
-.callpad-smart-line:focus-within {
-  background: var(--bg-panel-alt);
-  border-color: var(--saf-emerald);
-}
-.callpad-line-input {
-  flex: 1;
-  min-width: 0;
-  font-size: 11.5px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  background: transparent;
-  border: 0;
-  outline: none;
-  color: var(--text-main);
-  padding: 3px 0;
-}
-.callpad-line-copy-btn {
-  width: 20px;
-  height: 20px;
-  border-radius: 3px;
+  border-radius: 4px;
+  font-size: 11px;
+  flex: none;
+  opacity: 0;
+  pointer-events: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 0;
-  background: transparent;
-  color: var(--text-dim);
-  cursor: pointer;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease;
+  line-height: 1;
+  transition: opacity 0.12s ease, color 0.12s ease;
 }
-.callpad-line-copy-btn.visible {
-  opacity: 0.6;
+.callpad-row.has:hover .callpad-cp-btn,
+.callpad-row.has .callpad-cp-btn:focus-visible,
+.callpad-row.has .callpad-cp-btn.done {
+  opacity: 1;
   pointer-events: auto;
 }
-.callpad-smart-line:hover .callpad-line-copy-btn.visible {
-  opacity: 1;
+.callpad-cp-btn:hover {
+  color: var(--saf-emerald);
+}
+.callpad-cp-btn.done {
+  color: var(--color-ok, #10b981);
+  font-weight: 700;
+}
+.callpad-footer {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px;
+  border-top: 1px solid var(--border-line);
+  background: var(--bg-panel);
+  flex-shrink: 0;
+}
+.callpad-char-count {
+  flex: 1;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.callpad-btn {
+  border: 1px solid var(--border-line);
+  background: var(--bg-panel);
   color: var(--text-main);
+  font: inherit;
+  font-size: 10.5px;
+  padding: 4px 6px;
+  border-radius: 5px;
+  cursor: pointer;
+  line-height: 1.2;
+  transition: all 0.12s ease;
 }
-.callpad-line-copy-btn:hover {
-  background: var(--bg-hover);
-  color: var(--saf-emerald);
+.callpad-btn-primary {
+  background: var(--saf-emerald);
+  border-color: var(--saf-emerald);
+  color: var(--saf-emerald-ink, #ffffff);
 }
-.callpad-line-copy-btn.copied {
-  color: var(--saf-emerald);
-  background: var(--saf-emerald-soft);
-  opacity: 1;
+.callpad-btn-primary:hover {
+  background: var(--saf-emerald-hover);
+}
+.callpad-btn-primary.done {
+  background: var(--color-ok, #10b981);
+  border-color: var(--color-ok, #10b981);
+  color: #ffffff;
+}
+.callpad-btn-danger {
+  background: var(--color-danger, #dc2626);
+  border-color: var(--color-danger, #dc2626);
+  color: #ffffff;
+}
+.callpad-btn-danger:hover {
+  opacity: 0.9;
 }
 
 /* SAKA Callback & Referral Banner (minute UI) */

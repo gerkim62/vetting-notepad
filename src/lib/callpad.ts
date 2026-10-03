@@ -1,27 +1,126 @@
 /**
  * Smart Free-Text CallPad Component
- * KISS, line-by-line quick scratchpad with per-line micro copy and Copy All.
+ * Floating scratchpad with gutter line numbers, per-line copy, wrap mode,
+ * debounced storage sync, and compact 200px responsive layout.
  */
 
-import { renderIcon } from './icons.js';
+import { AppDialog } from './dialog.js';
 
 export interface CallPadOptions {
   container: HTMLElement;
   initialLines?: string[];
+  initialWrap?: boolean;
   onSave?: (lines: string[]) => void;
+  onSaveWrap?: (wrap: boolean) => void;
   onCopy?: (text: string) => Promise<boolean>;
+  onClearConfirm?: () => Promise<boolean>;
 }
 
+/**
+ * Joins non-empty lines with newline for Copy All.
+ */
 export function formatCallPadCopyAll(lines?: unknown[]): string {
   if (!Array.isArray(lines)) return '';
   return lines
-    .map(l => (typeof l === 'string' ? l.trim() : ''))
-    .filter(l => l.length > 0)
+    .filter((l): l is string => typeof l === 'string' && l.trim().length > 0)
     .join('\n');
 }
 
+/**
+ * Calculates total character count across all lines.
+ */
+export function getCharCount(lines?: unknown[]): number {
+  if (!Array.isArray(lines)) return 0;
+  let count = 0;
+  for (const l of lines) {
+    if (typeof l === 'string') count += l.length;
+  }
+  return count;
+}
+
+/**
+ * Splits pasted multi-line text and merges with existing text around selection.
+ */
+export function splitMergePaste(
+  currentValue: string,
+  selectionStart: number,
+  selectionEnd: number,
+  pastedText: string
+): string[] {
+  const parts = pastedText.split(/\r?\n/);
+  const before = currentValue.slice(0, selectionStart);
+  const after = currentValue.slice(selectionEnd);
+  parts[0] = before + parts[0];
+  const last = parts.length - 1;
+  parts[last] = parts[last] + after;
+  return parts;
+}
+
+/**
+ * Migrates old callpad storage keys to vpad.callpad_lines.
+ * Old keys: vpad.callpad_text, vpad.callpad_freetext, vpad.callpad_keys.
+ * Never returns empty array (defaults to ['']).
+ */
+export function migrateCallpadStorage(storage: Record<string, any>): {
+  lines: string[];
+  keysToRemove: string[];
+} {
+  const keysToRemove: string[] = [];
+
+  const existingLines = storage['vpad.callpad_lines'];
+  if (Array.isArray(existingLines) && existingLines.length > 0) {
+    if ('vpad.callpad_text' in storage) keysToRemove.push('vpad.callpad_text');
+    if ('vpad.callpad_freetext' in storage) keysToRemove.push('vpad.callpad_freetext');
+    if ('vpad.callpad_keys' in storage) keysToRemove.push('vpad.callpad_keys');
+    return {
+      lines: serializeCallPad(existingLines),
+      keysToRemove
+    };
+  }
+
+  if (typeof storage['vpad.callpad_text'] === 'string') {
+    keysToRemove.push('vpad.callpad_text');
+    if ('vpad.callpad_freetext' in storage) keysToRemove.push('vpad.callpad_freetext');
+    if ('vpad.callpad_keys' in storage) keysToRemove.push('vpad.callpad_keys');
+    const split = storage['vpad.callpad_text'].split(/\r?\n/);
+    return {
+      lines: split.length > 0 ? split : [''],
+      keysToRemove
+    };
+  }
+
+  if (typeof storage['vpad.callpad_freetext'] === 'string') {
+    keysToRemove.push('vpad.callpad_freetext');
+    if ('vpad.callpad_keys' in storage) keysToRemove.push('vpad.callpad_keys');
+    const split = storage['vpad.callpad_freetext'].split(/\r?\n/);
+    return {
+      lines: split.length > 0 ? split : [''],
+      keysToRemove
+    };
+  }
+
+  if (Array.isArray(storage['vpad.callpad_keys']) && storage['vpad.callpad_keys'].length > 0) {
+    keysToRemove.push('vpad.callpad_keys');
+    const legacyLines = storage['vpad.callpad_keys']
+      .map((k: any) => (typeof k?.key === 'string' ? k.key : ''))
+      .filter((k: string) => k && k.trim());
+    return {
+      lines: legacyLines.length > 0 ? legacyLines : [''],
+      keysToRemove
+    };
+  }
+
+  return {
+    lines: [''],
+    keysToRemove
+  };
+}
+
+/**
+ * Validates lines array: ensures at least one line, all strings.
+ */
 export function serializeCallPad(lines?: unknown[]): string[] {
-  if (!Array.isArray(lines)) return [''];
+  if (!Array.isArray(lines) || lines.length === 0) return [''];
   const res: string[] = [];
   for (const l of lines) {
     if (typeof l === 'string') res.push(l);
@@ -31,19 +130,29 @@ export function serializeCallPad(lines?: unknown[]): string[] {
 
 export class SmartCallPad {
   container: HTMLElement;
-  onSave: (lines: string[]) => void;
-  onCopy: (text: string) => Promise<boolean>;
   lines: string[];
+  wrap: boolean;
+  onSave: (lines: string[]) => void;
+  onSaveWrap: (wrap: boolean) => void;
+  onCopy: (text: string) => Promise<boolean>;
+  onClearConfirm: () => Promise<boolean>;
+
   saveTimeout: ReturnType<typeof setTimeout> | null = null;
-  linesList: HTMLElement | null = null;
-  countBadge: HTMLElement | null = null;
-  btnCopyAll: HTMLElement | null = null;
-  btnClearAll: HTMLElement | null = null;
-  copyAllTimer: ReturnType<typeof setTimeout> | null = null;
+  saveBadgeTimer: ReturnType<typeof setTimeout> | null = null;
+
+  wrapBtn: HTMLButtonElement | null = null;
+  saveBadge: HTMLElement | null = null;
+  linesBox: HTMLElement | null = null;
+  countEl: HTMLElement | null = null;
+  clearBtn: HTMLButtonElement | null = null;
+  copyAllBtn: HTMLButtonElement | null = null;
 
   constructor(options: CallPadOptions) {
     this.container = options.container;
+    this.lines = serializeCallPad(options.initialLines);
+    this.wrap = Boolean(options.initialWrap);
     this.onSave = options.onSave ?? (() => {});
+    this.onSaveWrap = options.onSaveWrap ?? (() => {});
     this.onCopy = options.onCopy ?? (async (text: string): Promise<boolean> => {
       if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(text);
@@ -51,224 +160,344 @@ export class SmartCallPad {
       }
       return false;
     });
+    this.onClearConfirm = options.onClearConfirm ?? (async () => {
+      return AppDialog.confirm({
+        title: 'Clear all lines?',
+        message: "This can't be undone.",
+        confirmText: 'Clear All',
+        cancelText: 'Cancel',
+        danger: true
+      });
+    });
 
-    const initLines = Array.isArray(options.initialLines) && options.initialLines.length > 0
-      ? options.initialLines
-      : [''];
-    this.lines = [...initLines];
+    this.initDOM();
+  }
 
+  initDOM(): void {
+    this.container.innerHTML = `
+      <div class="callpad-header">
+        <span class="callpad-title-wrap">
+          Callpad
+          <button type="button" class="callpad-wrap-btn" id="callpadWrapBtn" aria-pressed="${this.wrap}" title="Toggle line wrap">↩ Wrap</button>
+        </span>
+        <span class="callpad-save-status" id="callpadSaveStatus">Saved ✓</span>
+      </div>
+      <div class="callpad-lines ${this.wrap ? 'wrap' : ''}" id="callpadLines"></div>
+      <div class="callpad-footer">
+        <span class="callpad-char-count" id="callpadCharCount">0</span>
+        <button type="button" class="callpad-btn callpad-btn-danger" id="callpadBtnClear">Clear</button>
+        <button type="button" class="callpad-btn callpad-btn-primary" id="callpadBtnCopyAll">Copy All</button>
+      </div>
+    `;
+
+    this.wrapBtn = this.container.querySelector('#callpadWrapBtn');
+    this.saveBadge = this.container.querySelector('#callpadSaveStatus');
+    this.linesBox = this.container.querySelector('#callpadLines');
+    this.countEl = this.container.querySelector('#callpadCharCount');
+    this.clearBtn = this.container.querySelector('#callpadBtnClear');
+    this.copyAllBtn = this.container.querySelector('#callpadBtnCopyAll');
+
+    this.attachDelegatedListeners();
     this.render();
   }
 
-  debounceSave(): void {
-    if (this.saveTimeout !== null) clearTimeout(this.saveTimeout);
-    this.saveTimeout = setTimeout(() => {
-      this.onSave(this.getLines());
-    }, 200);
+  attachDelegatedListeners(): void {
+    if (this.wrapBtn) {
+      this.wrapBtn.addEventListener('click', () => {
+        this.setWrap(!this.wrap);
+      });
+    }
+
+    if (this.copyAllBtn) {
+      this.copyAllBtn.addEventListener('click', () => {
+        const text = formatCallPadCopyAll(this.lines);
+        if (text) {
+          this.onCopy(text);
+        }
+        if (this.copyAllBtn) {
+          this.flash(this.copyAllBtn, 'Copied ✓', 'Copy All');
+        }
+      });
+    }
+
+    if (this.clearBtn) {
+      this.clearBtn.addEventListener('click', async () => {
+        const confirmed = await this.onClearConfirm();
+        if (confirmed) {
+          this.lines = [''];
+          this.render(0, true);
+          this.debounceSave();
+        }
+      });
+    }
+
+    if (!this.linesBox) return;
+
+    // 1. Delegated typing (input)
+    this.linesBox.addEventListener('input', (e) => {
+      const target = e.target as HTMLElement;
+      if (!(target instanceof HTMLTextAreaElement)) return;
+      const i = this.rowIndexOf(target);
+      if (i < 0) return;
+
+      const cleanedVal = target.value.replace(/\n/g, ' ');
+      if (cleanedVal !== target.value) {
+        target.value = cleanedVal;
+      }
+      this.lines[i] = cleanedVal;
+
+      const row = target.closest('.callpad-row');
+      row?.classList.toggle('has', Boolean(cleanedVal.trim()));
+
+      this.fit(target);
+      this.updateCount();
+      this.debounceSave();
+    });
+
+    // 2. Delegated paste (multi-line split/merge)
+    this.linesBox.addEventListener('paste', (e: ClipboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (!(target instanceof HTMLTextAreaElement)) return;
+      const clip = e.clipboardData;
+      const text = clip ? clip.getData('text') : '';
+      if (!/[\r\n]/.test(text)) return;
+
+      e.preventDefault();
+      const i = this.rowIndexOf(target);
+      if (i < 0) return;
+
+      const parts = splitMergePaste(
+        target.value,
+        target.selectionStart ?? target.value.length,
+        target.selectionEnd ?? target.value.length,
+        text
+      );
+
+      this.lines.splice(i, 1, ...parts);
+      const caretLine = i + parts.length - 1;
+      this.render(caretLine, true);
+      this.debounceSave();
+    });
+
+    // 3. Delegated keyboard navigation & editing
+    this.linesBox.addEventListener('keydown', (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (!(target instanceof HTMLTextAreaElement)) return;
+      const i = this.rowIndexOf(target);
+      if (i < 0) return;
+
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        this.lines.splice(i + 1, 0, '');
+        this.render(i + 1, true);
+        this.debounceSave();
+      } else if (e.key === 'Backspace' || e.key === 'Delete') {
+        if (!target.value && this.lines.length > 1) {
+          e.preventDefault();
+          if (e.repeat) return; // Held key: never delete the line, only fresh press does
+
+          this.lines.splice(i, 1);
+          if (e.key === 'Backspace') {
+            this.render(Math.max(0, i - 1), true);
+          } else {
+            const hasNext = i < this.lines.length;
+            const targetIdx = hasNext ? i : this.lines.length - 1;
+            this.render(targetIdx, !hasNext);
+          }
+          this.debounceSave();
+        }
+      } else if (e.key === 'ArrowUp') {
+        if (!this.wrap || target.selectionStart === 0) {
+          e.preventDefault();
+          this.focusRow(i - 1, true);
+        }
+      } else if (e.key === 'ArrowDown') {
+        if (!this.wrap || target.selectionStart === target.value.length) {
+          e.preventDefault();
+          this.focusRow(i + 1, true);
+        }
+      }
+    });
+
+    // 4. Delegated per-row copy
+    this.linesBox.addEventListener('click', (e) => {
+      const target = e.target as HTMLElement;
+      const btn = target.closest('.callpad-cp-btn') as HTMLElement | null;
+      if (!btn) return;
+      const i = this.rowIndexOf(btn);
+      if (i < 0) return;
+
+      const lineText = this.lines[i];
+      if (lineText) {
+        this.onCopy(lineText);
+      }
+      this.flash(btn, '✓', '⧉');
+    });
+
+    // 5. Delegated click-anywhere-to-type
+    this.linesBox.addEventListener('mousedown', (e) => {
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'TEXTAREA' || target.closest('.callpad-cp-btn')) {
+        return;
+      }
+
+      e.preventDefault();
+      const row = target.closest('.callpad-row');
+      if (row) {
+        const i = this.rowIndexOf(row);
+        if (i >= 0) this.focusRow(i, true);
+        return;
+      }
+
+      // Clicked on blank area below all rows
+      const last = this.lines.length - 1;
+      if (this.lines[last].trim()) {
+        this.lines.push('');
+        this.render(last + 1, true);
+        this.debounceSave();
+      } else {
+        this.focusRow(last, true);
+      }
+    });
+  }
+
+  render(focusIdx?: number, focusEnd: boolean = true): void {
+    if (!this.linesBox) return;
+
+    if (this.lines.length === 0) {
+      this.lines = [''];
+    }
+
+    const fragment = document.createDocumentFragment();
+
+    this.lines.forEach((val, idx) => {
+      const row = document.createElement('div');
+      row.className = 'callpad-row' + (val.trim() ? ' has' : '');
+
+      const ta = document.createElement('textarea');
+      ta.rows = 1;
+      ta.value = val;
+      ta.spellcheck = false;
+      ta.setAttribute('aria-label', `Line ${idx + 1}`);
+
+      const cpBtn = document.createElement('button');
+      cpBtn.type = 'button';
+      cpBtn.className = 'callpad-cp-btn';
+      cpBtn.textContent = '⧉';
+      cpBtn.title = 'Copy line';
+      cpBtn.setAttribute('aria-label', 'Copy line');
+
+      row.appendChild(ta);
+      row.appendChild(cpBtn);
+      fragment.appendChild(row);
+    });
+
+    this.linesBox.replaceChildren(fragment);
+    this.linesBox.classList.toggle('wrap', this.wrap);
+
+    const textareas = this.linesBox.querySelectorAll<HTMLTextAreaElement>('textarea');
+    textareas.forEach(t => this.fit(t));
+
+    this.updateCount();
+
+    if (focusIdx != null) {
+      this.focusRow(focusIdx, focusEnd);
+    }
+  }
+
+  fit(t: HTMLTextAreaElement): void {
+    t.style.height = '24px';
+    if (this.wrap) {
+      t.style.height = `${t.scrollHeight}px`;
+    }
+  }
+
+  fitAll(): void {
+    if (!this.linesBox) return;
+    const textareas = this.linesBox.querySelectorAll<HTMLTextAreaElement>('textarea');
+    textareas.forEach(t => this.fit(t));
+  }
+
+  setWrap(wrap: boolean): void {
+    this.wrap = wrap;
+    if (this.wrapBtn) {
+      this.wrapBtn.setAttribute('aria-pressed', String(wrap));
+    }
+    if (this.linesBox) {
+      this.linesBox.classList.toggle('wrap', wrap);
+    }
+    this.fitAll();
+    this.onSaveWrap(wrap);
   }
 
   getLines(): string[] {
     return [...this.lines];
   }
 
-  render(): void {
-    this.container.innerHTML = `
-      <div class="callpad-toolbar">
-        <div class="callpad-counts">
-          <span class="callpad-line-count-badge" id="callpadCountBadge">0 items</span>
-        </div>
-        <div class="callpad-actions">
-          <button type="button" class="btn-callpad-action" id="btnCallpadCopyAll" title="Copy all lines">
-            ${renderIcon('Copy', { size: 11 })}
-            <span>Copy All</span>
-          </button>
-          <button type="button" class="btn-callpad-action btn-callpad-clear" id="btnCallpadClearAll" title="Clear all lines">
-            ${renderIcon('Trash2', { size: 11 })}
-            <span>Clear</span>
-          </button>
-        </div>
-      </div>
-      <div class="callpad-lines-list" id="callpadLinesList"></div>
-    `;
-
-    const listEl = this.container.querySelector('#callpadLinesList');
-    if (listEl instanceof HTMLElement) this.linesList = listEl;
-
-    const countEl = this.container.querySelector('#callpadCountBadge');
-    if (countEl instanceof HTMLElement) this.countBadge = countEl;
-
-    const copyAllEl = this.container.querySelector('#btnCallpadCopyAll');
-    if (copyAllEl instanceof HTMLElement) this.btnCopyAll = copyAllEl;
-
-    const clearAllEl = this.container.querySelector('#btnCallpadClearAll');
-    if (clearAllEl instanceof HTMLElement) this.btnClearAll = clearAllEl;
-
-    if (this.btnCopyAll) {
-      this.btnCopyAll.onclick = async () => {
-        const fullText = formatCallPadCopyAll(this.lines);
-        if (!fullText) return;
-        await this.onCopy(fullText);
-        if (this.copyAllTimer) clearTimeout(this.copyAllTimer);
-        this.btnCopyAll?.classList.add('copied');
-        if (this.btnCopyAll) {
-          this.btnCopyAll.innerHTML = `${renderIcon('Check', { size: 11, strokeWidth: 2.5 })}<span>Copied</span>`;
-        }
-        this.copyAllTimer = setTimeout(() => {
-          if (this.btnCopyAll) {
-            this.btnCopyAll.innerHTML = `${renderIcon('Copy', { size: 11 })}<span>Copy All</span>`;
-            this.btnCopyAll.classList.remove('copied');
-          }
-          this.copyAllTimer = null;
-        }, 1500);
-      };
-    }
-
-    if (this.btnClearAll) {
-      this.btnClearAll.onclick = () => {
-        this.clearAll();
-      };
-    }
-
-    this.renderLines();
-    this.updateBadge();
+  rows(): HTMLElement[] {
+    if (!this.linesBox) return [];
+    return Array.from(this.linesBox.children) as HTMLElement[];
   }
 
-  renderLines(): void {
-    if (!this.linesList) return;
-    this.linesList.innerHTML = '';
-    this.lines.forEach((lineText, idx) => {
-      const lineEl = this.createLineElement(lineText, idx);
-      this.linesList?.appendChild(lineEl);
-    });
+  ta(i: number): HTMLTextAreaElement | null {
+    const r = this.rows()[i];
+    if (!r) return null;
+    return r.querySelector('textarea');
   }
 
-  createLineElement(text: string, idx: number): HTMLElement {
-    const row = document.createElement('div');
-    row.className = 'callpad-smart-line';
-    row.dataset.index = String(idx);
-
-    const hasContent = (text || '').trim().length > 0;
-
-    row.innerHTML = `
-      <input type="text" class="callpad-line-input" value="${this.escapeHtml(text)}" placeholder="Type MSISDN, note, or ID..." autocomplete="off" spellcheck="false">
-      <button type="button" class="callpad-line-copy-btn ${hasContent ? 'visible' : ''}" title="Copy line" aria-label="Copy line">
-        <span class="icon-copy" style="display:inline-flex;">${renderIcon('Copy', { size: 11 })}</span>
-        <span class="icon-check" style="display:none;line-height:0;color:var(--color-success, #22c55e);">${renderIcon('Check', { size: 11 })}</span>
-      </button>
-    `;
-
-    const input = row.querySelector('.callpad-line-input');
-    const copyBtn = row.querySelector('.callpad-line-copy-btn');
-
-    if (input instanceof HTMLInputElement && copyBtn instanceof HTMLElement) {
-      input.addEventListener('input', () => {
-        const val = input.value;
-        this.lines[idx] = val;
-        copyBtn.classList.toggle('visible', val.trim().length > 0);
-        this.updateBadge();
-        this.debounceSave();
-      });
-
-      input.addEventListener('paste', (e: ClipboardEvent) => {
-        const pasteText = e.clipboardData ? e.clipboardData.getData('text') : '';
-        if (pasteText.includes('\n')) {
-          e.preventDefault();
-          const splitLines = pasteText.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
-          if (splitLines.length > 0) {
-            this.lines.splice(idx, 1, ...splitLines);
-            this.renderLines();
-            if (this.linesList) {
-              const inputs = this.linesList.querySelectorAll('input.callpad-line-input');
-              const target = inputs[idx + splitLines.length - 1] ?? inputs[inputs.length - 1];
-              if (target instanceof HTMLInputElement) target.focus();
-            }
-            this.updateBadge();
-            this.debounceSave();
-          }
-        }
-      });
-
-      input.addEventListener('keydown', (e: KeyboardEvent) => {
-        if (e.key === 'Enter') {
-          e.preventDefault();
-          this.lines.splice(idx + 1, 0, '');
-          this.renderLines();
-          if (this.linesList) {
-            const nextInput = this.linesList.querySelectorAll('input.callpad-line-input')[idx + 1];
-            if (nextInput instanceof HTMLInputElement) nextInput.focus();
-          }
-          this.updateBadge();
-          this.debounceSave();
-        } else if (e.key === 'Backspace' && input.value === '' && this.lines.length > 1) {
-          e.preventDefault();
-          this.lines.splice(idx, 1);
-          this.renderLines();
-          const prevIdx = Math.max(0, idx - 1);
-          if (this.linesList) {
-            const prevInput = this.linesList.querySelectorAll('input.callpad-line-input')[prevIdx];
-            if (prevInput instanceof HTMLInputElement) {
-              prevInput.focus();
-              prevInput.setSelectionRange(prevInput.value.length, prevInput.value.length);
-            }
-          }
-          this.updateBadge();
-          this.debounceSave();
-        } else if (e.key === 'ArrowUp') {
-          if (idx > 0 && this.linesList) {
-            e.preventDefault();
-            const prev = this.linesList.querySelectorAll('input.callpad-line-input')[idx - 1];
-            if (prev instanceof HTMLInputElement) prev.focus();
-          }
-        } else if (e.key === 'ArrowDown') {
-          if (idx < this.lines.length - 1 && this.linesList) {
-            e.preventDefault();
-            const next = this.linesList.querySelectorAll('input.callpad-line-input')[idx + 1];
-            if (next instanceof HTMLInputElement) next.focus();
-          }
-        }
-      });
-
-      copyBtn.onclick = async () => {
-        const lineVal = (this.lines[idx] || '').trim();
-        if (!lineVal) return;
-        await this.onCopy(lineVal);
-
-        const copyIcon = copyBtn.querySelector('.icon-copy');
-        const checkIcon = copyBtn.querySelector('.icon-check');
-        if (copyIcon instanceof HTMLElement) copyIcon.style.display = 'none';
-        if (checkIcon instanceof HTMLElement) checkIcon.style.display = 'inline-flex';
-        copyBtn.classList.add('copied');
-
-        setTimeout(() => {
-          if (copyIcon instanceof HTMLElement) copyIcon.style.display = 'inline-flex';
-          if (checkIcon instanceof HTMLElement) checkIcon.style.display = 'none';
-          copyBtn.classList.remove('copied');
-        }, 1200);
-      };
-    }
-
-    return row;
+  focusRow(i: number, end: boolean = true): void {
+    const t = this.ta(i);
+    if (!t) return;
+    t.focus();
+    const p = end ? t.value.length : 0;
+    t.setSelectionRange(p, p);
   }
 
-  updateBadge(): void {
-    if (!this.countBadge) return;
-    const count = this.lines.filter(l => (typeof l === 'string' && l.trim().length > 0)).length;
-    this.countBadge.textContent = `${count} ${count === 1 ? 'item' : 'items'}`;
+  focusEnd(): void {
+    this.focusRow(this.lines.length - 1, true);
+  }
+
+  rowIndexOf(el: Element): number {
+    const row = el.closest('.callpad-row');
+    if (!row) return -1;
+    return this.rows().indexOf(row as HTMLElement);
+  }
+
+  updateCount(): void {
+    if (!this.countEl) return;
+    this.countEl.textContent = String(getCharCount(this.lines));
+  }
+
+  debounceSave(): void {
+    if (this.saveTimeout !== null) clearTimeout(this.saveTimeout);
+    this.saveTimeout = setTimeout(() => {
+      this.onSave(this.getLines());
+      this.flashSaveBadge();
+    }, 200);
+  }
+
+  flashSaveBadge(): void {
+    if (!this.saveBadge) return;
+    if (this.saveBadgeTimer !== null) clearTimeout(this.saveBadgeTimer);
+    this.saveBadge.classList.add('on');
+    this.saveBadgeTimer = setTimeout(() => {
+      this.saveBadge?.classList.remove('on');
+      this.saveBadgeTimer = null;
+    }, 900);
+  }
+
+  flash(el: HTMLElement, txt: string, orig: string): void {
+    el.classList.add('done');
+    el.textContent = txt;
+    setTimeout(() => {
+      el.classList.remove('done');
+      el.textContent = orig;
+    }, 1100);
   }
 
   clearAll(): void {
     this.lines = [''];
-    this.renderLines();
-    this.updateBadge();
-    const firstInput = this.linesList?.querySelector('input.callpad-line-input');
-    if (firstInput instanceof HTMLInputElement) firstInput.focus();
+    this.render(0, true);
     this.debounceSave();
-  }
-
-  escapeHtml(s: string): string {
-    return String(s || '').replace(/[&<>"']/g, c => {
-      const map: Record<string, string> = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
-      return map[c] ?? c;
-    });
   }
 }

@@ -13,7 +13,7 @@ import {
 } from './lib/break-timer.js';
 import { attachAutoExpand } from './lib/multiline.js';
 import { escapeHtml, uid, getAppVersion } from './lib/utils.js';
-import { SmartCallPad } from './lib/callpad.js';
+import { SmartCallPad, migrateCallpadStorage } from './lib/callpad.js';
 import { parseVettingText, isVettingClipboardText } from './lib/parser.js';
 import { initShortcuts } from './lib/shortcuts.js';
 import { RichNotepad, writeDualClipboard, calculateNoteStats } from './lib/notepad.js';
@@ -90,26 +90,59 @@ const Storage = {
       }
       return;
     }
-    try {
-      for (const [k, v] of Object.entries(obj)) {
-        localStorage.setItem(k, JSON.stringify(v));
+      try {
+        for (const [k, v] of Object.entries(obj)) {
+          localStorage.setItem(k, JSON.stringify(v));
+        }
+      } catch (e) {
+        logger.captureError('storage', e, { action: 'setMultiple-localStorage' });
       }
-    } catch (e) {
-      logger.captureError('storage', e, { action: 'setMultiple-localStorage' });
+    },
+    async remove(key) {
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        try {
+          await chrome.storage.local.remove(key);
+        } catch (e) {
+          logger.captureError('storage', e, { action: 'remove', key });
+        }
+        return;
+      }
+      try {
+        localStorage.removeItem(key);
+      } catch (e) {
+        logger.captureError('storage', e, { action: 'remove-localStorage', key });
+      }
+    },
+    async getMultiple(keys) {
+      if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+        try {
+          return await chrome.storage.local.get(keys);
+        } catch (e) {
+          logger.captureError('storage', e, { action: 'getMultiple', keys });
+          return {};
+        }
+      }
+      const res = {};
+      for (const k of keys) {
+        try {
+          const v = localStorage.getItem(k);
+          if (v !== null) res[k] = JSON.parse(v);
+        } catch (e) {
+          // ignore
+        }
+      }
+      return res;
     }
+  };
+
+  function defaultVettingTypes() {
+    return JSON.parse(JSON.stringify(defaultConfig?.types || []));
   }
-};
 
-function defaultVettingTypes() {
-  return JSON.parse(JSON.stringify(defaultConfig?.types || []));
-}
-
-let types = [];
-let settings = { theme: 'auto', autoClear: 0 };
-let callAttempt = 1;
-let callPadKeys = [];
-let callPadValues = {};
-let notes = [];
+  let types = [];
+  let settings = { theme: 'auto', autoClear: 0 };
+  let callAttempt = 1;
+  let notes = [];
 let activeNoteId = null;
 let noteSelectComponent = null;
 let typeSelectComponent = null;
@@ -847,7 +880,6 @@ btnClear.onclick = async () => {
     const lines = smartCallPadInstance.getLines ? smartCallPadInstance.getLines() : [];
     if (lines.some(l => (l || '').trim().length > 0)) {
       smartCallPadInstance.clearAll();
-      Storage.set('vpad.callpad_lines', []);
       callpadCleared = true;
     }
   }
@@ -1165,39 +1197,45 @@ function renderCallbackPanelOnly() {
 const callPadFab = document.getElementById('callPadFab');
 const callPadPopover = document.getElementById('callPadPopover');
 const callPadOverlay = document.getElementById('callPadOverlay');
-const callPadClose = document.getElementById('callPadClose');
-const callPadBody = document.getElementById('callPadBody');
-
 let smartCallPadInstance = null;
 
 async function initCallPad() {
-  const savedLines = await Storage.get('vpad.callpad_lines', null);
-  let initialLines = [''];
-  if (Array.isArray(savedLines) && savedLines.length > 0) {
-    initialLines = savedLines;
-  } else {
-    const legacyKeys = await Storage.get('vpad.callpad_keys', null);
-    if (Array.isArray(legacyKeys) && legacyKeys.length > 0) {
-      initialLines = legacyKeys.map(k => k.key).filter(k => k && k.trim());
-      if (initialLines.length === 0) initialLines = [''];
+  const storedData = await Storage.getMultiple([
+    'vpad.callpad_lines',
+    'vpad.callpad_text',
+    'vpad.callpad_freetext',
+    'vpad.callpad_keys'
+  ]);
+  const migration = migrateCallpadStorage(storedData);
+  let initialLines = migration.lines;
+
+  if (migration.keysToRemove.length > 0) {
+    for (const key of migration.keysToRemove) {
+      await Storage.remove(key);
     }
+    await Storage.set('vpad.callpad_lines', initialLines);
   }
+
+  const savedWrap = Boolean(await Storage.get('vpad.callpad_wrap', false));
 
   const savedPos = await Storage.get('vpad.callpad_pos', null);
   if (savedPos && typeof savedPos.x === 'number' && typeof savedPos.y === 'number') {
     applyFabPosition(savedPos.x, savedPos.y);
   }
 
-  if (callPadBody) {
+  if (callPadPopover) {
     smartCallPadInstance = new SmartCallPad({
-      container: callPadBody,
+      container: callPadPopover,
       initialLines,
+      initialWrap: savedWrap,
       onSave: (lines) => {
         Storage.set('vpad.callpad_lines', lines);
       },
+      onSaveWrap: (wrap) => {
+        Storage.set('vpad.callpad_wrap', wrap);
+      },
       onCopy: async (text) => {
-        await writeToClipboard(text);
-        return true;
+        return writeToClipboard(text);
       }
     });
   }
@@ -1205,29 +1243,29 @@ async function initCallPad() {
   initCallPadFabDrag();
 
   if (callPadOverlay) callPadOverlay.onclick = closeCallPad;
-  if (callPadClose) callPadClose.onclick = closeCallPad;
-
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && callPadPopover && callPadPopover.style.display !== 'none') {
-      closeCallPad();
-    }
-  });
 }
 
 function openCallPad() {
-  if (callPadPopover) callPadPopover.style.display = 'flex';
+  if (callPadPopover) {
+    callPadPopover.classList.add('open');
+    callPadPopover.style.display = 'flex';
+  }
   if (callPadOverlay) callPadOverlay.style.display = 'block';
-  const firstInp = callPadBody?.querySelector('.callpad-line-input');
-  if (firstInp) firstInp.focus();
+  if (smartCallPadInstance) {
+    smartCallPadInstance.focusEnd();
+  }
 }
 
 function closeCallPad() {
-  if (callPadPopover) callPadPopover.style.display = 'none';
+  if (callPadPopover) {
+    callPadPopover.classList.remove('open');
+    callPadPopover.style.display = 'none';
+  }
   if (callPadOverlay) callPadOverlay.style.display = 'none';
 }
 
 function toggleCallPad() {
-  if (callPadPopover && callPadPopover.style.display !== 'none') {
+  if (callPadPopover && (callPadPopover.classList.contains('open') || callPadPopover.style.display !== 'none')) {
     closeCallPad();
   } else {
     openCallPad();
