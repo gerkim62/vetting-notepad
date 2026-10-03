@@ -857,7 +857,8 @@ textarea.mat-input.vfield-textarea::-webkit-resizer {
   padding: 0;
   margin-bottom: 2px;
 }
-.paste-btn:hover {
+.paste-btn:hover,
+.paste-btn.copied-success {
   color: var(--saf-emerald);
   background: var(--saf-emerald-soft);
 }
@@ -2287,6 +2288,7 @@ textarea.mat-input.vfield-textarea::-webkit-resizer {
 .modal-body {
   padding: 10px 12px;
   overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -2305,6 +2307,9 @@ textarea.mat-input.vfield-textarea::-webkit-resizer {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+  position: relative;
 }
 .var-input-label {
   font-size: 10px;
@@ -2312,30 +2317,74 @@ textarea.mat-input.vfield-textarea::-webkit-resizer {
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 1;
+  cursor: default;
 }
-.var-remember-btn {
+/* Floating tooltip bubble for truncated labels */
+.var-label-tooltip {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 0;
+  background: var(--bg-panel-alt);
+  color: var(--text-main);
+  padding: 4px 8px;
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-line);
+  box-shadow: var(--shadow-md);
+  white-space: normal;
+  word-break: break-word;
+  max-width: 200px;
+  z-index: 130;
+  pointer-events: none;
+  animation: modalPop 0.12s ease;
+}
+/* Compact Pin icon toggle — fill and color only (no bg or border) */
+.var-pin-btn {
   border: none;
   background: transparent;
-  padding: 1px 3px;
-  border-radius: var(--radius-xs, 3px);
+  width: 18px;
+  height: 18px;
   display: inline-flex;
   align-items: center;
-  gap: 3px;
-  font-size: 9px;
+  justify-content: center;
   color: var(--text-dim, #71717a);
   cursor: pointer;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease, opacity 0.15s ease;
   user-select: none;
+  flex-shrink: 0;
+  padding: 0;
+  opacity: 0.45;
 }
-.var-remember-btn.active {
-  color: var(--saf-emerald);
+.var-pin-btn svg path:nth-child(2) {
+  fill: transparent;
+  transition: fill 0.15s ease;
 }
-.var-remember-btn:hover {
-  background: var(--bg-hover);
+.var-pin-btn:hover {
+  opacity: 0.85;
   color: var(--text-main);
+  background: transparent;
 }
-.var-remember-btn.active:hover {
+.var-pin-btn.active {
+  opacity: 1;
   color: var(--saf-emerald);
+  background: transparent;
+  border: none;
+}
+.var-pin-btn.active svg path:nth-child(2) {
+  fill: currentColor;
+}
+.var-pin-btn.active:hover {
+  opacity: 1;
+  color: var(--saf-emerald-hover, #22c55e);
+  background: transparent;
 }
 .var-input-field-wrap {
   position: relative;
@@ -2374,7 +2423,8 @@ textarea.mat-input.vfield-textarea::-webkit-resizer {
   justify-content: center;
   cursor: pointer;
 }
-.var-paste-btn:hover {
+.var-paste-btn:hover,
+.var-paste-btn.copied-success {
   color: var(--saf-emerald);
   background: var(--saf-emerald-soft);
 }
@@ -2478,31 +2528,23 @@ textarea.mat-input.vfield-textarea::-webkit-resizer {
 .var-modal-footer {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 8px;
   margin-top: 6px;
   padding-top: 8px;
   border-top: 1px solid var(--border-line);
 }
-.var-remember-label {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 10.5px;
-  color: var(--text-muted);
-  cursor: pointer;
-  user-select: none;
-  flex-shrink: 0;
-}
 .var-modal-footer .btn-action {
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  transition: background 0.15s ease, color 0.15s ease;
 }
-@media (max-width: 250px) {
+@media (max-width: 260px) {
   .var-modal-footer {
-    flex-direction: column;
-    align-items: stretch;
-    gap: 8px;
+    justify-content: stretch;
   }
   .var-modal-footer .btn-action {
     width: 100%;

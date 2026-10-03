@@ -39,6 +39,7 @@ export class SmartCallPad {
   countBadge: HTMLElement | null = null;
   btnCopyAll: HTMLElement | null = null;
   btnClearAll: HTMLElement | null = null;
+  copyAllTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(options: CallPadOptions) {
     this.container = options.container;
@@ -107,13 +108,17 @@ export class SmartCallPad {
         const fullText = formatCallPadCopyAll(this.lines);
         if (!fullText) return;
         await this.onCopy(fullText);
-        const span = this.btnCopyAll?.querySelector('span');
-        const orig = span ? span.textContent : 'Copy All';
-        if (span) span.textContent = 'Copied ✓';
+        if (this.copyAllTimer) clearTimeout(this.copyAllTimer);
         this.btnCopyAll?.classList.add('copied');
-        setTimeout(() => {
-          if (span && orig) span.textContent = orig;
-          this.btnCopyAll?.classList.remove('copied');
+        if (this.btnCopyAll) {
+          this.btnCopyAll.innerHTML = `${renderIcon('Check', { size: 11, strokeWidth: 2.5 })}<span>Copied</span>`;
+        }
+        this.copyAllTimer = setTimeout(() => {
+          if (this.btnCopyAll) {
+            this.btnCopyAll.innerHTML = `${renderIcon('Copy', { size: 11 })}<span>Copy All</span>`;
+            this.btnCopyAll.classList.remove('copied');
+          }
+          this.copyAllTimer = null;
         }, 1500);
       };
     }

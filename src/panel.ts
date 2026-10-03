@@ -1670,7 +1670,18 @@ async function smartPasteField(input) {
     btn.onclick = async () => {
       const id = btn.dataset.pasteId;
       const input = mainForm.querySelector(`.mat-input[data-id="${id}"]`);
-      if (input) await smartPasteField(input);
+      if (input) {
+        const ok = await smartPasteField(input);
+        if (ok) {
+          const origHtml = btn.innerHTML;
+          btn.classList.add('copied-success');
+          btn.innerHTML = renderIcon('Check', { size: 12, strokeWidth: 2.5 });
+          setTimeout(() => {
+            btn.classList.remove('copied-success');
+            btn.innerHTML = origHtml;
+          }, 1000);
+        }
+      }
     };
   });
 }
@@ -1900,6 +1911,18 @@ function syncPreview() {
 
 const btnCopy = document.getElementById('btnCopy');
 const copyBtnText = document.getElementById('copyBtnText');
+let copyBtnTimer: ReturnType<typeof setTimeout> | null = null;
+
+function resetCopyBtn() {
+  if (copyBtnTimer) {
+    clearTimeout(copyBtnTimer);
+    copyBtnTimer = null;
+  }
+  if (btnCopy) {
+    btnCopy.classList.remove('copied-success');
+    btnCopy.innerHTML = `${renderIcon('Copy', { size: 12 })}<span id="copyBtnText">Copy</span>`;
+  }
+}
 
 async function doCopy() {
   const t = curType();
@@ -1926,28 +1949,43 @@ async function doCopy() {
     }
   }
 
-  btnCopy.classList.add('copied-success');
-  copyBtnText.textContent = 'Copied ✓';
-  setTimeout(() => {
-    btnCopy.classList.remove('copied-success');
-    copyBtnText.textContent = 'Copy';
-  }, 1400);
+  if (copyBtnTimer) clearTimeout(copyBtnTimer);
+  if (btnCopy) {
+    btnCopy.classList.add('copied-success');
+    btnCopy.innerHTML = `${renderIcon('Check', { size: 12, strokeWidth: 2.5 })}<span id="copyBtnText">Copied</span>`;
+    copyBtnTimer = setTimeout(() => {
+      resetCopyBtn();
+    }, 1400);
+  }
 
   if (t) {
     startAutoClear(t.id);
   }
 }
-btnCopy.onclick = doCopy;
+if (btnCopy) btnCopy.onclick = doCopy;
 
 const btnPaste = document.getElementById('btnPaste');
 const pasteBtnText = document.getElementById('pasteBtnText');
 let pasteCooldown = false;
+let pasteBtnTimer: ReturnType<typeof setTimeout> | null = null;
+
+function resetPasteBtn() {
+  if (pasteBtnTimer) {
+    clearTimeout(pasteBtnTimer);
+    pasteBtnTimer = null;
+  }
+  if (btnPaste) {
+    btnPaste.classList.remove('copied-success');
+    btnPaste.innerHTML = `${renderIcon('ClipboardPaste', { size: 12 })}<span id="pasteBtnText">Paste</span>`;
+  }
+}
 
 function setMiddleActionButton(mode) {
   if (!btnPaste || !btnClear) return;
   btnPaste.style.display = '';
   btnClear.style.display = '';
   if (mode === 'paste') {
+    resetPasteBtn();
     pasteCooldown = true;
     setTimeout(() => { pasteCooldown = false; }, 350);
     btnPaste.classList.add('flip-visible');
@@ -1955,6 +1993,7 @@ function setMiddleActionButton(mode) {
     btnClear.classList.add('flip-hidden');
     btnClear.classList.remove('flip-visible');
   } else {
+    resetPasteBtn();
     btnPaste.classList.add('flip-hidden');
     btnPaste.classList.remove('flip-visible');
     btnClear.classList.add('flip-visible');
@@ -1999,12 +2038,12 @@ async function doPasteWholeVetting(clipText = null) {
   syncPreview();
 
   const count = Object.keys(parsed.values).length;
-  if (btnPaste && pasteBtnText) {
+  if (btnPaste) {
+    if (pasteBtnTimer) clearTimeout(pasteBtnTimer);
     btnPaste.classList.add('copied-success');
-    pasteBtnText.textContent = 'Pasted ✓';
-    setTimeout(() => {
-      btnPaste.classList.remove('copied-success');
-      pasteBtnText.textContent = 'Paste';
+    btnPaste.innerHTML = `${renderIcon('Check', { size: 12, strokeWidth: 2.5 })}<span id="pasteBtnText">Pasted</span>`;
+    pasteBtnTimer = setTimeout(() => {
+      resetPasteBtn();
       setMiddleActionButton('clear');
     }, 1200);
   } else {
@@ -2012,7 +2051,7 @@ async function doPasteWholeVetting(clipText = null) {
   }
 
   const typeName = curType() ? curType().name : '';
-  showBanner(`Pasted ${count} ${count === 1 ? 'field' : 'fields'} into ${typeName} ✓`, null, null, 2500, 'info');
+  showBanner(`Pasted ${count} ${count === 1 ? 'field' : 'fields'} into ${typeName}`, null, null, 2500, 'info');
 }
 
 if (btnPaste) {
@@ -2954,10 +2993,23 @@ const varFillTitle = document.getElementById('varFillTitle');
 const varFillClose = document.getElementById('varFillClose');
 const varInputsList = document.getElementById('varInputsList');
 const varPreviewText = document.getElementById('varPreviewText');
-const chkRememberVars = document.getElementById('chkRememberVars');
 const btnCopyResolved = document.getElementById('btnCopyResolved');
 
 let activeVarTemplate = null;
+let isCopyingResolved = false;
+let copyResolvedTimer = null;
+
+function resetCopyResolvedBtn() {
+  if (copyResolvedTimer) {
+    clearTimeout(copyResolvedTimer);
+    copyResolvedTimer = null;
+  }
+  isCopyingResolved = false;
+  if (btnCopyResolved) {
+    btnCopyResolved.classList.remove('copied-success');
+    btnCopyResolved.innerHTML = `${renderIcon('Copy', { size: 12 })}<span>Copy Text</span>`;
+  }
+}
 
 function resolveTemplateText(tplText, varValues) {
   if (!tplText) return '';
@@ -2989,6 +3041,7 @@ function openVarFillModal(tpl, _type) {
   }
 
   activeVarTemplate = tpl;
+  resetCopyResolvedBtn(); // Always start with a clean button
   if (varFillTitle) varFillTitle.textContent = tpl.title;
   if (varFillOverlay) varFillOverlay.style.display = 'block';
   if (varFillModal) varFillModal.style.display = 'flex';
@@ -3018,14 +3071,15 @@ function openVarFillModal(tpl, _type) {
       return `
         <div class="var-input-row ${isRem ? '' : 'transient'}" data-var-name="${escapeHtml(v)}">
           <div class="var-input-header">
-            <label class="var-input-label">${escapeHtml(v)}</label>
-            <button type="button" class="var-remember-btn ${isRem ? 'active' : ''}" data-var-name="${escapeHtml(v)}" title="${isRem ? 'Field remembered in history (click to disable)' : 'Transient field (not saved to history)'}">
-              ${renderIcon(isRem ? 'Bookmark' : 'BookmarkX', { size: 10 })}
-              <span>${isRem ? 'Remember' : 'Transient'}</span>
+            <label class="var-input-label" title="${escapeHtml(v)}">${escapeHtml(v)}</label>
+            <button type="button" class="var-pin-btn ${isRem ? 'active' : ''}" data-var-name="${escapeHtml(v)}"
+              aria-pressed="${isRem}"
+              title="${isRem ? 'Pinned to history (click to unpin)' : 'Unpinned — not saved to history (click to pin)'}">
+              ${renderIcon('Pin', { size: 12 })}
             </button>
           </div>
           <div class="var-input-field-wrap">
-            <input type="text" class="var-input" value="${escapeHtml(currentValues[v])}" placeholder="Enter ${escapeHtml(v)}..." autocomplete="off" spellcheck="false">
+            <input type="text" class="var-input" value="${escapeHtml(currentValues[v])}" placeholder="${escapeHtml(v)}..." autocomplete="off" spellcheck="false">
             <button type="button" class="var-paste-btn" title="Paste from clipboard">
               ${renderIcon('ClipboardPaste', { size: 11 })}
             </button>
@@ -3039,8 +3093,9 @@ function openVarFillModal(tpl, _type) {
       const v = row.dataset.varName;
       const inp = row.querySelector('.var-input');
       const btnPaste = row.querySelector('.var-paste-btn');
-      const btnRemember = row.querySelector('.var-remember-btn');
+      const btnPin = row.querySelector('.var-pin-btn');
       const dropdown = row.querySelector('.var-suggestions-dropdown');
+
 
       let currentSuggestions = [];
       let activeIdx = -1;
@@ -3171,19 +3226,36 @@ function openVarFillModal(tpl, _type) {
         paintActive();
       };
 
-      if (btnRemember) {
-        btnRemember.onclick = (e) => {
+      if (btnPin) {
+        // Tooltip hover for truncated labels
+        const labelEl = row.querySelector('.var-input-label');
+        if (labelEl) {
+          labelEl.addEventListener('mouseenter', () => {
+            if (labelEl.scrollWidth > labelEl.clientWidth) {
+              const tip = document.createElement('div');
+              tip.className = 'var-label-tooltip';
+              tip.textContent = v;
+              labelEl.parentElement.appendChild(tip);
+            }
+          });
+          labelEl.addEventListener('mouseleave', () => {
+            const tip = labelEl.parentElement.querySelector('.var-label-tooltip');
+            if (tip) tip.remove();
+          });
+        }
+
+        btnPin.onclick = (e) => {
           e.stopPropagation();
-          const nowRemembered = !isVarRemembered(v, varPreferences);
-          varPreferences.remember[v] = nowRemembered;
+          const nowPinned = !isVarRemembered(v, varPreferences);
+          varPreferences.remember[v] = nowPinned;
           persistVarHistory();
 
-          btnRemember.classList.toggle('active', nowRemembered);
-          btnRemember.title = nowRemembered ? 'Field remembered in history (click to disable)' : 'Transient field (not saved to history)';
-          btnRemember.innerHTML = `${renderIcon(nowRemembered ? 'Bookmark' : 'BookmarkX', { size: 10 })}<span>${nowRemembered ? 'Remember' : 'Transient'}</span>`;
-          row.classList.toggle('transient', !nowRemembered);
+          btnPin.classList.toggle('active', nowPinned);
+          btnPin.setAttribute('aria-pressed', String(nowPinned));
+          btnPin.title = nowPinned ? 'Pinned to history (click to unpin)' : 'Unpinned — not saved to history (click to pin)';
+          row.classList.toggle('transient', !nowPinned);
 
-          if (!nowRemembered) {
+          if (!nowPinned) {
             hideDropdown();
           } else {
             renderSuggestions();
@@ -3252,6 +3324,10 @@ function openVarFillModal(tpl, _type) {
               }
               hideDropdown();
             }
+          } else if (e.key === 'Enter') {
+            // When dropdown is closed, Enter triggers Copy Text
+            e.preventDefault();
+            if (btnCopyResolved) btnCopyResolved.click();
           }
         };
       }
@@ -3266,6 +3342,14 @@ function openVarFillModal(tpl, _type) {
               currentValues[v] = inp.value;
               updatePreview();
               renderSuggestions();
+
+              const origHtml = btnPaste.innerHTML;
+              btnPaste.classList.add('copied-success');
+              btnPaste.innerHTML = renderIcon('Check', { size: 11, strokeWidth: 2.5 });
+              setTimeout(() => {
+                btnPaste.classList.remove('copied-success');
+                btnPaste.innerHTML = origHtml;
+              }, 1000);
             }
           } catch (err) {
             logger.captureError('templates', err, { action: 'pasteVariable' });
@@ -3282,53 +3366,55 @@ function openVarFillModal(tpl, _type) {
 
   if (btnCopyResolved) {
     btnCopyResolved.onclick = async () => {
+      if (isCopyingResolved) return; // prevent double-click during feedback
+      isCopyingResolved = true;
+
       const resolved = resolveTemplateText(tpl.text, currentValues);
       await writeToClipboard(resolved);
 
-      if (chkRememberVars && chkRememberVars.checked) {
-        const saveRes = saveVarRecord(varHistory, currentValues, varPreferences);
-        varHistory = saveRes.updatedHistory;
-        varPreferences = saveRes.updatedPrefs;
-        persistVarHistory();
+      // Auto-save all pinned fields to history (no checkbox needed)
+      const saveRes = saveVarRecord(varHistory, currentValues, varPreferences);
+      varHistory = saveRes.updatedHistory;
+      varPreferences = saveRes.updatedPrefs;
+      persistVarHistory();
 
-        vars.forEach(v => {
-          if (isVarRemembered(v, varPreferences)) {
-            rememberedTemplateVars[v] = currentValues[v] || '';
-          } else {
-            delete rememberedTemplateVars[v];
-          }
-        });
-        saveRememberedVars();
-
-        if (saveRes.autoMutedVars.length > 0) {
-          const mutedVar = saveRes.autoMutedVars[0];
-          showBanner(
-            `Excluded '${mutedVar}' from history`,
-            'Keep Remembering',
-            () => {
-              varPreferences.remember[mutedVar] = true;
-              persistVarHistory();
-              showBanner(`'${mutedVar}' will be remembered`, null, null, 2000, 'success');
-            },
-            4500,
-            'info'
-          );
+      vars.forEach(v => {
+        if (isVarRemembered(v, varPreferences)) {
+          rememberedTemplateVars[v] = currentValues[v] || '';
+        } else {
+          delete rememberedTemplateVars[v];
         }
+      });
+      saveRememberedVars();
+
+      if (saveRes.autoMutedVars.length > 0) {
+        const mutedVar = saveRes.autoMutedVars[0];
+        showBanner(
+          `Excluded '${mutedVar}' from history`,
+          'Keep Pinned',
+          () => {
+            varPreferences.remember[mutedVar] = true;
+            persistVarHistory();
+            showBanner(`'${mutedVar}' will be remembered`, null, null, 2000, 'success');
+          },
+          4500,
+          'info'
+        );
       }
 
-      const origHtml = btnCopyResolved.innerHTML;
+      // Icon-morphing feedback — no duplicate ✓ symbol
       btnCopyResolved.classList.add('copied-success');
-      btnCopyResolved.innerHTML = `${renderIcon('Check', { size: 12, strokeWidth: 2.5 })}<span>Copied ✓</span>`;
-      setTimeout(() => {
-        btnCopyResolved.classList.remove('copied-success');
-        btnCopyResolved.innerHTML = origHtml;
+      btnCopyResolved.innerHTML = `${renderIcon('Check', { size: 12, strokeWidth: 2.5 })}<span>Copied</span>`;
+      copyResolvedTimer = setTimeout(() => {
+        resetCopyResolvedBtn();
         closeVarFillModal();
-      }, 700);
+      }, 800);
     };
   }
 }
 
 function closeVarFillModal() {
+  resetCopyResolvedBtn(); // Always reset button state when closing
   if (varFillOverlay) varFillOverlay.style.display = 'none';
   if (varFillModal) varFillModal.style.display = 'none';
   activeVarTemplate = null;
@@ -3850,9 +3936,9 @@ function renderSettingsView() {
         const result = await exportDebugDiagnostics(diagnostics);
         if (result.success) {
           if (result.method === 'clipboard') {
-            showBanner('Debug logs copied to clipboard ✓', null, null, 3000, 'info');
+            showBanner('Debug logs copied to clipboard', null, null, 3000, 'info');
           } else {
-            showBanner('Debug logs exported successfully ✓', null, null, 2500, 'info');
+            showBanner('Debug logs exported successfully', null, null, 2500, 'info');
           }
         } else {
           logger.error('export-diagnostics', 'Export failed', { error: result.error });
@@ -4388,11 +4474,11 @@ async function copyActiveNote() {
     const origHtml = btnCopyNote.innerHTML;
     const origTitle = btnCopyNote.title;
     btnCopyNote.classList.add('copied-success');
-    btnCopyNote.title = 'Copied ✓';
+    btnCopyNote.title = 'Copied';
     btnCopyNote.innerHTML = renderIcon('Check', { size: 13, strokeWidth: 2.5 });
 
     if (noteSaveStatus) {
-      noteSaveStatus.textContent = 'Copied ✓';
+      noteSaveStatus.textContent = 'Copied';
       noteSaveStatus.className = 'saved';
     }
 
