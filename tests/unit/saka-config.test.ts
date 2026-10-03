@@ -45,4 +45,44 @@ describe('SAKA Vetting Configuration', () => {
       });
     });
   });
+
+  it('configures Customer Query and Resolution Given as multiline with maxLines by default', () => {
+    const gen = config.types.find(t => t.id === 'general');
+    expect(gen).toBeDefined();
+    const queryField = gen?.required.find(f => f.id === 'gen_query');
+    const resField = gen?.required.find(f => f.id === 'gen_resolution');
+
+    expect(queryField?.multiline).toBe(true);
+    expect(queryField?.maxLines).toBe(4);
+    expect(resField?.multiline).toBe(true);
+    expect(resField?.maxLines).toBe(4);
+  });
+
+  it('verifies policy items contain itemType and violationAdvice per SAKA guidelines', () => {
+    const startKey = config.types.find(t => t.id === 'startkey');
+    expect(startKey).toBeDefined();
+    const txnRule = startKey?.optional.find(f => f.id === 'sk_rule_24h_txn');
+    const swapRule = startKey?.optional.find(f => f.id === 'sk_rule_24h_swap');
+
+    expect(txnRule?.excludeFromCount).toBe(true);
+    expect(txnRule?.itemType).toBe('policy');
+    expect(txnRule?.violationAdvice).toContain('Retail Center');
+
+    expect(swapRule?.excludeFromCount).toBe(true);
+    expect(swapRule?.itemType).toBe('policy');
+    expect(swapRule?.violationAdvice).toContain('wait 24h');
+  });
+
+  it('verifies Apps Wiped post-action item is present in SIM Swap and Line Barring as itemType action', () => {
+    const swap = config.types.find(t => t.id === 'swap');
+    expect(swap).toBeDefined();
+    const swapApps = swap?.optional.find(f => f.id === 'swap_apps_wiped');
+    expect(swapApps).toBeDefined();
+    expect(swapApps?.itemType).toBe('action');
+
+    const bar = config.types.find(t => t.id === 'bar_self');
+    const barApps = bar?.optional.find(f => f.id === 'bar_apps_wiped');
+    expect(barApps).toBeDefined();
+    expect(barApps?.itemType).toBe('action');
+  });
 });

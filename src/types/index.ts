@@ -11,6 +11,8 @@ export interface VettingField {
   maxLines?: number;
   group?: string;
   groupMin?: number;
+  violationAdvice?: string;
+  itemType?: 'input' | 'policy' | 'action';
 }
 
 export interface VettingDiyAction {

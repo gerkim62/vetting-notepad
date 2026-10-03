@@ -171,6 +171,26 @@
             <input type="checkbox" id="chkClearCallpadOnClear" class="custom-chk">
           </label>
 
+          <div class="section-head" style="margin-top:14px;">Notes / Comment Input</div>
+          <p style="font-size:10.5px;color:var(--text-muted);margin-bottom:6px;">Configure whether the bottom notes field auto-expands and set maximum lines.</p>
+          <label class="setting-toggle-row">
+            <div class="setting-toggle-info">
+              <span>Multiline (expandable)</span>
+              <span class="setting-toggle-sub">Auto-expands on typing or Shift+Enter</span>
+            </div>
+            <input type="checkbox" id="chkNotesMultiline" class="custom-chk" checked>
+          </label>
+          <div id="notesMaxLinesSettingRow" style="margin-top:8px;">
+            <div style="font-size:10px;font-weight:600;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.04em;">Max Auto-Expand Lines</div>
+            <div class="setting-chips" id="notesMaxLinesChips">
+              <button class="chip" data-lines="2">2</button>
+              <button class="chip" data-lines="3">3</button>
+              <button class="chip" data-lines="4">4</button>
+              <button class="chip" data-lines="5">5</button>
+              <button class="chip" data-lines="8">8</button>
+            </div>
+          </div>
+
           <div class="section-head" style="margin-top:16px;">Configuration & Data</div>
           <div style="display:flex;gap:6px;margin-bottom:8px;">
             <button class="btn-action" id="btnExportData"

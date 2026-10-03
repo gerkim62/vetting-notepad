@@ -51,7 +51,11 @@ export function sanitizeHtml(dirty: unknown): string {
  * Generates a random alphanumeric unique ID.
  */
 export function uid(len = 6): string {
-  return Math.random().toString(36).slice(2, 2 + len);
+  let s = '';
+  while (s.length < len) {
+    s += Math.random().toString(36).slice(2);
+  }
+  return s.slice(0, len);
 }
 
 /**

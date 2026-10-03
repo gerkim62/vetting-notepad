@@ -656,6 +656,8 @@ function isVettingItem(it) {
     lbl.includes('reversal type') ||
     lbl.includes('wrong account') ||
     lbl.includes('correct account') ||
+    it.itemType === 'policy' ||
+    it.itemType === 'action' ||
     it.excludeFromCount
   ) {
     return false;
@@ -681,11 +683,11 @@ function countSecondaryPassed(t, st, v) {
   let passed = 0;
   const seen = new Set();
   t.optional.forEach(it => {
-    if (it.excludeFromCount) return;
+    if (it.excludeFromCount || it.itemType === 'policy' || it.itemType === 'action') return;
     if (it.group) {
       if (seen.has(it.group)) return;
       seen.add(it.group);
-      const grp = t.optional.filter(x => x.group === it.group && !x.excludeFromCount);
+      const grp = t.optional.filter(x => x.group === it.group && !x.excludeFromCount && x.itemType !== 'policy' && x.itemType !== 'action');
       if (grp.length && getGroupStatus(grp, st) === 'passed') passed++;
     } else if (getItemEffectiveStatus(it, st, v[it.id]) === 'passed') {
       passed++;
@@ -695,8 +697,16 @@ function countSecondaryPassed(t, st, v) {
 }
 
 function getCallbackInfo(t, st, v) {
-  const failedItems = [...t.required, ...t.optional].filter(it => st[it.id] === 'failed');
+  const allItems = [...t.required, ...t.optional];
+  const failedItems = allItems.filter(it => st[it.id] === 'failed');
   if (failedItems.length === 0) return { show: false };
+
+  const policyViolated = failedItems.find(it => it.itemType === 'policy');
+  if (policyViolated) {
+    const directive = policyViolated.violationAdvice || policyViolated.info || 'Policy rule violated. Refer customer to Retail as per policy.';
+    return { show: true, policy: true, policyDirective: directive, policyItem: policyViolated };
+  }
+
   if (failedItems.some(it => isPrimaryItem(it))) return { show: true, primary: true };
 
   const minSec = t.minSecondary || 0;
@@ -738,6 +748,8 @@ function buildCopyText(t) {
     if (activeDiys.length > 0) {
       const diyText = activeDiys.map(d => d.adviceText || d.label).join(' and ');
       topAdvice = `${typeName}: Processed. ${diyText}.`;
+    } else if (cb.policy && cb.policyDirective) {
+      topAdvice = `${typeName}: Policy restriction triggered. ${cb.policyDirective}`;
     } else if (!isFailed) {
       topAdvice = `${typeName}: Customer vetted successfully on primary details. Guided as per policy.`;
     } else {
@@ -774,6 +786,20 @@ function buildCopyText(t) {
       const groupItems = allItems.filter(x => x.group === it.group);
       const parts = [];
       for (const git of groupItems) {
+        if (git.itemType === 'action') {
+          if (st[git.id] === 'passed' || v[git.id] === 'Done') {
+            const { copy: copyLabel } = parseLabel(git.label);
+            parts.push(`${copyLabel}: Done`);
+          }
+          continue;
+        }
+        if (git.itemType === 'policy') {
+          if (st[git.id] === 'failed') {
+            const { copy: copyLabel } = parseLabel(git.label);
+            parts.push(`${copyLabel}: Violated (Policy Restriction)`);
+          }
+          continue;
+        }
         const val = (v[git.id] || '').trim();
         const isUnchangedDefault = git.defaultValue && val === git.defaultValue.trim() && !st[git.id];
         if (git.omitDefault && isUnchangedDefault) {
@@ -796,6 +822,20 @@ function buildCopyText(t) {
         lines.push(parts.join(', '));
       }
     } else {
+      if (it.itemType === 'action') {
+        if (st[it.id] === 'passed' || v[it.id] === 'Done') {
+          const { copy: copyLabel } = parseLabel(it.label);
+          lines.push(`${copyLabel}: Done`);
+        }
+        continue;
+      }
+      if (it.itemType === 'policy') {
+        if (st[it.id] === 'failed') {
+          const { copy: copyLabel } = parseLabel(it.label);
+          lines.push(`${copyLabel}: Violated (Policy Restriction)`);
+        }
+        continue;
+      }
       const val = (v[it.id] || '').trim();
       const isUnchangedDefault = it.defaultValue && val === it.defaultValue.trim() && !st[it.id];
       if (it.omitDefault && isUnchangedDefault) {
@@ -1216,6 +1256,10 @@ function renderCallbackPanelHtml(t, st) {
   if (!cb.show) return '';
   const failedLabels = (cb.labels || []).join(', ');
 
+  if (cb.policy && cb.policyDirective) {
+    return `<div class="saka-callback-panel primary-failed policy-violation-panel" title="Policy Rule Violation"><span class="saka-callback-body"><b class="saka-hl">[POLICY VIOLATION]</b> ${escapeHtml(cb.policyDirective)}</span></div>`;
+  }
+
   if (cb.primary) {
     return `<div class="saka-callback-panel primary-failed" title="Personal details failed (SAKA VMDA-0001). Stop vetting. Advise customer to visit Retail Centre / Care Desk with original ID. Do not probe further account details."><span class="saka-callback-body"><b class="saka-hl">Personal failed.</b> Stop. Refer to <strong>Retail/Care Desk</strong> with ID.</span></div>`;
   }
@@ -1486,42 +1530,37 @@ function renderDiyChips(t) {
     const isActive = activeIds.includes(diy.id);
     const linkedTpl = diy.smsId ? quickSmsTemplates.find(s => s.id === diy.smsId) : null;
     return `
-      <div class="diy-chip ${isActive ? 'active' : ''}" data-diy-id="${escapeHtml(diy.id)}">
-        <span class="diy-chip-label" title="${escapeHtml(diy.adviceText || diy.label)}">
-          ${isActive ? renderIcon('Check', { size: 10, strokeWidth: 2.5 }) : '+'} ${escapeHtml(diy.label)}
-        </span>
-        ${linkedTpl ? `
-          <span class="diy-chip-copy" data-diy-copy="${escapeHtml(diy.id)}" title="Copy SMS: ${escapeHtml(linkedTpl.title)}">
-            ${renderIcon('Copy', { size: 10 })}
-          </span>
-        ` : ''}
-      </div>
+      <button type="button" class="diy-chip ${isActive ? 'active' : ''}" data-diy-id="${escapeHtml(diy.id)}" title="${escapeHtml(diy.adviceText || diy.label)}">
+        <span class="diy-chip-icon">${isActive ? renderIcon('Check', { size: 10, strokeWidth: 2.5 }) : '+'}</span>
+        <span class="diy-chip-text">${escapeHtml(diy.label)}</span>
+        ${linkedTpl ? `<span class="diy-sms-badge">${renderIcon('MessageSquare', { size: 8 })} SMS</span>` : ''}
+      </button>
     `;
   }).join('');
 
-  diyRow.querySelectorAll('.diy-chip-label').forEach(labelEl => {
-    (labelEl as HTMLElement).onclick = (e) => {
+  diyRow.querySelectorAll('.diy-chip').forEach(chipEl => {
+    (chipEl as HTMLElement).onclick = async (e) => {
       e.stopPropagation();
-      const chipEl = labelEl.closest('.diy-chip') as HTMLElement;
-      const diyId = chipEl?.dataset.diyId;
+      const diyId = (chipEl as HTMLElement).dataset.diyId;
       if (!diyId) return;
 
       if (!activeDiyState[t.id]) activeDiyState[t.id] = [];
       const idx = activeDiyState[t.id].indexOf(diyId);
-      if (idx === -1) {
-        activeDiyState[t.id].push(diyId);
-      } else {
+      const isCurrentlyActive = idx !== -1;
+
+      if (isCurrentlyActive) {
+        // Deselect: remove from state, do not copy
         activeDiyState[t.id].splice(idx, 1);
+        renderDiyChips(t);
+        syncPreview();
+        return;
       }
+
+      // Select: add to state
+      activeDiyState[t.id].push(diyId);
       renderDiyChips(t);
       syncPreview();
-    };
-  });
 
-  diyRow.querySelectorAll('.diy-chip-copy').forEach(copyBtn => {
-    (copyBtn as HTMLElement).onclick = async (e) => {
-      e.stopPropagation();
-      const diyId = (copyBtn as HTMLElement).dataset.diyCopy;
       const diy = t.diyActions?.find(d => d.id === diyId);
       if (!diy || !diy.smsId) return;
 
@@ -1540,22 +1579,21 @@ function renderDiyChips(t) {
         }
       }
 
-      await writeToClipboard(smsText);
-
-      const chipEl = (copyBtn as HTMLElement).closest('.diy-chip') as HTMLElement | null;
-      if (chipEl) {
-        chipEl.classList.remove('chip-copied');
-        void chipEl.offsetWidth;
-        chipEl.classList.add('chip-copied');
+      const remainingVars = parseTemplateVariables(smsText);
+      if (remainingVars.length > 0) {
+        openVarFillModal(foundTpl, 'sms');
+      } else {
+        await writeToClipboard(smsText);
+        const updatedChip = diyRow.querySelector(`.diy-chip[data-diy-id="${diyId}"]`) as HTMLElement | null;
+        if (updatedChip) {
+          updatedChip.classList.remove('chip-copied');
+          void updatedChip.offsetWidth;
+          updatedChip.classList.add('chip-copied');
+          setTimeout(() => {
+            updatedChip.classList.remove('chip-copied');
+          }, 1250);
+        }
       }
-
-      copyBtn.classList.add('copied');
-      copyBtn.innerHTML = renderIcon('Check', { size: 10, strokeWidth: 2.5 });
-      setTimeout(() => {
-        copyBtn.classList.remove('copied');
-        copyBtn.innerHTML = renderIcon('Copy', { size: 10 });
-        if (chipEl) chipEl.classList.remove('chip-copied');
-      }, 1250);
     };
   });
 }
@@ -1609,8 +1647,40 @@ function createRowHtml(it, kind, idx) {
     </div>
   ` : `<div class="status-actions"></div>`;
 
+  if (it.itemType === 'policy') {
+    const isViolated = st === 'failed';
+    return `
+      <div class="item-row policy-row ${isViolated ? 'is-violated' : ''}" data-id="${it.id}">
+        <div class="policy-left">
+          <span class="policy-label-text" title="${escapeHtml(lblTitle)}">${lblDisplay}</span>
+          ${infoBtnHtml}
+        </div>
+        <button type="button" class="policy-flag-btn ${isViolated ? 'active' : ''}" data-policy-flag="${it.id}" title="Toggle Rule Violation">
+          ${isViolated ? renderIcon('AlertTriangle', { size: 10, strokeWidth: 2.2 }) : renderIcon('Ban', { size: 10 })}
+          <span>${isViolated ? 'Violated' : 'Flag Rule'}</span>
+        </button>
+      </div>
+    `;
+  }
+
+  if (it.itemType === 'action') {
+    const isDone = st === 'passed' || val === 'Done';
+    return `
+      <div class="item-row action-row ${isDone ? 'is-done' : ''}" data-id="${it.id}">
+        <div class="action-left">
+          <span class="action-label-text" title="${escapeHtml(lblTitle)}">${lblDisplay}</span>
+          ${infoBtnHtml}
+        </div>
+        <button type="button" class="btn-action-done ${isDone ? 'active' : ''}" data-action-id="${it.id}" title="Mark SOP action as done">
+          ${isDone ? renderIcon('Check', { size: 10, strokeWidth: 2.5 }) : ''}
+          <span>Done</span>
+        </button>
+      </div>
+    `;
+  }
+
   return `
-    <div class="item-row ${kind}${it.excludeFromCount ? ' policy-only' : ''}" data-id="${it.id}">
+    <div class="item-row ${kind}" data-id="${it.id}">
       <div class="field-container">
         <div class="material-field ${isExpanded ? 'expanded' : ''} ${isFilled ? 'has-value' : ''} ${st ? 'status-' + st : ''}">
           <label class="mat-label" for="inp_${it.id}" title="${escapeHtml(lblTitle)}">
@@ -1646,12 +1716,15 @@ function updateRowGuide(itemId) {
   if (!t) return;
   const it = [...t.required, ...t.optional].find(x => x.id === itemId);
   if (!it) return;
+  if (it.itemType === 'policy' || it.itemType === 'action') return;
 
   const row = mainForm.querySelector(`.item-row[data-id="${itemId}"]`);
   if (!row) return;
 
-  const input = row.querySelector('.mat-input');
+  const input = row.querySelector('.mat-input') as HTMLInputElement | HTMLTextAreaElement | null;
   const fieldBox = row.querySelector('.material-field');
+  if (!input || !fieldBox) return;
+
   const track = row.querySelector(`#track_${itemId}`);
   const counter = row.querySelector(`#cnt_${itemId}`);
 
@@ -1728,8 +1801,18 @@ function bindFormEvents() {
 
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
-        if (input.tagName.toLowerCase() === 'textarea' && !e.ctrlKey && !e.metaKey) {
-          return;
+        if (input.tagName.toLowerCase() === 'textarea') {
+          if (e.shiftKey) {
+            setTimeout(() => {
+              const expander = (input as any)._autoExpander;
+              if (expander) expander.adjustHeight();
+              else {
+                input.style.height = 'auto';
+                input.style.height = input.scrollHeight + 'px';
+              }
+            }, 0);
+            return;
+          }
         }
         e.preventDefault();
         const inputs = [...mainForm.querySelectorAll('.mat-input')];
@@ -1744,7 +1827,54 @@ function bindFormEvents() {
   });
 
   mainForm.querySelectorAll('textarea.vfield-textarea').forEach(tx => {
-    attachAutoExpand(tx, tx.dataset.maxLines || 4);
+    const expander = attachAutoExpand(tx as HTMLTextAreaElement, (tx as HTMLElement).dataset.maxLines ? parseInt((tx as HTMLElement).dataset.maxLines, 10) : 4);
+    (tx as any)._autoExpander = expander;
+  });
+
+  mainForm.querySelectorAll('[data-policy-flag]').forEach(btn => {
+    (btn as HTMLElement).onclick = () => {
+      stopAutoClear();
+      const id = (btn as HTMLElement).dataset.policyFlag;
+      if (!id) return;
+      const cur = curStatus()[id];
+      const newStatus = cur === 'failed' ? null : 'failed';
+      curStatus()[id] = newStatus;
+
+      const row = btn.closest('.item-row.policy-row, .item-row.policy-only');
+      if (row) {
+        row.classList.toggle('is-violated', newStatus === 'failed');
+        btn.classList.toggle('active', newStatus === 'failed');
+        btn.innerHTML = newStatus === 'failed'
+          ? `${renderIcon('AlertTriangle', { size: 10, strokeWidth: 2.2 })} <span>Violated</span>`
+          : `${renderIcon('Ban', { size: 10 })} <span>Flag Rule</span>`;
+      }
+
+      renderCallbackPanelOnly();
+      syncPreview();
+    };
+  });
+
+  mainForm.querySelectorAll('[data-action-id]').forEach(btn => {
+    (btn as HTMLElement).onclick = () => {
+      stopAutoClear();
+      const id = (btn as HTMLElement).dataset.actionId;
+      if (!id) return;
+      const cur = curStatus()[id];
+      const newStatus = cur === 'passed' ? null : 'passed';
+      curStatus()[id] = newStatus;
+      curValues()[id] = newStatus === 'passed' ? 'Done' : '';
+
+      const row = btn.closest('.item-row.action-row');
+      if (row) {
+        row.classList.toggle('is-done', newStatus === 'passed');
+        btn.classList.toggle('active', newStatus === 'passed');
+        btn.innerHTML = newStatus === 'passed'
+          ? `${renderIcon('Check', { size: 10, strokeWidth: 2.5 })} <span>Done</span>`
+          : `<span>Done</span>`;
+      }
+
+      syncPreview();
+    };
   });
 
   mainForm.querySelectorAll('[data-status-btn]').forEach(btn => {
@@ -1886,25 +2016,62 @@ const commentFieldBox = document.getElementById('commentFieldBox');
 const commentSuggestionsMenu = document.getElementById('commentSuggestionsMenu');
 const notesLinePicker = document.getElementById('notesLinePicker');
 
-let commentInputAutoExpand = attachAutoExpand(commentInput, {
+let notesMultilineEnabled = true;
+let notesMaxLinesValue = 4;
+
+let commentInputAutoExpand: AutoExpandController | null = attachAutoExpand(commentInput, {
   maxLines: 4,
   onResizeLines: (lines) => {
+    notesMaxLinesValue = lines;
     Storage.set('vpad.notes_max_lines', lines);
   }
 });
 
-async function loadNotesMaxLines() {
-  const saved = await Storage.get('vpad.notes_max_lines', 4);
-  const n = parseInt(saved, 10);
-  if (n && commentInputAutoExpand) {
-    commentInputAutoExpand.setMaxLines(n);
+function applyNotesMultilineState(isMulti: boolean, lines: number) {
+  if (!commentInput) return;
+  if (!isMulti) {
+    if (commentInputAutoExpand) {
+      commentInputAutoExpand.destroy();
+      commentInputAutoExpand = null;
+    }
+    commentInput.rows = 1;
+    commentInput.style.height = '22px';
+    commentInput.style.overflowY = 'hidden';
+    commentInput.style.resize = 'none';
+  } else {
+    commentInput.style.resize = 'vertical';
+    if (!commentInputAutoExpand) {
+      commentInputAutoExpand = attachAutoExpand(commentInput, {
+        maxLines: lines,
+        onResizeLines: (l) => {
+          notesMaxLinesValue = l;
+          Storage.set('vpad.notes_max_lines', l);
+        }
+      });
+    } else {
+      commentInputAutoExpand.setMaxLines(lines);
+    }
+    commentInputAutoExpand.adjustHeight();
   }
+}
+
+async function loadNotesSettings() {
+  const savedMulti = await Storage.get('vpad.notes_multiline', true);
+  notesMultilineEnabled = savedMulti === true || savedMulti === 'true' || savedMulti === 1;
+  const savedLines = await Storage.get('vpad.notes_max_lines', 4);
+  notesMaxLinesValue = parseInt(String(savedLines), 10) || 4;
+  applyNotesMultilineState(notesMultilineEnabled, notesMaxLinesValue);
+}
+
+async function loadNotesMaxLines() {
+  await loadNotesSettings();
 }
 
 if (commentInput && notesLinePicker) {
   commentInput.addEventListener('contextmenu', (e) => {
     e.preventDefault();
-    const curLines = parseInt(commentInput.dataset.maxLines || '4', 10);
+    if (!notesMultilineEnabled) return;
+    const curLines = notesMaxLinesValue;
     notesLinePicker.querySelectorAll('.nlp-btn').forEach(btn => {
       btn.classList.toggle('active', parseInt((btn as HTMLElement).dataset.lines || '0', 10) === curLines);
     });
@@ -1921,9 +2088,10 @@ if (commentInput && notesLinePicker) {
     (btn as HTMLElement).onclick = (e) => {
       e.stopPropagation();
       const lines = parseInt((btn as HTMLElement).dataset.lines || '0', 10);
-      if (lines && commentInputAutoExpand) {
-        commentInputAutoExpand.setMaxLines(lines);
+      if (lines) {
+        notesMaxLinesValue = lines;
         Storage.set('vpad.notes_max_lines', lines);
+        applyNotesMultilineState(notesMultilineEnabled, notesMaxLinesValue);
       }
       notesLinePicker.style.display = 'none';
     };
@@ -2091,6 +2259,12 @@ commentInput.addEventListener('keydown', (e) => {
   }
 
   if (e.key === 'Enter') {
+    if (e.shiftKey && notesMultilineEnabled) {
+      setTimeout(() => {
+        if (commentInputAutoExpand) commentInputAutoExpand.adjustHeight();
+      }, 0);
+      return;
+    }
     e.preventDefault();
     closeCommentSuggestions();
     doCopy();
@@ -2569,10 +2743,22 @@ function createEditRowHtml(it, kind, idx, total, list) {
             <span>Omit from copy if unchanged from default</span>
           </label>
         </div>
+        <div class="drawer-field">
+          <span class="drawer-label">Item Type:</span>
+          <select class="el-item-type">
+            <option value="input" ${(!it.itemType || it.itemType === 'input') ? 'selected' : ''}>Standard Input (Text Field)</option>
+            <option value="policy" ${it.itemType === 'policy' ? 'selected' : ''}>Policy Rule (Flag / Violated)</option>
+            <option value="action" ${it.itemType === 'action' ? 'selected' : ''}>SOP Action (Checklist Done)</option>
+          </select>
+        </div>
+        <div class="drawer-field el-violation-row" id="violation_row_${it.id}" style="${it.itemType === 'policy' ? '' : 'display:none;'}">
+          <span class="drawer-label">Violation Directive (SAKA Referral):</span>
+          <input type="text" class="el-violation-advice" value="${escapeHtml(it.violationAdvice || '')}" placeholder="e.g. Refer customer to Retail Center...">
+        </div>
         <div class="drawer-field drawer-field-checkbox">
           <label class="drawer-check-label">
             <input type="checkbox" class="el-exclude-count" ${it.excludeFromCount ? 'checked' : ''}>
-            <span>Policy-only (exclude from secondary count)</span>
+            <span>Exclude from Secondary Count</span>
           </label>
         </div>
         <div class="drawer-field drawer-field-checkbox">
@@ -2936,6 +3122,34 @@ function bindEditEvents() {
       const val = parseInt(e.target.value, 10);
       item.maxLines = Math.min(Math.max(isNaN(val) ? 4 : val, 2), 10);
       e.target.value = item.maxLines;
+      saveTypes();
+    } else if (e.target.classList.contains('el-item-type')) {
+      const group = e.target.closest('.edit-item-group');
+      if (!group) return;
+      const kind = group.dataset.kind;
+      const list = kind === 'required' ? t.required : t.optional;
+      const item = list.find(x => x.id === group.dataset.id);
+      if (!item) return;
+      const val = e.target.value;
+      item.itemType = (val === 'input' ? undefined : val as 'policy' | 'action');
+      if (item.itemType === 'policy' || item.itemType === 'action') {
+        item.excludeFromCount = true;
+      }
+      const violRow = group.querySelector(`#violation_row_${item.id}`);
+      if (violRow) (violRow as HTMLElement).style.display = item.itemType === 'policy' ? 'flex' : 'none';
+      const exclCountBox = group.querySelector('.el-exclude-count') as HTMLInputElement | null;
+      if (exclCountBox && item.excludeFromCount) exclCountBox.checked = true;
+      const btn = group.querySelector('.btn-toggle-drawer');
+      if (btn) btn.classList.toggle('has-rich', !!(item.article || item.info || item.v360 || item.defaultValue || item.excludeFromCount || item.multiline || item.itemType));
+      saveTypes();
+    } else if (e.target.classList.contains('el-violation-advice')) {
+      const group = e.target.closest('.edit-item-group');
+      if (!group) return;
+      const kind = group.dataset.kind;
+      const list = kind === 'required' ? t.required : t.optional;
+      const item = list.find(x => x.id === group.dataset.id);
+      if (!item) return;
+      item.violationAdvice = e.target.value.trim() || undefined;
       saveTypes();
     }
   };
@@ -4696,6 +4910,36 @@ function renderSettingsView() {
         await Storage.set('vpad.clear_callpad_on_clear', false);
       }
     };
+  }
+
+  const chkNotesMultiline = document.getElementById('chkNotesMultiline') as HTMLInputElement | null;
+  const notesMaxLinesSettingRow = document.getElementById('notesMaxLinesSettingRow');
+  const notesMaxLinesChips = document.getElementById('notesMaxLinesChips');
+
+  if (chkNotesMultiline) {
+    chkNotesMultiline.checked = notesMultilineEnabled;
+    if (notesMaxLinesSettingRow) {
+      notesMaxLinesSettingRow.style.display = notesMultilineEnabled ? 'block' : 'none';
+    }
+    chkNotesMultiline.onchange = () => {
+      notesMultilineEnabled = chkNotesMultiline.checked;
+      Storage.set('vpad.notes_multiline', notesMultilineEnabled);
+      applyNotesMultilineState(notesMultilineEnabled, notesMaxLinesValue);
+      renderSettingsView();
+    };
+  }
+
+  if (notesMaxLinesChips) {
+    notesMaxLinesChips.querySelectorAll('.chip').forEach(c => {
+      const lines = parseInt((c as HTMLElement).dataset.lines || '4', 10);
+      c.classList.toggle('active', lines === notesMaxLinesValue);
+      (c as HTMLElement).onclick = () => {
+        notesMaxLinesValue = lines;
+        Storage.set('vpad.notes_max_lines', lines);
+        applyNotesMultilineState(notesMultilineEnabled, notesMaxLinesValue);
+        renderSettingsView();
+      };
+    });
   }
 
   // Export Configuration & Data

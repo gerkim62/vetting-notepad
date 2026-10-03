@@ -142,6 +142,14 @@
           "label": "Alternative Number",
           "len": 10,
           "info": "[SAKA SSCB-0006]\n10-digit alternative contact number."
+        },
+        {
+          "id": "swap_apps_wiped",
+          "label": "Apps Wiped // CRM",
+          "len": 0,
+          "info": "[SAKA SKKI-0001 / VMDA-0001]\nPost-swap mandatory security: CEE must wipe out mySafaricom App, MyOne App, and M-PESA Apps on CRM.",
+          "excludeFromCount": true,
+          "itemType": "action"
         }
       ],
       "comments": [
@@ -306,28 +314,32 @@
           "label": "Siebel Status // Suspended",
           "len": 0,
           "info": "[SAKA BADD-0003]\nSet Siebel status to \"Suspended\" > Action reason \"Suspend – Handset Lost/Stolen\" or \"Suspend All Customer request\".",
-          "excludeFromCount": true
+          "excludeFromCount": true,
+          "itemType": "action"
         },
         {
           "id": "bar_hlr_sawa",
           "label": "HLR Status // BAOC/BAIC",
           "len": 0,
           "info": "[SAKA BADD-0003]\nConfirm BAOC reads OC and BAIC reads IC. If not successful, suspend on HLR under supplementary services > BAR Lost line.",
-          "excludeFromCount": true
+          "excludeFromCount": true,
+          "itemType": "action"
         },
         {
           "id": "bar_g3_status",
           "label": "M-PESA G3 Status // Barred",
           "len": 0,
           "info": "[SAKA BADD-0003]\nBar on M-PESA G3 to secure money in customer wallet.",
-          "excludeFromCount": true
+          "excludeFromCount": true,
+          "itemType": "action"
         },
         {
           "id": "bar_apps_wiped",
           "label": "Apps Wiped // CRM",
           "len": 0,
           "info": "[SAKA BADD-0003]\nCEE must wipe out mySafaricom App, MyOne App, and M-PESA Apps on CRM.",
-          "excludeFromCount": true
+          "excludeFromCount": true,
+          "itemType": "action"
         },
         {
           "id": "bar_altno",
@@ -400,28 +412,32 @@
           "label": "Siebel Status // Suspended",
           "len": 0,
           "info": "[SAKA BADD-0003]\nSuspend on Siebel & CRM.",
-          "excludeFromCount": true
+          "excludeFromCount": true,
+          "itemType": "action"
         },
         {
           "id": "bar3_hlr_sawa",
           "label": "HLR Status // BAOC/BAIC",
           "len": 0,
           "info": "[SAKA BADD-0003]\nConfirm outgoing & incoming calls barred on HLR.",
-          "excludeFromCount": true
+          "excludeFromCount": true,
+          "itemType": "action"
         },
         {
           "id": "bar3_g3_status",
           "label": "M-PESA G3 Status // Barred",
           "len": 0,
           "info": "[SAKA BADD-0003]\nBar M-PESA wallet on G3.",
-          "excludeFromCount": true
+          "excludeFromCount": true,
+          "itemType": "action"
         },
         {
           "id": "bar3_apps_wiped",
           "label": "Apps Wiped // CRM",
           "len": 0,
           "info": "[SAKA BADD-0003]\nWipe all linked apps on CRM.",
-          "excludeFromCount": true
+          "excludeFromCount": true,
+          "itemType": "action"
         }
       ],
       "comments": [
@@ -477,7 +493,9 @@
           "label": "Siebel Comments // Clean Tag",
           "len": 0,
           "info": "[SAKA BADD-0003]\nCRITICAL PRE-CHECK: Check Siebel key comments. If comment reads \"Phone stolen, Refer to Retail for Unbarring\", line can ONLY be unbarred at Retail. Do NOT unbar at Call Center!",
-          "excludeFromCount": true
+          "excludeFromCount": true,
+          "itemType": "policy",
+          "violationAdvice": "Siebel key comments indicate phone stolen. Line can ONLY be unbarred at Retail as per policy."
         },
         {
           "id": "unb_fdn1",
@@ -560,7 +578,8 @@
           "label": "HLR & Siebel Resumed // PIN 0000",
           "len": 0,
           "info": "[SAKA BADD-0003]\nLine resumed on Siebel & HLR operator barring cleared. Advise customer on default barring PIN 0000.",
-          "excludeFromCount": true
+          "excludeFromCount": true,
+          "itemType": "action"
         }
       ],
       "comments": [
@@ -615,14 +634,8 @@
           "label": "Unlock Action // G3",
           "len": 0,
           "info": "[SAKA SKKI-0001]\nGo to Customer Info page on G3 > click \"Unlock PIN\" icon > enter reason & vetting details > submit & confirm. Advise customer to use correct PIN.",
-          "excludeFromCount": true
-        },
-        {
-          "id": "pinu_diy_advice",
-          "label": "DIY Education // *334#",
-          "len": 0,
-          "info": "[SAKA SKKI-0001]\nEducate on DIY: *334# > My Account > Unlock M-PESA PIN, or M-PESA App, or IVR 100.",
-          "excludeFromCount": true
+          "excludeFromCount": true,
+          "itemType": "action"
         },
         {
           "id": "pinu_altno",
@@ -692,14 +705,18 @@
           "label": "24h Auth Txn // Retail if Yes",
           "len": 0,
           "info": "[SAKA SKKI-0001]\nCRITICAL FRAUD CHECK: Check if customer had a positive PIN-authenticated transaction in last 24h (Send Money, Paybill, Airtime, Bal Check). If YES, REFER CUSTOMER TO RETAIL! Do not issue Start Key at Contact Center.",
-          "excludeFromCount": true
+          "excludeFromCount": true,
+          "itemType": "policy",
+          "violationAdvice": "Positive PIN txn in last 24h. Declined and referred to Retail Center for PIN reset as per fraud policy."
         },
         {
           "id": "sk_rule_24h_swap",
           "label": "24h Swap Check // 24h Policy",
           "len": 0,
           "info": "[SAKA SKKI-0001]\nIf SIM replacement was done within 24h, customer must wait until 24h elapses or visit shop. (Note: DIY PIN reset after SIM swap is available after 7 days, not 24h).",
-          "excludeFromCount": true
+          "excludeFromCount": true,
+          "itemType": "policy",
+          "violationAdvice": "SIM replacement within 24h. Customer advised to wait 24h or visit Retail (DIY PIN reset available after 7 days)."
         },
         {
           "id": "sk_fdn1",
@@ -837,21 +854,16 @@
           "label": "PUK Sent via SMS // With consent",
           "len": 0,
           "info": "[SAKA PUDA-0004]\nCEE must send SMS with PUK to the calling number via CRM SMS tool at end of call after obtaining customer consent.",
-          "excludeFromCount": true
+          "excludeFromCount": true,
+          "itemType": "action"
         },
         {
           "id": "puk_sim_serial",
           "label": "SIM Serial Check",
           "len": 0,
           "info": "[SAKA PUDA-0004]\nRepeat caller check: If customer says PUK is not working, verify physical SIM serial against CRM. If mismatch, advise on SIM replacement.",
-          "excludeFromCount": true
-        },
-        {
-          "id": "puk_diy_sms",
-          "label": "DIY Education // *100#",
-          "len": 0,
-          "info": "[SAKA PUDA-0004]\nAdvise on DIY: Dial *100# from another line or visit safaricomapp.page.link/get-puk.",
-          "excludeFromCount": true
+          "excludeFromCount": true,
+          "itemType": "action"
         },
         {
           "id": "puk_altno",
@@ -920,14 +932,16 @@
           "label": "Call Drop Advised",
           "len": 0,
           "info": "[SAKA SSCB-0006]\nAdvise customer that the active call will drop immediately once the SIM upgrade order is submitted on View 360.",
-          "excludeFromCount": true
+          "excludeFromCount": true,
+          "itemType": "action"
         },
         {
           "id": "upg_mpesa_reactivate",
           "label": "M-PESA Activation Advised",
           "len": 0,
           "info": "[SAKA MABN-0001]\nAdvise customer on M-PESA activation process after inserting new SIM.",
-          "excludeFromCount": true
+          "excludeFromCount": true,
+          "itemType": "action"
         },
         {
           "id": "upg_altno",
@@ -993,7 +1007,8 @@
           "label": "IN-Data Status // Pooled",
           "len": 0,
           "info": "[SAKA SRFB-0005]\nCheck IN-Data on CRM to confirm status is Pooled. If no details on View 360 but on CRM & G3, refer to Retail.",
-          "excludeFromCount": true
+          "excludeFromCount": true,
+          "itemType": "action"
         },
         {
           "id": "pol_new_simex",
@@ -1072,14 +1087,16 @@
           "label": "G3 Status // Suspended",
           "len": 0,
           "info": "[SAKA VMDA-0001]\nSuspend account on M-PESA G3.",
-          "excludeFromCount": true
+          "excludeFromCount": true,
+          "itemType": "action"
         },
         {
           "id": "mps_state_tag",
           "label": "State Tag Applied",
           "len": 0,
           "info": "[SAKA VMDA-0001]\nApply state tag if required by fraud guidelines.",
-          "excludeFromCount": true
+          "excludeFromCount": true,
+          "itemType": "action"
         },
         {
           "id": "mps_altno",
@@ -1140,7 +1157,9 @@
           "label": "Fraud Tag Check // No fraud tag",
           "len": 0,
           "info": "[SAKA VMDA-0001]\nLines suspended due to fraud tag or civil court cases CANNOT be unsuspended at Call Center. Refer to Safaricom Risk HQ1.",
-          "excludeFromCount": true
+          "excludeFromCount": true,
+          "itemType": "policy",
+          "violationAdvice": "Line suspended due to fraud tag / civil court case. Cannot unbar at Contact Center. Referred to Safaricom Risk HQ1."
         },
         {
           "id": "mpu_fdn1",
@@ -1223,7 +1242,8 @@
           "label": "M-PESA G3 Resumed // Active",
           "len": 0,
           "info": "[SAKA VMDA-0001]\nAccount unsuspended on G3.",
-          "excludeFromCount": true
+          "excludeFromCount": true,
+          "itemType": "action"
         }
       ],
       "comments": [
@@ -1253,13 +1273,17 @@
           "id": "gen_query",
           "label": "Customer Query",
           "len": 0,
-          "info": "[SAKA IDPA-0001]\nMain issue or enquiry (Tariff, Network, Bundles, Statement, Roaming, Billing, etc.)."
+          "info": "[SAKA IDPA-0001]\nMain issue or enquiry (Tariff, Network, Bundles, Statement, Roaming, Billing, etc.).",
+          "multiline": true,
+          "maxLines": 4
         },
         {
           "id": "gen_resolution",
           "label": "Resolution Given",
           "len": 0,
-          "info": "[SAKA IDPA-0001]\nResolution, guidance, troubleshooting steps, or advice provided."
+          "info": "[SAKA IDPA-0001]\nResolution, guidance, troubleshooting steps, or advice provided.",
+          "multiline": true,
+          "maxLines": 4
         }
       ],
       "optional": [
