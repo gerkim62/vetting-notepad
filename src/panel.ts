@@ -3770,14 +3770,9 @@ function openVarFillModal(tpl, _type) {
   const currentValues = {};
   const manualEdits = new Set();
 
-  // Find latest matching record in varHistory for initial pre-fill
-  const latestMatching = varHistory.find(r => r && r.values && vars.some(v => r.values[v] && isVarRemembered(v, varPreferences)));
+  // Variable inputs always start fresh and blank for each session
   vars.forEach(v => {
-    if (isVarRemembered(v, varPreferences)) {
-      currentValues[v] = (latestMatching && latestMatching.values[v]) || varPreferences.usageValues?.[v] || '';
-    } else {
-      currentValues[v] = ''; // Transient variables always start fresh
-    }
+    currentValues[v] = '';
   });
 
   const updatePreview = () => {
