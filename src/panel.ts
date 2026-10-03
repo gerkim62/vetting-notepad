@@ -2448,28 +2448,40 @@ function renderEditView() {
     <div id="editDiyList">
       ${((t.diyActions) || []).map((diy, i) => `
         <div class="diy-editor-card" data-diy-idx="${i}">
-          <div class="row-head">
-            <span style="font-size:11px;font-weight:600;color:var(--text-main);">${escapeHtml(diy.label || 'New DIY')}</span>
-            <button type="button" class="ibtn btn-del-diy" data-diy-idx="${i}" title="Delete DIY Action">
-              ${renderIcon('Trash2', { size: 10 })}
+          <div class="diy-card-header">
+            <div class="diy-card-header-left">
+              <span class="diy-card-pill">Action #${i + 1}</span>
+              <span class="diy-card-header-title">${escapeHtml(diy.label || 'New Action')}</span>
+            </div>
+            <button type="button" class="ibtn btn-del-diy" data-diy-idx="${i}" title="Delete Action">
+              ${renderIcon('Trash2', { size: 11 })}
             </button>
           </div>
-          <div style="display:flex;gap:6px;">
-            <input type="text" class="mat-input diy-edit-label" data-diy-idx="${i}" value="${escapeHtml(diy.label)}" placeholder="Chip Label (e.g. Hakikisha)" style="flex:1;">
+
+          <div class="diy-form-field">
+            <div class="diy-label-row">
+              <span class="diy-label-tag">Chip Button Label</span>
+            </div>
+            <input type="text" class="diy-input diy-edit-label" data-diy-idx="${i}" value="${escapeHtml(diy.label)}" placeholder="e.g. Hakikisha, Lipa na M-PESA">
           </div>
-          <input type="text" class="mat-input diy-edit-advice" data-diy-idx="${i}" value="${escapeHtml(diy.adviceText)}" placeholder="Siebel Advice Text (e.g. Educated on Hakikisha)">
-          <div style="display:flex;align-items:center;gap:6px;margin-top:2px;">
-            <select class="mat-input diy-edit-sms-id" data-diy-idx="${i}" style="flex:1;font-size:11px;padding:4px 8px;">
-              <option value="">-- No Linked SMS --</option>
-              ${quickSmsTemplates.map(s => `
-                <option value="${escapeHtml(s.id)}" ${diy.smsId === s.id ? 'selected' : ''}>
-                  ${escapeHtml(s.title)}
-                </option>
-              `).join('')}
-            </select>
-            <button type="button" class="ibtn btn-edit-linked-sms" data-sms-id="${escapeHtml(diy.smsId || '')}" title="Open template in Quick SMS" ${!diy.smsId ? 'style="display:none;"' : ''}>
-              ${renderIcon('ExternalLink', { size: 11 })}
-            </button>
+
+          <div class="diy-form-field">
+            <div class="diy-label-row">
+              <span class="diy-label-tag">Siebel Advice Summary</span>
+            </div>
+            <input type="text" class="diy-input diy-edit-advice" data-diy-idx="${i}" value="${escapeHtml(diy.adviceText)}" placeholder="e.g. Educated customer on Hakikisha">
+          </div>
+
+          <div class="diy-form-field">
+            <div class="diy-label-row">
+              <span class="diy-label-tag">Linked Customer SMS</span>
+            </div>
+            <div class="diy-select-row">
+              <div class="c-select diy-c-select-mount" data-diy-idx="${i}"></div>
+              <button type="button" class="btn-edit-linked-sms" data-sms-id="${escapeHtml(diy.smsId || '')}" title="Open template in Quick SMS" ${!diy.smsId ? 'style="display:none;"' : ''}>
+                ${renderIcon('ExternalLink', { size: 11 })}
+              </button>
+            </div>
           </div>
         </div>
       `).join('')}
@@ -2652,7 +2664,7 @@ function bindEditEvents() {
         if (!Array.isArray(t.diyActions)) t.diyActions = [];
         t.diyActions.push({
           id: 'diy_' + Date.now(),
-          label: 'New DIY',
+          label: 'New Action',
           adviceText: 'Educated customer on DIY self-service',
           smsId: undefined
         });
@@ -2806,6 +2818,11 @@ function bindEditEvents() {
       if (t.diyActions && t.diyActions[dIdx]) {
         t.diyActions[dIdx].label = e.target.value;
         saveTypes();
+        const card = e.target.closest('.diy-editor-card');
+        const titleEl = card?.querySelector('.diy-card-header-title');
+        if (titleEl) {
+          titleEl.textContent = e.target.value || 'New Action';
+        }
       }
       return;
     }
@@ -2814,20 +2831,6 @@ function bindEditEvents() {
       if (t.diyActions && t.diyActions[dIdx]) {
         t.diyActions[dIdx].adviceText = e.target.value;
         saveTypes();
-      }
-      return;
-    }
-    if (e.target.classList.contains('diy-edit-sms-id')) {
-      const dIdx = parseInt(e.target.dataset.diyIdx, 10);
-      if (t.diyActions && t.diyActions[dIdx]) {
-        const val = e.target.value.trim() || undefined;
-        t.diyActions[dIdx].smsId = val;
-        saveTypes();
-        const extBtn = e.target.parentElement?.querySelector('.btn-edit-linked-sms') as HTMLElement;
-        if (extBtn) {
-          extBtn.dataset.smsId = val || '';
-          extBtn.style.display = val ? '' : 'none';
-        }
       }
       return;
     }
@@ -2928,6 +2931,51 @@ function bindEditEvents() {
       saveTypes();
     }
   };
+
+  // Mount custom searchable select for DIY Linked Customer SMS
+  editPane.querySelectorAll('.diy-c-select-mount').forEach((mount: any) => {
+    const dIdx = parseInt(mount.dataset.diyIdx, 10);
+    const diy = t.diyActions?.[dIdx];
+    if (!diy) return;
+
+    const selectOptions = [
+      { value: '', label: '-- No Linked SMS --' },
+      ...quickSmsTemplates.map(s => ({ value: s.id, label: s.title }))
+    ];
+
+    new CreatableSelect(mount, {
+      options: selectOptions,
+      value: diy.smsId || '',
+      placeholder: 'Search SMS template...',
+      onChange: (val: string) => {
+        const cleanVal = val ? val.trim() : '';
+        diy.smsId = cleanVal || undefined;
+        saveTypes();
+        const extBtn = mount.parentElement?.querySelector('.btn-edit-linked-sms') as HTMLElement;
+        if (extBtn) {
+          extBtn.dataset.smsId = cleanVal || '';
+          extBtn.style.display = cleanVal ? '' : 'none';
+        }
+      },
+      onCreate: (opt: { value: string; label: string }) => {
+        const newTpl: any = {
+          id: opt.value,
+          title: opt.label,
+          text: ''
+        };
+        quickSmsTemplates.push(newTpl);
+        saveQuickSmsTemplates();
+        diy.smsId = opt.value;
+        saveTypes();
+        const extBtn = mount.parentElement?.querySelector('.btn-edit-linked-sms') as HTMLElement;
+        if (extBtn) {
+          extBtn.dataset.smsId = opt.value;
+          extBtn.style.display = '';
+        }
+        showToast(`Created SMS template "${opt.label}"`, null, null, 2000, 'info');
+      }
+    });
+  });
 }
 
 /* ==========================================================================
