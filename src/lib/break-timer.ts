@@ -211,3 +211,16 @@ export function calculateBreakState(schedule: ScheduleConfig = DEFAULT_BREAK_SCH
     notifKey
   };
 }
+
+/**
+ * Formats ambient display text for breaks.
+ * During active breaks, returns "Break 1 (09m 45s)", "Lunch (38m 20s)", "Break 2 (08m 15s)".
+ */
+export function formatActiveBreakDisplay(state: BreakCalculationResult): string {
+  if (!state.isActive) {
+    return state.tickerText ? `${state.eventName} (${state.tickerText})` : state.eventName;
+  }
+  const cleanEvent = state.eventName.replace(/^On\s+/i, '');
+  return `${cleanEvent} (${formatCountdown(state.diffSec)})`;
+}
+

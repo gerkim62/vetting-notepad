@@ -60,12 +60,15 @@ export interface NoteItem {
   updatedAt: string;
 }
 
+export interface ShortcutItem {
+  keys: string[];
+  desc: string;
+  action?: string;
+}
+
 export interface ShortcutGroup {
   category: string;
-  items: Array<{
-    keys: string[];
-    desc: string;
-  }>;
+  items: ShortcutItem[];
 }
 
 export interface ShortcutHandlers {
@@ -79,6 +82,7 @@ export interface ShortcutHandlers {
   copyVetting?: () => void;
   pasteVetting?: () => void;
   openTypeSearch?: () => void;
+  findOrSearch?: () => boolean | void;
   showShortcuts?: () => void;
   passField?: () => void;
   failField?: () => void;

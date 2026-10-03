@@ -4,7 +4,8 @@ import {
   calculateBreakState,
   formatShortDuration,
   formatCountdown,
-  formatBigCountdown
+  formatBigCountdown,
+  formatActiveBreakDisplay
 } from '../../src/lib/break-timer.js';
 
 describe('Break Timer & Notifier Engine', () => {
@@ -57,6 +58,7 @@ describe('Break Timer & Notifier Engine', () => {
     expect(state.tickerText).toContain('Ends in: 08m');
     expect(state.diffSec).toBe(480);
     expect(formatBigCountdown(state.diffSec)).toBe('00:08:00');
+    expect(formatActiveBreakDisplay(state)).toBe('Break 1 (08m 00s)');
   });
 
   it('transitions to lunch after break 1 finishes', () => {

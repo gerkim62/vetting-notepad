@@ -64,8 +64,16 @@ export function initShortcuts(handlers: ShortcutHandlers = {}): () => void {
       return;
     }
 
-    // 5. Ctrl/Cmd + K -> Open & Focus Type Search
-    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'k') {
+    // 4b. Ctrl/Cmd + F -> Find/Search (e.g. Quick SMS)
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key.toLowerCase() === 'f' || e.code === 'KeyF')) {
+      if (handlers.findOrSearch && handlers.findOrSearch()) {
+        e.preventDefault();
+        return;
+      }
+    }
+
+    // 5. Ctrl/Cmd + K -> Reserved exclusively for Vetting Type Search
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key.toLowerCase() === 'k' || e.code === 'KeyK')) {
       e.preventDefault();
       handlers.openTypeSearch?.();
       return;

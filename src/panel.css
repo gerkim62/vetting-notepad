@@ -1995,9 +1995,10 @@ textarea.mat-input.vfield-textarea::-webkit-resizer {
   position: absolute;
   top: 36px;
   right: 6px;
-  min-width: 195px;
+  max-width: calc(100% - 12px);
+  min-width: 0;
   width: max-content;
-  max-width: calc(100vw - 12px);
+  box-sizing: border-box;
   background: var(--bg-panel);
   border: 1px solid var(--border-line);
   border-radius: var(--radius-md);
@@ -2016,9 +2017,10 @@ textarea.mat-input.vfield-textarea::-webkit-resizer {
 .menu-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  flex-wrap: wrap;
+  gap: 4px 6px;
   width: 100%;
-  padding: 6px 8px;
+  padding: 5px 8px;
   border: none;
   background: transparent;
   color: var(--text-main);
@@ -2027,7 +2029,7 @@ textarea.mat-input.vfield-textarea::-webkit-resizer {
   border-radius: var(--radius-sm);
   cursor: pointer;
   text-align: left;
-  white-space: nowrap;
+  box-sizing: border-box;
   transition: background 0.12s ease, color 0.12s ease;
 }
 .menu-item:hover, .menu-item:focus-visible {
@@ -2043,10 +2045,13 @@ textarea.mat-input.vfield-textarea::-webkit-resizer {
   opacity: 1;
 }
 .menu-item span {
-  flex: 1;
+  flex: 1 1 auto;
+  min-width: 0;
   text-align: left;
   white-space: nowrap;
-  margin-right: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-right: 4px;
 }
 .menu-kbd {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -2060,6 +2065,8 @@ textarea.mat-input.vfield-textarea::-webkit-resizer {
   line-height: 1.1;
   letter-spacing: -0.2px;
   flex-shrink: 0;
+  margin-left: auto;
+  align-self: flex-end;
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2);
   transition: border-color 0.12s ease, color 0.12s ease;
 }
@@ -2071,17 +2078,67 @@ textarea.mat-input.vfield-textarea::-webkit-resizer {
 /* ==========================================================================
    Template Cards (Quick SMS & Quick Interaction)
    ========================================================================== */
+.sms-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--bg-panel-alt);
+  border-bottom: 1px solid var(--border-line);
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  box-sizing: border-box;
+}
+.sms-search-icon {
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.sms-search-input {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--border-line);
+  border-radius: var(--radius-sm);
+  background: var(--bg-panel);
+  color: var(--text-main);
+  padding: 3px 6px;
+  font-size: 11px;
+  outline: none;
+  font-family: inherit;
+  transition: border-color 0.15s ease;
+  height: 24px;
+  box-sizing: border-box;
+}
+.sms-search-input:focus {
+  border-color: var(--saf-emerald);
+}
+.sms-search-clear {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.sms-search-clear:hover {
+  color: var(--text-main);
+}
 .template-card {
   background: var(--bg-panel);
   border: 1px solid var(--border-line);
   border-radius: var(--radius-md);
-  padding: 8px 10px;
-  margin-bottom: 7px;
+  padding: 6px 8px;
+  margin-bottom: 5px;
   cursor: pointer;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
+  box-sizing: border-box;
 }
 .template-card:hover {
   border-color: var(--saf-emerald);
@@ -2091,15 +2148,27 @@ textarea.mat-input.vfield-textarea::-webkit-resizer {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 6px;
 }
 .template-card-title {
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--text-main);
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .template-card-actions {
   display: flex;
   gap: 2px;
+  flex-shrink: 0;
+}
+.template-card-actions .ibtn {
+  width: 20px;
+  height: 20px;
+  padding: 2px;
 }
 .template-card-body {
   font-size: 10.5px;
@@ -2358,8 +2427,8 @@ textarea.mat-input.vfield-textarea::-webkit-resizer {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  height: 20px;
-  min-height: 20px;
+  height: 22px;
+  min-height: 22px;
   background: var(--bg-panel-alt);
   border-top: 1px solid var(--border-line);
   font-size: 10px;
@@ -2376,9 +2445,22 @@ textarea.mat-input.vfield-textarea::-webkit-resizer {
   background: var(--bg-hover);
   color: var(--text-main);
 }
+.ambient-break-bar.unconfigured {
+  background: var(--bg-panel-alt);
+  color: var(--saf-emerald);
+  font-weight: 600;
+  border-top: 1px dashed var(--border-line);
+}
+.ambient-break-bar.unconfigured:hover {
+  background: var(--saf-emerald-soft);
+  color: var(--saf-emerald);
+  border-top-color: var(--saf-emerald);
+}
 .ambient-break-icon {
   font-size: 11px;
   line-height: 1;
+  display: inline-flex;
+  align-items: center;
 }
 .ambient-break-text {
   overflow: hidden;
@@ -2392,45 +2474,47 @@ textarea.mat-input.vfield-textarea::-webkit-resizer {
 .break-status-card {
   background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(0, 135, 81, 0.03));
   border: 1px solid var(--border-line);
-  border-radius: var(--radius-lg);
-  padding: 12px;
+  border-radius: var(--radius-md);
+  padding: 8px 10px;
   text-align: center;
   position: relative;
+  box-sizing: border-box;
 }
 .break-status-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 .break-status-label {
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--text-main);
 }
 .break-status-tag {
-  font-size: 10px;
+  font-size: 9.5px;
   font-weight: 600;
-  padding: 1px 6px;
+  padding: 1px 5px;
   background: var(--saf-emerald-soft);
   color: var(--saf-emerald);
-  border-radius: 10px;
+  border-radius: 8px;
 }
 .break-countdown-big {
-  font-size: 26px;
+  font-size: 20px;
   font-weight: 800;
   font-family: monospace, ui-monospace;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
   color: var(--saf-emerald);
-  margin: 6px 0;
+  margin: 3px 0;
+  line-height: 1.1;
 }
 .break-progress-wrap {
   width: 100%;
-  height: 5px;
+  height: 4px;
   background: var(--border-line);
-  border-radius: 3px;
+  border-radius: 2px;
   overflow: hidden;
-  margin: 6px 0;
+  margin: 4px 0;
 }
 .break-progress-bar {
   height: 100%;
@@ -2438,47 +2522,58 @@ textarea.mat-input.vfield-textarea::-webkit-resizer {
   transition: width 0.3s ease;
 }
 .break-status-sub {
-  font-size: 10.5px;
+  font-size: 10px;
   color: var(--text-muted);
+  line-height: 1.2;
 }
 .break-schedule-grid {
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 5px;
 }
 .break-time-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 10px;
+  padding: 5px 8px;
   background: var(--bg-panel-alt);
   border: 1px solid var(--border-line);
   border-radius: var(--radius-sm);
+  gap: 6px;
+  box-sizing: border-box;
 }
 .break-time-label {
   display: flex;
   flex-direction: column;
   gap: 1px;
+  flex: 1;
+  min-width: 0;
 }
 .break-time-label span:first-child {
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 600;
   color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .break-fixed-dur {
-  font-size: 9.5px;
+  font-size: 9px;
   color: var(--text-muted);
 }
 .break-time-input {
-  height: 26px;
-  padding: 2px 6px;
-  font-size: 11.5px;
+  width: 82px;
+  height: 25px;
+  flex-shrink: 0;
+  padding: 2px 4px;
+  font-size: 11px;
   border: 1px solid var(--border-line);
   border-radius: var(--radius-sm);
   background: var(--bg-panel);
   color: var(--text-main);
   outline: none;
   font-family: inherit;
+  box-sizing: border-box;
 }
 .break-time-input:focus {
   border-color: var(--saf-emerald);
@@ -2486,20 +2581,75 @@ textarea.mat-input.vfield-textarea::-webkit-resizer {
 .break-toggles-list {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
 }
 .break-toggle-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 6px 10px;
+  padding: 5px 8px;
   background: var(--bg-panel-alt);
   border: 1px solid var(--border-line);
   border-radius: var(--radius-sm);
-  font-size: 11px;
+  font-size: 10.5px;
   color: var(--text-main);
   cursor: pointer;
   user-select: none;
+  gap: 8px;
+  box-sizing: border-box;
+}
+.break-toggle-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  gap: 1px;
+}
+.break-toggle-info span:first-child {
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--text-main);
+  line-height: 1.25;
+}
+.break-toggle-warn {
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--color-danger, #ef4444);
+  line-height: 1.2;
+}
+
+/* Settings Toggle Row */
+.setting-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  background: var(--bg-panel-alt);
+  border: 1px solid var(--border-line);
+  border-radius: var(--radius-sm);
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  margin-top: 4px;
+  box-sizing: border-box;
+}
+.setting-toggle-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  gap: 2px;
+}
+.setting-toggle-info span:first-child {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-main);
+  line-height: 1.25;
+}
+.setting-toggle-sub {
+  font-size: 9.5px;
+  color: var(--text-muted);
+  line-height: 1.2;
 }
 
 /* ==========================================================================
@@ -2707,9 +2857,46 @@ textarea.mat-input.vfield-textarea::-webkit-resizer {
   color: var(--text-main);
 }
 
+.shortcuts-search-wrap {
+  padding: 6px 8px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border-line);
+}
+
+.shortcuts-search-input {
+  width: 100%;
+  box-sizing: border-box;
+  height: 25px;
+  padding: 0 8px;
+  background: var(--bg-input, var(--bg-panel-alt));
+  color: var(--text-main);
+  border: 1px solid var(--border-line);
+  border-radius: var(--radius-sm, 4px);
+  font-size: 11px;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.shortcuts-search-input:focus {
+  border-color: var(--saf-emerald);
+  box-shadow: 0 0 0 1px var(--saf-emerald-subtle, rgba(0, 168, 107, 0.25));
+}
+
+.shortcuts-search-input::placeholder {
+  color: var(--text-muted);
+  font-size: 10.5px;
+}
+
+.shortcuts-empty-state {
+  padding: 16px 8px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
 .shortcuts-dialog-body {
   padding: 4px 8px 8px 8px;
-  max-height: calc(86vh - 80px);
+  max-height: calc(86vh - 110px);
   overflow-y: auto;
   box-sizing: border-box;
 }
@@ -2728,6 +2915,7 @@ textarea.mat-input.vfield-textarea::-webkit-resizer {
   color: var(--text-muted);
   text-transform: uppercase;
   margin-bottom: 3px;
+  padding: 0 4px;
 }
 
 .shortcuts-table {
@@ -2741,11 +2929,19 @@ textarea.mat-input.vfield-textarea::-webkit-resizer {
   align-items: center;
   justify-content: space-between;
   gap: 3px 6px;
-  padding: 4px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 4px 6px;
+  margin: 1px 0;
+  border-radius: var(--radius-sm, 4px);
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.12s ease, outline-color 0.12s ease;
 }
-.shortcut-row:last-child {
-  border-bottom: none;
+.shortcut-row:hover {
+  background: var(--bg-hover);
+}
+.shortcut-row.active {
+  background: var(--saf-emerald-subtle, rgba(0, 168, 107, 0.15));
+  outline: 1px solid var(--saf-emerald, #00A86B);
 }
 
 .shortcut-desc {

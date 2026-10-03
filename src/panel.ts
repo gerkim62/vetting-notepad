@@ -4,13 +4,14 @@
  * Ultra-compact, fast, KISS, lightweight.
  */
 import defaultConfig from './safaricom-vetting-config.json';
-import { AppDialog } from './lib/dialog.js';
+import { AppDialog, DEFAULT_KEYBOARD_SHORTCUTS } from './lib/dialog.js';
 import {
   DEFAULT_BREAK_SCHEDULE,
   calculateBreakState,
   formatCountdown,
   formatBigCountdown,
   formatShortDuration,
+  formatActiveBreakDisplay,
   parseTimeToDate
 } from './lib/break-timer.js';
 import { attachAutoExpand } from './lib/multiline.js';
@@ -116,6 +117,8 @@ let itemStatus = {};
 let previewOpen = false;
 let autoClearTimer = null;
 let autoClearSeconds = 0;
+let clearCallpadOnClear = false;
+let quickSmsSearchQuery = '';
 
 const curType = () => types.find(t => t.id === activeTypeId) || types[0] || null;
 const curComments = () => {
@@ -834,7 +837,18 @@ btnClear.onclick = async () => {
   syncPreview();
   showClearedFeedback('Cleared');
 
-  showBanner('Call cleared', 'Undo', () => {
+  let callpadCleared = false;
+  if (clearCallpadOnClear && smartCallPadInstance) {
+    const lines = smartCallPadInstance.getLines ? smartCallPadInstance.getLines() : [];
+    if (lines.some(l => (l || '').trim().length > 0)) {
+      smartCallPadInstance.clearAll();
+      Storage.set('vpad.callpad_lines', []);
+      callpadCleared = true;
+    }
+  }
+
+  const bannerMsg = callpadCleared ? 'Call & floating items cleared' : 'Call cleared';
+  showBanner(bannerMsg, 'Undo', () => {
     formValues = snapVal;
     itemStatus = snapStatus;
     callAttempt = snapAttempt;
@@ -1395,7 +1409,7 @@ function createRowHtml(it, kind, idx) {
   const statusActionsHtml = isVetted ? `
     <div class="status-actions">
       <button type="button" class="pf-btn fail ${st === 'failed' ? 'active' : ''}" data-status-btn="failed" data-id="${it.id}" title="Mark as Failed" aria-label="Mark ${escapeHtml(lblMain)} as Failed">
-        ${renderIcon('X', { size: 12, strokeWidth: 2.3 })}
+        ${renderIcon('Ban', { size: 12, strokeWidth: 2.2 })}
       </button>
     </div>
   ` : `<div class="status-actions"></div>`;
@@ -2633,6 +2647,10 @@ function initMenu() {
       closeMenu();
       if (quickSmsView) quickSmsView.style.display = 'flex';
       renderQuickSmsList();
+      setTimeout(() => {
+        const searchInp = document.getElementById('smsSearchInput');
+        if (searchInp) searchInp.focus();
+      }, 50);
     };
   }
 
@@ -2664,7 +2682,7 @@ function initMenu() {
   if (menuItemShortcuts) {
     menuItemShortcuts.onclick = () => {
       closeMenu();
-      AppDialog.shortcuts();
+      showShortcutsDialog();
     };
   }
 
@@ -2677,6 +2695,7 @@ function initMenu() {
   if (btnBackQuickSms) {
     btnBackQuickSms.onclick = () => {
       if (quickSmsView) quickSmsView.style.display = 'none';
+      clearQuickSmsSearch();
     };
   }
 
@@ -2821,7 +2840,76 @@ function renderTemplateCards(container, list, type) {
 }
 
 function renderQuickSmsList() {
-  renderTemplateCards(quickSmsListEl, quickSmsTemplates, 'sms');
+  const query = (quickSmsSearchQuery || '').trim().toLowerCase();
+  let list = quickSmsTemplates;
+  if (query) {
+    list = quickSmsTemplates.filter(t => {
+      const titleMatch = (t.title || '').toLowerCase().includes(query);
+      const textMatch = (t.text || '').toLowerCase().includes(query);
+      const vars = parseTemplateVariables(t.text || '');
+      const varMatch = vars.some(v => v.toLowerCase().includes(query));
+      return titleMatch || textMatch || varMatch;
+    });
+  }
+
+  if (query && list.length === 0) {
+    if (quickSmsListEl) {
+      quickSmsListEl.innerHTML = `
+        <div style="text-align:center;padding:24px 10px;font-size:11px;color:var(--text-muted);">
+          <p>No SMS templates matching "<b>${escapeHtml(query)}</b>"</p>
+          <button type="button" class="btn-action" id="btnClearSmsSearch" style="margin-top:8px;">Clear Search</button>
+        </div>
+      `;
+      const btnClearSearch = quickSmsListEl.querySelector('#btnClearSmsSearch');
+      if (btnClearSearch) {
+        btnClearSearch.onclick = () => {
+          clearQuickSmsSearch();
+        };
+      }
+    }
+    return;
+  }
+
+  renderTemplateCards(quickSmsListEl, list, 'sms');
+}
+
+function clearQuickSmsSearch() {
+  quickSmsSearchQuery = '';
+  const searchInput = document.getElementById('smsSearchInput');
+  const searchClear = document.getElementById('smsSearchClear');
+  if (searchInput) {
+    searchInput.value = '';
+    searchInput.focus();
+  }
+  if (searchClear) searchClear.style.display = 'none';
+  renderQuickSmsList();
+}
+
+function initQuickSmsSearch() {
+  const searchInput = document.getElementById('smsSearchInput');
+  const searchClear = document.getElementById('smsSearchClear');
+  if (!searchInput) return;
+
+  searchInput.addEventListener('input', () => {
+    quickSmsSearchQuery = searchInput.value;
+    if (searchClear) searchClear.style.display = searchInput.value ? 'inline-flex' : 'none';
+    renderQuickSmsList();
+  });
+
+  searchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      if (searchInput.value) {
+        e.stopPropagation();
+        clearQuickSmsSearch();
+      }
+    }
+  });
+
+  if (searchClear) {
+    searchClear.onclick = () => {
+      clearQuickSmsSearch();
+    };
+  }
 }
 
 function renderQuickInteractionList() {
@@ -3103,6 +3191,15 @@ async function initBreakNotifier() {
   setInterval(updateBreakNotifier, 1000);
 }
 
+const notifBlockedBadge = document.getElementById('notifBlockedBadge');
+
+function updateNotifPermissionUi() {
+  const isBlocked = typeof Notification !== 'undefined' && Notification.permission === 'denied';
+  if (notifBlockedBadge) {
+    notifBlockedBadge.style.display = isBlocked ? 'block' : 'none';
+  }
+}
+
 function bindBreakScheduleEvents() {
   const save = () => {
     breakSchedule.break1 = break1StartInput?.value || '';
@@ -3121,11 +3218,42 @@ function bindBreakScheduleEvents() {
 
   if (chkNotifyDesktop) {
     chkNotifyDesktop.addEventListener('change', async () => {
-      if (chkNotifyDesktop.checked && typeof Notification !== 'undefined') {
+      if (chkNotifyDesktop.checked) {
+        if (typeof Notification === 'undefined') {
+          showBanner('Desktop notifications are not supported in this browser.', 'Dismiss', null, 5000, 'warn');
+          chkNotifyDesktop.checked = false;
+          updateNotifPermissionUi();
+          save();
+          return;
+        }
+        if (Notification.permission === 'denied') {
+          chkNotifyDesktop.checked = false;
+          updateNotifPermissionUi();
+          save();
+          showBanner('Desktop notifications are blocked by your browser settings. Please unblock them in Chrome settings.', 'Dismiss', null, 7000, 'warn');
+          return;
+        }
         if (Notification.permission === 'default') {
-          await Notification.requestPermission();
+          try {
+            const perm = await Notification.requestPermission();
+            if (perm !== 'granted') {
+              chkNotifyDesktop.checked = false;
+              updateNotifPermissionUi();
+              save();
+              if (perm === 'denied') {
+                showBanner('Desktop notifications were blocked. Please enable them in Chrome settings.', 'Dismiss', null, 7000, 'warn');
+              }
+              return;
+            }
+          } catch (_err) {
+            chkNotifyDesktop.checked = false;
+            updateNotifPermissionUi();
+            save();
+            return;
+          }
         }
       }
+      updateNotifPermissionUi();
       save();
     });
   }
@@ -3157,11 +3285,9 @@ function renderBreakNotifierView() {
   if (shiftEndInput) shiftEndInput.value = breakSchedule.shiftEnd || '';
   if (chkNotifyDesktop) chkNotifyDesktop.checked = Boolean(breakSchedule.notifyDesktop);
   if (chkNotifyToast) chkNotifyToast.checked = (breakSchedule.notifyToast !== false);
+  updateNotifPermissionUi();
   updateBreakNotifier();
 }
-
-
-
 
 function triggerBreakNotification(key, title, body) {
   if (lastNotifiedEventKey === key) return;
@@ -3203,7 +3329,12 @@ function updateBreakNotifier() {
     if (breakEventTag) breakEventTag.textContent = state.eventTag;
     if (breakStatusSub) breakStatusSub.textContent = state.statusSub;
     if (breakProgressBar) breakProgressBar.style.width = '0%';
-    if (ambientBreakBar) ambientBreakBar.style.display = 'none';
+    if (ambientBreakBar) {
+      ambientBreakBar.style.display = 'flex';
+      ambientBreakBar.classList.add('unconfigured');
+      if (ambientBreakIcon) ambientBreakIcon.innerHTML = renderIcon('Clock', { size: 12 });
+      if (ambientBreakText) ambientBreakText.textContent = 'Set Break Notifier';
+    }
     return;
   }
 
@@ -3221,8 +3352,9 @@ function updateBreakNotifier() {
 
   if (ambientBreakBar) {
     ambientBreakBar.style.display = 'flex';
+    ambientBreakBar.classList.remove('unconfigured');
     if (ambientBreakIcon) ambientBreakIcon.innerHTML = renderBreakIcon(state.icon, 13);
-    if (ambientBreakText) ambientBreakText.textContent = `${state.eventName} (${state.tickerText})`;
+    if (ambientBreakText) ambientBreakText.textContent = formatActiveBreakDisplay(state);
   }
 
   if (state.isActive && state.targetTime) {
@@ -3275,6 +3407,33 @@ function renderSettingsView() {
       renderSettingsView();
     };
   });
+
+  const chkClearCallpadOnClear = document.getElementById('chkClearCallpadOnClear');
+  if (chkClearCallpadOnClear) {
+    chkClearCallpadOnClear.checked = Boolean(clearCallpadOnClear);
+    chkClearCallpadOnClear.onchange = async () => {
+      if (chkClearCallpadOnClear.checked) {
+        const confirmed = await AppDialog.confirm({
+          title: 'Clear Floating Call Items?',
+          message: 'Warning: Floating call items cannot be restored by the Undo action. Are you sure you want to clear floating call items whenever vetting details are cleared?',
+          confirmText: 'Enable',
+          cancelText: 'Cancel',
+          danger: true
+        });
+        if (confirmed) {
+          clearCallpadOnClear = true;
+          await Storage.set('vpad.clear_callpad_on_clear', true);
+        } else {
+          chkClearCallpadOnClear.checked = false;
+          clearCallpadOnClear = false;
+          await Storage.set('vpad.clear_callpad_on_clear', false);
+        }
+      } else {
+        clearCallpadOnClear = false;
+        await Storage.set('vpad.clear_callpad_on_clear', false);
+      }
+    };
+  }
 
   // Export Configuration & Data
   const btnExportData = document.getElementById('btnExportData');
@@ -3430,7 +3589,7 @@ function renderSettingsView() {
   const btnShowShortcuts = document.getElementById('btnShowShortcuts');
   if (btnShowShortcuts) {
     btnShowShortcuts.onclick = () => {
-      AppDialog.shortcuts();
+      showShortcutsDialog();
     };
   }
 
@@ -3490,6 +3649,136 @@ function toggleFieldStatus(targetStatus = 'failed') {
    Keyboard Shortcuts (Screen Switcher & Actions)
    ========================================================================== */
 const notesView = document.getElementById('notesView');
+
+function returnToVettingAndSearch() {
+  if (AppDialog && AppDialog.closeActive) AppDialog.closeActive();
+  const activeOverlay = document.querySelector('.app-dialog-overlay');
+  if (activeOverlay && activeOverlay.parentNode) {
+    activeOverlay.parentNode.removeChild(activeOverlay);
+  }
+
+  if (callPadPopover && callPadPopover.style.display !== 'none') {
+    closeCallPad();
+  }
+  if (breakNotifierView && breakNotifierView.style.display !== 'none') {
+    breakNotifierView.style.display = 'none';
+  }
+  if (quickSmsView && quickSmsView.style.display !== 'none') {
+    quickSmsView.style.display = 'none';
+    clearQuickSmsSearch();
+  }
+  if (notesView && notesView.style.display !== 'none') {
+    notesView.style.display = 'none';
+  }
+  if (settingsView && settingsView.style.display !== 'none') {
+    settingsView.style.display = 'none';
+  }
+  if (editView && editView.style.display !== 'none') {
+    closeEditView();
+  }
+  if (menuDropdown && menuDropdown.style.display !== 'none') {
+    menuDropdown.style.display = 'none';
+  }
+  if (typeof closeVarFillModal === 'function') closeVarFillModal();
+  if (typeof closeTemplateEditModal === 'function') closeTemplateEditModal();
+  closeInfoPopover();
+
+  // Scroll back to top if far down
+  if (mainForm) {
+    mainForm.scrollTop = 0;
+  }
+  window.scrollTo({ top: 0, left: 0 });
+
+  // Open and focus vetting combobox
+  if (typeSelectComponent) {
+    typeSelectComponent.open();
+    if (typeSelectComponent.input) {
+      typeSelectComponent.input.focus();
+      typeSelectComponent.input.select();
+    }
+  }
+}
+
+function showShortcutsDialog() {
+  AppDialog.shortcuts(DEFAULT_KEYBOARD_SHORTCUTS, (action, item) => {
+    const keyCombo = item && item.keys && item.keys.length ? item.keys.join('+') : '';
+    if (keyCombo && action !== 'showShortcuts') {
+      showBanner(`Tip: Use ${keyCombo} next time`, null, null, 2800, 'info');
+    }
+
+    switch (action) {
+      case 'toggleNotes':
+        if (notesView && notesView.style.display !== 'none') {
+          notesView.style.display = 'none';
+        } else {
+          openNotesView();
+        }
+        break;
+      case 'toggleCallpad':
+        toggleCallPad();
+        break;
+      case 'toggleBreaks':
+        if (breakNotifierView && breakNotifierView.style.display !== 'none') {
+          breakNotifierView.style.display = 'none';
+        } else if (breakNotifierView) {
+          breakNotifierView.style.display = 'flex';
+          renderBreakNotifierView();
+        }
+        break;
+      case 'toggleQuickSms':
+        if (quickSmsView && quickSmsView.style.display !== 'none') {
+          quickSmsView.style.display = 'none';
+          clearQuickSmsSearch();
+        } else if (quickSmsView) {
+          quickSmsView.style.display = 'flex';
+          renderQuickSmsList();
+          setTimeout(() => {
+            const searchInp = document.getElementById('smsSearchInput');
+            if (searchInp) searchInp.focus();
+          }, 50);
+        }
+        break;
+      case 'toggleSettings':
+        if (settingsView && settingsView.style.display !== 'none') {
+          settingsView.style.display = 'none';
+        } else if (settingsView) {
+          settingsView.style.display = 'flex';
+          renderSettingsView();
+        }
+        break;
+      case 'togglePreview':
+        if (btnTogglePreview) btnTogglePreview.click();
+        break;
+      case 'copyVetting':
+        doCopy();
+        break;
+      case 'pasteVetting': {
+        const active = document.activeElement;
+        if (active && active.classList && active.classList.contains('mat-input') && active.dataset.id) {
+          smartPasteField(active);
+        } else {
+          doPasteWholeVetting();
+        }
+        break;
+      }
+      case 'passField':
+        toggleFieldStatus('passed');
+        break;
+      case 'failField':
+        toggleFieldStatus('failed');
+        break;
+      case 'openTypeSearch':
+        returnToVettingAndSearch();
+        break;
+      case 'handleEscape':
+        break;
+      case 'showShortcuts':
+        setTimeout(showShortcutsDialog, 60);
+        break;
+    }
+  });
+}
+
 initShortcuts({
   toggleNotes: () => {
     if (notesView && notesView.style.display !== 'none') {
@@ -3512,10 +3801,26 @@ initShortcuts({
   toggleQuickSms: () => {
     if (quickSmsView && quickSmsView.style.display !== 'none') {
       quickSmsView.style.display = 'none';
+      clearQuickSmsSearch();
     } else if (quickSmsView) {
       quickSmsView.style.display = 'flex';
       renderQuickSmsList();
+      setTimeout(() => {
+        const searchInp = document.getElementById('smsSearchInput');
+        if (searchInp) searchInp.focus();
+      }, 50);
     }
+  },
+  findOrSearch: () => {
+    if (quickSmsView && quickSmsView.style.display !== 'none') {
+      const searchInp = document.getElementById('smsSearchInput');
+      if (searchInp) {
+        searchInp.focus();
+        searchInp.select();
+        return true;
+      }
+    }
+    return false;
   },
   toggleSettings: () => {
     if (settingsView && settingsView.style.display !== 'none') {
@@ -3545,7 +3850,13 @@ initShortcuts({
       return;
     }
     if (quickSmsView && quickSmsView.style.display !== 'none') {
+      const searchInp = document.getElementById('smsSearchInput');
+      if (searchInp && searchInp.value) {
+        clearQuickSmsSearch();
+        return;
+      }
       quickSmsView.style.display = 'none';
+      clearQuickSmsSearch();
       return;
     }
     if (notesView && notesView.style.display !== 'none') {
@@ -3576,13 +3887,10 @@ initShortcuts({
     }
   },
   openTypeSearch: () => {
-    if (typeSelectComponent) {
-      typeSelectComponent.open();
-      typeSelectComponent.input.focus();
-    }
+    returnToVettingAndSearch();
   },
   showShortcuts: () => {
-    AppDialog.shortcuts();
+    showShortcutsDialog();
   }
 });
 
@@ -3916,6 +4224,8 @@ async function init() {
   await initCallPad();
   initMenu();
   await loadQuickTemplates();
+  initQuickSmsSearch();
+  clearCallpadOnClear = Boolean(await Storage.get('vpad.clear_callpad_on_clear', false));
   await initBreakNotifier();
   await checkClipboardForVetting();
 }

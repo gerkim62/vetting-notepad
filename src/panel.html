@@ -83,7 +83,8 @@
         <div class="field-container comment-container">
           <div class="material-field" id="commentFieldBox">
             <label class="mat-label" for="commentInput">Comment (optional)</label>
-            <textarea class="mat-input vfield-textarea" id="commentInput" rows="1" data-max-lines="5" autocomplete="off" spellcheck="false"></textarea>
+            <textarea class="mat-input vfield-textarea" id="commentInput" rows="1" data-max-lines="5" autocomplete="off"
+              spellcheck="false"></textarea>
             <div class="mat-underline-continuous"></div>
           </div>
           <ul class="comment-suggestions-menu" id="commentSuggestionsMenu" role="listbox"></ul>
@@ -100,7 +101,8 @@
               <i data-lucide="trash-2" style="width:12px;height:12px;"></i>
               <span id="clearBtnText">Clear</span>
             </button>
-            <button class="btn-action btn-paste flip-hidden" id="btnPaste" title="Paste vetting data from clipboard (Ctrl+Shift+V)">
+            <button class="btn-action btn-paste flip-hidden" id="btnPaste"
+              title="Paste vetting data from clipboard (Ctrl+Shift+V)">
               <i data-lucide="clipboard-paste" style="width:12px;height:12px;"></i>
               <span id="pasteBtnText">Paste</span>
             </button>
@@ -113,11 +115,11 @@
       </footer>
 
       <!-- Ambient Minimal Break Bar at Bottom -->
-      <div class="ambient-break-bar" id="ambientBreakBar" style="display:none;" title="Click to view Break Schedule">
+      <div class="ambient-break-bar unconfigured" id="ambientBreakBar" title="Click to set Break Schedule">
         <span class="ambient-break-icon" id="ambientBreakIcon" style="display:inline-flex;align-items:center;">
-          <i data-lucide="coffee" style="width:13px;height:13px;"></i>
+          <i data-lucide="clock" style="width:12px;height:12px;"></i>
         </span>
-        <span class="ambient-break-text" id="ambientBreakText">--</span>
+        <span class="ambient-break-text" id="ambientBreakText">Set Break Notifier</span>
       </div>
 
       <!-- Sub-view: Settings & Theme Screen -->
@@ -148,25 +150,39 @@
             <button class="chip" data-ac="60">1m</button>
           </div>
 
+          <div class="section-head" style="margin-top:14px;">Floating Call Items</div>
+          <label class="setting-toggle-row">
+            <div class="setting-toggle-info">
+              <span>Clear floating call items on clear vetting</span>
+              <span class="setting-toggle-sub">Warning: Floating call items cannot be restored via the Undo
+                action.</span>
+            </div>
+            <input type="checkbox" id="chkClearCallpadOnClear" class="custom-chk">
+          </label>
+
           <div class="section-head" style="margin-top:16px;">Configuration & Data</div>
           <div style="display:flex;gap:6px;margin-bottom:8px;">
-            <button class="btn-action" id="btnExportData" style="flex:1;display:flex;align-items:center;justify-content:center;gap:4px;">
+            <button class="btn-action" id="btnExportData"
+              style="flex:1;display:flex;align-items:center;justify-content:center;gap:4px;">
               <i data-lucide="download" style="width:12px;height:12px;"></i>
               <span>Export Data</span>
             </button>
-            <button class="btn-action" id="btnImportData" style="flex:1;display:flex;align-items:center;justify-content:center;gap:4px;">
+            <button class="btn-action" id="btnImportData"
+              style="flex:1;display:flex;align-items:center;justify-content:center;gap:4px;">
               <i data-lucide="upload" style="width:12px;height:12px;"></i>
               <span>Import Data</span>
             </button>
             <input type="file" id="importFileInput" accept=".json,application/json" style="display:none;">
           </div>
-          <button class="btn-action" id="btnExportDebugLogs" style="width:100%;margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:6px;">
+          <button class="btn-action" id="btnExportDebugLogs"
+            style="width:100%;margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:6px;">
             <i data-lucide="bug" style="width:12px;height:12px;"></i>
             <span>Export Debug Diagnostics</span>
           </button>
 
-          <div class="section-head" style="margin-top:14px;">Keyboard Shortcuts</div>
-          <button type="button" class="btn-action" id="btnShowShortcuts" style="width:100%;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
+          <div class="section-head" style="margin-top:14px;">Shortcuts</div>
+          <button type="button" class="btn-action" id="btnShowShortcuts"
+            style="width:100%;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;">
             <span style="display:flex;align-items:center;gap:6px;">
               <i data-lucide="keyboard" style="width:12px;height:12px;"></i>
               Shortcuts Cheatsheet
@@ -234,6 +250,15 @@
             <i data-lucide="plus" style="width:13px;height:13px;"></i>
           </button>
         </div>
+        <div class="sms-search-bar" id="smsSearchBar">
+          <i data-lucide="search" class="sms-search-icon" style="width:12px;height:12px;"></i>
+          <input type="text" class="sms-search-input" id="smsSearchInput" placeholder="Search SMS templates (Ctrl+F)..."
+            autocomplete="off" spellcheck="false">
+          <button type="button" class="sms-search-clear" id="smsSearchClear" title="Clear search"
+            aria-label="Clear search" style="display:none;">
+            <i data-lucide="x" style="width:10px;height:10px;"></i>
+          </button>
+        </div>
         <div class="scroll-pane" style="padding:8px 10px;" id="quickSmsList"></div>
       </div>
 
@@ -279,24 +304,24 @@
           <div class="break-schedule-grid">
             <div class="break-time-row">
               <div class="break-time-label">
-                <span>Break 1 Start</span>
-                <span class="break-fixed-dur">10 min break</span>
+                <span>Break 1</span>
+                <span class="break-fixed-dur">10 min</span>
               </div>
               <input type="time" class="break-time-input" id="break1Start" step="60">
             </div>
 
             <div class="break-time-row">
               <div class="break-time-label">
-                <span>Lunch Start</span>
-                <span class="break-fixed-dur">40 min lunch</span>
+                <span>Lunch</span>
+                <span class="break-fixed-dur">40 min</span>
               </div>
               <input type="time" class="break-time-input" id="lunchStart" step="60">
             </div>
 
             <div class="break-time-row">
               <div class="break-time-label">
-                <span>Break 2 Start</span>
-                <span class="break-fixed-dur">10 min break</span>
+                <span>Break 2</span>
+                <span class="break-fixed-dur">10 min</span>
               </div>
               <input type="time" class="break-time-input" id="break2Start" step="60">
             </div>
@@ -314,11 +339,17 @@
           <div class="section-head" style="margin-top:14px;">Notification Alerts</div>
           <div class="break-toggles-list">
             <label class="break-toggle-row">
-              <span>Desktop System Notification</span>
+              <div class="break-toggle-info">
+                <span>System Notification</span>
+                <span class="break-toggle-warn" id="notifBlockedBadge" style="display:none;">Blocked in browser
+                  settings</span>
+              </div>
               <input type="checkbox" id="chkNotifyDesktop" class="custom-chk">
             </label>
             <label class="break-toggle-row">
-              <span>In-UI Toast Banner</span>
+              <div class="break-toggle-info">
+                <span>Toast Notification</span>
+              </div>
               <input type="checkbox" id="chkNotifyToast" class="custom-chk" checked>
             </label>
           </div>
@@ -347,7 +378,8 @@
             <input type="checkbox" id="chkRememberVars" class="custom-chk" checked>
             <span>Remember values</span>
           </label>
-          <button type="button" class="btn-action primary" id="btnCopyResolved" style="display:flex;align-items:center;gap:4px;">
+          <button type="button" class="btn-action primary" id="btnCopyResolved"
+            style="display:flex;align-items:center;gap:4px;">
             <i data-lucide="copy" style="width:12px;height:12px;"></i>
             <span>Copy Text</span>
           </button>
@@ -400,8 +432,9 @@
     </div>
 
     <!-- Draggable Floating Action Button (FAB) -->
-    <button type="button" class="callpad-fab" id="callPadFab" title="Callpad Scratchpad (Alt+Shift+C)" aria-label="Call Items">
-      <i data-lucide="phone" style="width:14px;height:14px;"></i>
+    <button type="button" class="callpad-fab" id="callPadFab" title="Callpad Scratchpad (Alt+Shift+C)"
+      aria-label="Call Items">
+      <i data-lucide="clipboard" style="width:14px;height:14px;"></i>
     </button>
   </div> <!-- /#app -->
 

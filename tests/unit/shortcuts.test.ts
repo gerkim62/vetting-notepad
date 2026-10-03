@@ -150,6 +150,19 @@ describe('Central Keyboard Shortcuts Engine', () => {
     expect(handlers.openTypeSearch).toHaveBeenCalledTimes(1);
   });
 
+  it('triggers openTypeSearch on Ctrl+K even if findOrSearch handler is present', () => {
+    handlers.findOrSearch = vi.fn(() => true);
+    const event = new KeyboardEvent('keydown', {
+      key: 'k',
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true
+    });
+    document.dispatchEvent(event);
+    expect(handlers.openTypeSearch).toHaveBeenCalledTimes(1);
+    expect(handlers.findOrSearch).not.toHaveBeenCalled();
+  });
+
   it('triggers showShortcuts on ? when not in editable field', () => {
     const event = new KeyboardEvent('keydown', {
       key: '?',

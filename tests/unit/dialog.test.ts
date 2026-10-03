@@ -96,7 +96,10 @@ describe('AppDialog Component', () => {
     expect(overlay).not.toBeNull();
 
     const title = overlay.querySelector('#shortcutsModalTitle');
-    expect(title.textContent).toBe('Keyboard Shortcuts');
+    expect(title.textContent).toBe('Shortcuts');
+
+    const searchInput = overlay.querySelector('#shortcutsSearchInput');
+    expect(searchInput).not.toBeNull();
 
     const kbdCaps = overlay.querySelectorAll('.kbd-cap');
     expect(kbdCaps.length).toBeGreaterThan(5);
@@ -109,6 +112,60 @@ describe('AppDialog Component', () => {
     doneBtn.click();
 
     await promise;
+    expect(document.querySelector('.shortcuts-dialog-overlay')).toBeNull();
+  });
+
+  it('filters shortcuts list when typing in search input', async () => {
+    const promise = AppDialog.shortcuts();
+    const overlay = document.querySelector('.shortcuts-dialog-overlay');
+    const searchInput = overlay.querySelector('#shortcutsSearchInput') as HTMLInputElement;
+
+    searchInput.value = 'notes';
+    searchInput.dispatchEvent(new Event('input'));
+
+    const rows = Array.from(overlay.querySelectorAll('.shortcut-row')) as HTMLElement[];
+    const visibleRows = rows.filter(r => r.style.display !== 'none');
+    expect(visibleRows.length).toBe(1);
+    expect(visibleRows[0].textContent).toContain('Notes');
+
+    const doneBtn = overlay.querySelector('#shortcutsDialogDone') as HTMLElement;
+    doneBtn.click();
+    await promise;
+  });
+
+  it('executes shortcut action on ArrowDown and Enter keydown', async () => {
+    const onExecute = vi.fn();
+    const promise = AppDialog.shortcuts(undefined, onExecute);
+    const overlay = document.querySelector('.shortcuts-dialog-overlay');
+    const searchInput = overlay.querySelector('#shortcutsSearchInput') as HTMLInputElement;
+
+    searchInput.value = 'notes';
+    searchInput.dispatchEvent(new Event('input'));
+
+    // Press Enter to trigger the auto-highlighted first match
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+
+    await promise;
+    expect(onExecute).toHaveBeenCalledTimes(1);
+    expect(onExecute).toHaveBeenCalledWith('toggleNotes', expect.objectContaining({ desc: 'Notes' }));
+    expect(document.querySelector('.shortcuts-dialog-overlay')).toBeNull();
+  });
+
+  it('executes shortcut action when a row is clicked', async () => {
+    const onExecute = vi.fn();
+    const promise = AppDialog.shortcuts(undefined, onExecute);
+    const overlay = document.querySelector('.shortcuts-dialog-overlay');
+
+    const copyRow = Array.from(overlay.querySelectorAll('.shortcut-row')).find(
+      r => r.textContent?.includes('Copy Vetting')
+    ) as HTMLElement;
+    expect(copyRow).not.toBeNull();
+
+    copyRow.click();
+    await promise;
+
+    expect(onExecute).toHaveBeenCalledTimes(1);
+    expect(onExecute).toHaveBeenCalledWith('copyVetting', expect.objectContaining({ desc: 'Copy Vetting' }));
     expect(document.querySelector('.shortcuts-dialog-overlay')).toBeNull();
   });
 

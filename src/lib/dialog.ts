@@ -5,7 +5,9 @@
  */
 
 import { escapeHtml } from './utils.js';
-import { ShortcutGroup } from '../types/index.js';
+import { ShortcutGroup, ShortcutItem } from '../types/index.js';
+
+export type ShortcutExecuteHandler = (action: string, item: ShortcutItem) => void;
 
 export interface DialogOptions {
   title?: string;
@@ -25,29 +27,29 @@ export const DEFAULT_KEYBOARD_SHORTCUTS: ShortcutGroup[] = [
   {
     category: 'Screens & Navigation',
     items: [
-      { desc: 'Notes', keys: ['Alt', 'Shift', 'N'] },
-      { desc: 'Scratchpad', keys: ['Alt', 'Shift', 'C'] },
-      { desc: 'Break Notifier', keys: ['Alt', 'Shift', 'B'] },
-      { desc: 'Quick SMS', keys: ['Alt', 'Shift', 'M'] },
-      { desc: 'Settings', keys: ['Alt', 'Shift', 'S'] },
-      { desc: 'Toggle Preview', keys: ['Alt', 'Shift', 'P'] }
+      { desc: 'Notes', keys: ['Alt', 'Shift', 'N'], action: 'toggleNotes' },
+      { desc: 'Scratchpad', keys: ['Alt', 'Shift', 'C'], action: 'toggleCallpad' },
+      { desc: 'Break Notifier', keys: ['Alt', 'Shift', 'B'], action: 'toggleBreaks' },
+      { desc: 'Quick SMS', keys: ['Alt', 'Shift', 'M'], action: 'toggleQuickSms' },
+      { desc: 'Settings', keys: ['Alt', 'Shift', 'S'], action: 'toggleSettings' },
+      { desc: 'Toggle Preview', keys: ['Alt', 'Shift', 'P'], action: 'togglePreview' }
     ]
   },
   {
     category: 'Vetting & Actions',
     items: [
-      { desc: 'Copy Vetting', keys: ['Ctrl', 'Enter'] },
-      { desc: 'Smart Paste', keys: ['Ctrl', 'Shift', 'V'] },
-      { desc: 'Pass Field', keys: ['Alt', 'P'] },
-      { desc: 'Fail Field', keys: ['Alt', 'F'] },
-      { desc: 'Search Vetting', keys: ['Ctrl', 'K'] }
+      { desc: 'Copy Vetting', keys: ['Ctrl', 'Enter'], action: 'copyVetting' },
+      { desc: 'Smart Paste', keys: ['Ctrl', 'Shift', 'V'], action: 'pasteVetting' },
+      { desc: 'Pass Field', keys: ['Alt', 'P'], action: 'passField' },
+      { desc: 'Fail Field', keys: ['Alt', 'F'], action: 'failField' },
+      { desc: 'Search Vetting', keys: ['Ctrl', 'K'], action: 'openTypeSearch' }
     ]
   },
   {
     category: 'General',
     items: [
-      { desc: 'Shortcuts', keys: ['?'] },
-      { desc: 'Dismiss', keys: ['Esc'] }
+      { desc: 'Shortcuts', keys: ['?'], action: 'showShortcuts' },
+      { desc: 'Dismiss', keys: ['Esc'], action: 'handleEscape' }
     ]
   }
 ];
@@ -107,7 +109,7 @@ function createShortcutsOverlay(groups: ShortcutGroup[] = DEFAULT_KEYBOARD_SHORT
         .map(k => `<kbd class="kbd-cap">${escapeHtml(k)}</kbd>`)
         .join('<span class="kbd-sep">+</span>');
       return `
-        <div class="shortcut-row">
+        <div class="shortcut-row" data-action="${escapeHtml(item.action || '')}" data-desc="${escapeHtml(item.desc.toLowerCase())}" data-keys="${escapeHtml(item.keys.join(' ').toLowerCase())}" tabindex="0" role="button" aria-label="${escapeHtml(item.desc)}">
           <span class="shortcut-desc">${escapeHtml(item.desc)}</span>
           <div class="shortcut-keys">${keysHtml}</div>
         </div>
@@ -127,14 +129,18 @@ function createShortcutsOverlay(groups: ShortcutGroup[] = DEFAULT_KEYBOARD_SHORT
       <div class="shortcuts-dialog-header">
         <div class="shortcuts-title-wrap">
           ${renderIcon('Keyboard', { size: 15, class: 'shortcuts-header-icon' })}
-          <h3 id="shortcutsModalTitle" class="shortcuts-dialog-title">Keyboard Shortcuts</h3>
+          <h3 id="shortcutsModalTitle" class="shortcuts-dialog-title">Shortcuts</h3>
         </div>
         <button type="button" class="shortcuts-dialog-close" id="shortcutsDialogClose" aria-label="Close" title="Close (Esc)">
           ${renderIcon('X', { size: 13 })}
         </button>
       </div>
+      <div class="shortcuts-search-wrap">
+        <input type="text" class="shortcuts-search-input" id="shortcutsSearchInput" placeholder="Search shortcuts..." autocomplete="off" spellcheck="false" aria-label="Search shortcuts">
+      </div>
       <div class="shortcuts-dialog-body scroll-pane">
         ${groupsHtml}
+        <div class="shortcuts-empty-state" id="shortcutsEmptyState" style="display:none;">No matching shortcuts</div>
       </div>
       <div class="shortcuts-dialog-footer">
         <button type="button" class="app-dialog-btn primary shortcuts-confirm-btn" id="shortcutsDialogDone">Got it</button>
@@ -283,7 +289,10 @@ export const AppDialog = {
     });
   },
 
-  shortcuts(groups: ShortcutGroup[] = DEFAULT_KEYBOARD_SHORTCUTS): Promise<void> {
+  shortcuts(
+    groups: ShortcutGroup[] = DEFAULT_KEYBOARD_SHORTCUTS,
+    onExecute?: ShortcutExecuteHandler
+  ): Promise<void> {
     const existing = document.querySelector('.shortcuts-dialog-overlay');
     if (existing) {
       if (existing.parentNode) existing.parentNode.removeChild(existing);
@@ -296,7 +305,12 @@ export const AppDialog = {
 
       const closeBtn = overlay.querySelector('#shortcutsDialogClose');
       const doneBtn = overlay.querySelector('#shortcutsDialogDone');
+      const searchInput = overlay.querySelector('#shortcutsSearchInput') as HTMLInputElement | null;
+      const emptyState = overlay.querySelector('#shortcutsEmptyState') as HTMLElement | null;
+      const allRows = Array.from(overlay.querySelectorAll('.shortcut-row')) as HTMLElement[];
+      const allGroups = Array.from(overlay.querySelectorAll('.shortcuts-group')) as HTMLElement[];
 
+      let activeIndex = -1;
       let onKeyDown: ((e: KeyboardEvent) => void) | null = null;
 
       const cleanup = (): void => {
@@ -307,11 +321,118 @@ export const AppDialog = {
         resolve();
       };
 
+      const getVisibleRows = (): HTMLElement[] => {
+        return allRows.filter(r => r.style.display !== 'none');
+      };
+
+      const updateActiveRow = (index: number): void => {
+        const visible = getVisibleRows();
+        visible.forEach((r, idx) => {
+          r.classList.toggle('active', idx === index);
+        });
+        if (index >= 0 && index < visible.length) {
+          if (typeof visible[index].scrollIntoView === 'function') {
+            visible[index].scrollIntoView({ block: 'nearest' });
+          }
+        }
+      };
+
+      const applyFilter = (q: string): void => {
+        const term = q.trim().toLowerCase();
+        let totalVisible = 0;
+
+        allGroups.forEach(group => {
+          const rows = Array.from(group.querySelectorAll('.shortcut-row')) as HTMLElement[];
+          let groupHasVisible = false;
+          rows.forEach(row => {
+            const desc = row.dataset.desc || '';
+            const keys = row.dataset.keys || '';
+            const match = !term || desc.includes(term) || keys.includes(term);
+            row.style.display = match ? 'flex' : 'none';
+            if (match) {
+              groupHasVisible = true;
+              totalVisible++;
+            }
+          });
+          group.style.display = groupHasVisible ? 'block' : 'none';
+        });
+
+        if (emptyState) {
+          emptyState.style.display = totalVisible === 0 ? 'block' : 'none';
+        }
+
+        activeIndex = totalVisible > 0 && term ? 0 : -1;
+        updateActiveRow(activeIndex);
+      };
+
+      const executeRow = (row: HTMLElement): void => {
+        const action = row.dataset.action || '';
+        const desc = row.querySelector('.shortcut-desc')?.textContent || '';
+        let matchedItem: ShortcutItem | undefined;
+
+        for (const g of groups) {
+          const it = g.items.find(i => (action && i.action === action) || i.desc === desc);
+          if (it) {
+            matchedItem = it;
+            break;
+          }
+        }
+
+        cleanup();
+
+        if (onExecute && matchedItem && action) {
+          onExecute(action, matchedItem);
+        }
+      };
+
       onKeyDown = (e: KeyboardEvent): void => {
-        if (e.key === 'Escape' || e.key === 'Enter' || e.key === '?') {
+        if (e.key === 'Escape') {
           e.preventDefault();
           e.stopPropagation();
           cleanup();
+          return;
+        }
+
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          e.stopPropagation();
+          const visible = getVisibleRows();
+          if (!visible.length) return;
+          activeIndex = (activeIndex + 1) % visible.length;
+          updateActiveRow(activeIndex);
+          return;
+        }
+
+        if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          e.stopPropagation();
+          const visible = getVisibleRows();
+          if (!visible.length) return;
+          activeIndex = activeIndex <= 0 ? visible.length - 1 : activeIndex - 1;
+          updateActiveRow(activeIndex);
+          return;
+        }
+
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          e.stopPropagation();
+          const visible = getVisibleRows();
+          if (activeIndex >= 0 && activeIndex < visible.length) {
+            executeRow(visible[activeIndex]);
+          } else if (visible.length === 1) {
+            executeRow(visible[0]);
+          } else {
+            cleanup();
+          }
+          return;
+        }
+
+        // If '?' is pressed outside of an input, close
+        if (e.key === '?' && document.activeElement !== searchInput) {
+          e.preventDefault();
+          e.stopPropagation();
+          cleanup();
+          return;
         }
       };
 
@@ -319,11 +440,26 @@ export const AppDialog = {
       if (closeBtn instanceof HTMLElement) closeBtn.addEventListener('click', cleanup);
       if (doneBtn instanceof HTMLElement) doneBtn.addEventListener('click', cleanup);
 
+      allRows.forEach(row => {
+        row.addEventListener('click', () => {
+          executeRow(row);
+        });
+      });
+
       overlay.addEventListener('click', (e) => {
         if (e.target === overlay) cleanup();
       });
 
-      if (doneBtn instanceof HTMLElement) doneBtn.focus();
+      if (searchInput) {
+        searchInput.addEventListener('input', () => {
+          applyFilter(searchInput.value);
+        });
+        setTimeout(() => {
+          searchInput.focus();
+        }, 20);
+      } else if (doneBtn instanceof HTMLElement) {
+        doneBtn.focus();
+      }
     });
   }
 };
