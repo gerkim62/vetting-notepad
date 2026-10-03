@@ -3334,9 +3334,10 @@ function renderTemplateCards(container, list, type) {
         if (Array.isArray(vt.diyActions)) {
           for (const diy of vt.diyActions) {
             if (diy.smsId === item.id) {
+              const cleanTypeName = (vt.name || '').replace(/\s*\([^)]*\)/g, '').trim();
               usages.push({
                 typeId: vt.id,
-                typeName: vt.name,
+                typeName: cleanTypeName || vt.name,
                 chipLabel: diy.label || 'Action'
               });
             }
@@ -3353,19 +3354,7 @@ function renderTemplateCards(container, list, type) {
     return `
       <div class="template-card ${isDiy ? 'is-diy-linked' : ''}" data-template-id="${escapeHtml(item.id)}">
         <div class="template-card-header">
-          <div class="template-card-title-col">
-            <span class="template-card-title">${escapeHtml(item.title)}</span>
-            ${usages.length > 0 ? `
-              <div class="sms-diy-tag-row">
-                ${usages.map(u => `
-                  <button type="button" class="sms-diy-chip" data-type-id="${escapeHtml(u.typeId)}" title="Linked to DIY chip in '${escapeHtml(u.typeName)}'. Click to switch to this vetting type.">
-                    ${renderIcon('Zap', { size: 9 })}
-                    <span>${escapeHtml(u.typeName)}: ${escapeHtml(u.chipLabel)}</span>
-                  </button>
-                `).join('')}
-              </div>
-            ` : ''}
-          </div>
+          <span class="template-card-title">${escapeHtml(item.title)}</span>
           <div class="template-card-actions">
             <button type="button" class="ibtn copy-tpl-btn" data-template-id="${escapeHtml(item.id)}" title="${vars.length > 0 ? 'Fill variables & copy' : 'Copy SMS directly'}" aria-label="Copy template">
               ${renderIcon('Copy', { size: 11 })}
@@ -3378,6 +3367,16 @@ function renderTemplateCards(container, list, type) {
             </button>
           </div>
         </div>
+        ${usages.length > 0 ? `
+          <div class="sms-diy-tag-row">
+            ${usages.map(u => `
+              <button type="button" class="sms-diy-chip" data-type-id="${escapeHtml(u.typeId)}" title="Linked to DIY chip in '${escapeHtml(u.typeName)}'. Click to switch to this vetting type.">
+                ${renderIcon('Zap', { size: 10, strokeWidth: 2.2 })}
+                <span>${escapeHtml(u.typeName)}: ${escapeHtml(u.chipLabel)}</span>
+              </button>
+            `).join('')}
+          </div>
+        ` : ''}
         <div class="template-card-body">${highlightVariables(item.text)}</div>
         <div class="template-card-footer">
           <div class="sms-meta-info">
