@@ -2479,7 +2479,7 @@ function renderEditView() {
             <div class="diy-select-row">
               <div class="c-select diy-c-select-mount" data-diy-idx="${i}"></div>
               <button type="button" class="btn-edit-linked-sms" data-sms-id="${escapeHtml(diy.smsId || '')}" title="Open template in Quick SMS" ${!diy.smsId ? 'style="display:none;"' : ''}>
-                ${renderIcon('ExternalLink', { size: 11 })}
+                ${renderIcon('ExternalLink', { size: 13 })}
               </button>
             </div>
           </div>
@@ -3256,6 +3256,8 @@ function highlightVariables(text) {
   return escapeHtml(text).replace(/\{([^{}]+)\}/g, '<span class="template-var-badge">{$1}</span>');
 }
 
+let quickSmsFilter: 'all' | 'diy' | 'custom' = 'all';
+
 function renderTemplateCards(container, list, type) {
   if (!container) return;
   if (!list || list.length === 0) {
@@ -3264,33 +3266,48 @@ function renderTemplateCards(container, list, type) {
   }
 
   container.innerHTML = list.map(item => {
-    let usageBadgeHtml = '';
+    const usages: { typeId: string; typeName: string; chipLabel: string }[] = [];
     if (type === 'sms') {
-      const usages: string[] = [];
       for (const vt of types) {
         if (Array.isArray(vt.diyActions)) {
           for (const diy of vt.diyActions) {
             if (diy.smsId === item.id) {
-              usages.push(`${vt.name}: ${diy.label}`);
+              usages.push({
+                typeId: vt.id,
+                typeName: vt.name,
+                chipLabel: diy.label || 'Action'
+              });
             }
           }
         }
       }
-      if (usages.length > 0) {
-        usageBadgeHtml = `<span class="sms-usage-badge" title="Linked to: ${escapeHtml(usages.join(', '))}">
-          ${renderIcon('Link', { size: 9 })} ${escapeHtml(usages[0])}${usages.length > 1 ? ` +${usages.length - 1}` : ''}
-        </span>`;
-      }
     }
 
+    const textLen = (item.text || '').length;
+    const smsSegments = textLen === 0 ? 0 : textLen <= 160 ? 1 : Math.ceil(textLen / 153);
+    const vars = parseTemplateVariables(item.text || '');
+    const isDiy = usages.length > 0;
+
     return `
-      <div class="template-card" data-template-id="${escapeHtml(item.id)}">
+      <div class="template-card ${isDiy ? 'is-diy-linked' : ''}" data-template-id="${escapeHtml(item.id)}">
         <div class="template-card-header">
-          <div style="display:flex;align-items:center;overflow:hidden;gap:4px;">
+          <div class="template-card-title-col">
             <span class="template-card-title">${escapeHtml(item.title)}</span>
-            ${usageBadgeHtml}
+            ${usages.length > 0 ? `
+              <div class="sms-diy-tag-row">
+                ${usages.map(u => `
+                  <button type="button" class="sms-diy-chip" data-type-id="${escapeHtml(u.typeId)}" title="Linked to DIY chip in '${escapeHtml(u.typeName)}'. Click to switch to this vetting type.">
+                    ${renderIcon('Zap', { size: 9 })}
+                    <span>${escapeHtml(u.typeName)}: ${escapeHtml(u.chipLabel)}</span>
+                  </button>
+                `).join('')}
+              </div>
+            ` : ''}
           </div>
           <div class="template-card-actions">
+            <button type="button" class="ibtn copy-tpl-btn" data-template-id="${escapeHtml(item.id)}" title="${vars.length > 0 ? 'Fill variables & copy' : 'Copy SMS directly'}" aria-label="Copy template">
+              ${renderIcon('Copy', { size: 11 })}
+            </button>
             <button type="button" class="ibtn edit-tpl-btn" data-template-id="${escapeHtml(item.id)}" title="Edit template" aria-label="Edit template">
               ${renderIcon('Pencil', { size: 11 })}
             </button>
@@ -3300,6 +3317,13 @@ function renderTemplateCards(container, list, type) {
           </div>
         </div>
         <div class="template-card-body">${highlightVariables(item.text)}</div>
+        <div class="template-card-footer">
+          <div class="sms-meta-info">
+            <span class="sms-char-badge">${textLen} chars · ${smsSegments} SMS</span>
+            ${vars.length > 0 ? `<span class="sms-vars-badge">${vars.length} variable${vars.length > 1 ? 's' : ''}</span>` : ''}
+          </div>
+          <span class="sms-action-hint">${vars.length > 0 ? 'Click to fill & send' : 'Click to copy'}</span>
+        </div>
       </div>
     `;
   }).join('');
@@ -3309,10 +3333,57 @@ function renderTemplateCards(container, list, type) {
     const tpl = list.find(t => t.id === id);
     if (!tpl) return;
 
+    const vars = parseTemplateVariables(tpl.text || '');
+
+    // Card click: instant copy if no vars, else open fill modal
     card.onclick = (e) => {
-      if (e.target.closest('.edit-tpl-btn') || e.target.closest('.del-tpl-btn')) return;
-      openVarFillModal(tpl, type);
+      if (e.target.closest('.copy-tpl-btn') || e.target.closest('.edit-tpl-btn') || e.target.closest('.del-tpl-btn') || e.target.closest('.sms-diy-chip')) return;
+      if (vars.length > 0) {
+        openVarFillModal(tpl, type);
+      } else {
+        navigator.clipboard.writeText(tpl.text || '');
+        card.classList.remove('card-copied');
+        void (card as HTMLElement).offsetWidth;
+        card.classList.add('card-copied');
+        showToast(`Copied "${tpl.title}"`, null, null, 1500, 'info');
+      }
     };
+
+    // Copy button click
+    const btnCopy = card.querySelector('.copy-tpl-btn');
+    if (btnCopy) {
+      btnCopy.onclick = (e) => {
+        e.stopPropagation();
+        if (vars.length > 0) {
+          openVarFillModal(tpl, type);
+        } else {
+          navigator.clipboard.writeText(tpl.text || '');
+          btnCopy.innerHTML = renderIcon('Check', { size: 11, strokeWidth: 2.5 });
+          (btnCopy as HTMLElement).style.color = 'var(--saf-emerald)';
+          setTimeout(() => {
+            btnCopy.innerHTML = renderIcon('Copy', { size: 11 });
+            (btnCopy as HTMLElement).style.color = '';
+          }, 1400);
+          showToast(`Copied "${tpl.title}"`, null, null, 1500, 'info');
+        }
+      };
+    }
+
+    // DIY Chip click: Switch directly to that vetting type
+    card.querySelectorAll('.sms-diy-chip').forEach((diyBtn: any) => {
+      diyBtn.onclick = (e: any) => {
+        e.stopPropagation();
+        const typeId = diyBtn.dataset.typeId;
+        if (typeId && types.some(t => t.id === typeId)) {
+          activeTypeId = typeId;
+          saveTypes();
+          refreshTypeSelect();
+          renderForm();
+          if (quickSmsView) quickSmsView.style.display = 'none';
+          showToast(`Switched to ${types.find(t => t.id === typeId)?.name}`, null, null, 1800, 'info');
+        }
+      };
+    });
 
     const btnEdit = card.querySelector('.edit-tpl-btn');
     if (btnEdit) {
@@ -3333,31 +3404,71 @@ function renderTemplateCards(container, list, type) {
 }
 
 function renderQuickSmsList() {
-  const query = (quickSmsSearchQuery || '').trim().toLowerCase();
+  const allCount = quickSmsTemplates.length;
+  const diyTemplates = quickSmsTemplates.filter(t =>
+    types.some(vt => Array.isArray(vt.diyActions) && vt.diyActions.some(d => d.smsId === t.id))
+  );
+  const diyCount = diyTemplates.length;
+  const customCount = allCount - diyCount;
+
+  // Update tab counters & active states
+  const tabAll = document.querySelector('#smsFilterTabs [data-filter="all"]');
+  const tabDiy = document.querySelector('#smsFilterTabs [data-filter="diy"]');
+  const tabCustom = document.querySelector('#smsFilterTabs [data-filter="custom"]');
+  if (tabAll) tabAll.textContent = `All (${allCount})`;
+  if (tabDiy) tabDiy.innerHTML = `${renderIcon('Zap', { size: 10 })} <span>DIY Actions (${diyCount})</span>`;
+  if (tabCustom) tabCustom.textContent = `Custom (${customCount})`;
+
+  document.querySelectorAll('#smsFilterTabs .sms-filter-tab').forEach((tab: any) => {
+    tab.classList.toggle('active', tab.dataset.filter === quickSmsFilter);
+  });
+
   let list = quickSmsTemplates;
+  if (quickSmsFilter === 'diy') {
+    list = diyTemplates;
+  } else if (quickSmsFilter === 'custom') {
+    list = quickSmsTemplates.filter(t => !diyTemplates.some(d => d.id === t.id));
+  }
+
+  const query = (quickSmsSearchQuery || '').trim().toLowerCase();
   if (query) {
-    list = quickSmsTemplates.filter(t => {
+    list = list.filter(t => {
       const titleMatch = (t.title || '').toLowerCase().includes(query);
       const textMatch = (t.text || '').toLowerCase().includes(query);
       const vars = parseTemplateVariables(t.text || '');
       const varMatch = vars.some(v => v.toLowerCase().includes(query));
-      return titleMatch || textMatch || varMatch;
+      const diyMatch = types.some(vt =>
+        vt.name.toLowerCase().includes(query) &&
+        Array.isArray(vt.diyActions) && vt.diyActions.some(d => d.smsId === t.id && (d.label || '').toLowerCase().includes(query))
+      );
+      return titleMatch || textMatch || varMatch || diyMatch;
     });
   }
 
-  if (query && list.length === 0) {
+  if (list.length === 0) {
     if (quickSmsListEl) {
-      quickSmsListEl.innerHTML = `
-        <div style="text-align:center;padding:24px 10px;font-size:11px;color:var(--text-muted);">
-          <p>No SMS templates matching "<b>${escapeHtml(query)}</b>"</p>
-          <button type="button" class="btn-action" id="btnClearSmsSearch" style="margin-top:8px;">Clear Search</button>
-        </div>
-      `;
-      const btnClearSearch = quickSmsListEl.querySelector('#btnClearSmsSearch');
-      if (btnClearSearch) {
-        btnClearSearch.onclick = () => {
-          clearQuickSmsSearch();
-        };
+      if (query) {
+        quickSmsListEl.innerHTML = `
+          <div style="text-align:center;padding:24px 10px;font-size:11px;color:var(--text-muted);">
+            <p>No SMS templates matching "<b>${escapeHtml(query)}</b>"</p>
+            <button type="button" class="btn-action" id="btnClearSmsSearch" style="margin-top:8px;">Clear Search</button>
+          </div>
+        `;
+        const btnClearSearch = quickSmsListEl.querySelector('#btnClearSmsSearch');
+        if (btnClearSearch) {
+          btnClearSearch.onclick = () => {
+            clearQuickSmsSearch();
+          };
+        }
+      } else if (quickSmsFilter === 'diy') {
+        quickSmsListEl.innerHTML = `
+          <div style="text-align:center;padding:24px 10px;font-size:11px;color:var(--text-muted);">
+            <p>No templates currently linked to DIY actions.</p>
+            <p style="font-size:10px;color:var(--text-dim);margin-top:4px;">Link SMS templates in Settings > Edit Vetting Types > DIY & Advice Actions.</p>
+          </div>
+        `;
+      } else {
+        quickSmsListEl.innerHTML = `<div style="text-align:center;padding:24px 10px;font-size:11px;color:var(--text-muted);">No templates found.</div>`;
       }
     }
     return;
@@ -3381,26 +3492,37 @@ function clearQuickSmsSearch() {
 function initQuickSmsSearch() {
   const searchInput = document.getElementById('smsSearchInput');
   const searchClear = document.getElementById('smsSearchClear');
-  if (!searchInput) return;
+  if (searchInput) {
+    searchInput.addEventListener('input', () => {
+      quickSmsSearchQuery = searchInput.value;
+      if (searchClear) searchClear.style.display = searchInput.value ? 'inline-flex' : 'none';
+      renderQuickSmsList();
+    });
 
-  searchInput.addEventListener('input', () => {
-    quickSmsSearchQuery = searchInput.value;
-    if (searchClear) searchClear.style.display = searchInput.value ? 'inline-flex' : 'none';
-    renderQuickSmsList();
-  });
-
-  searchInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') {
-      if (searchInput.value) {
-        e.stopPropagation();
-        clearQuickSmsSearch();
+    searchInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (searchInput.value) {
+          e.stopPropagation();
+          clearQuickSmsSearch();
+        }
       }
-    }
-  });
+    });
+  }
 
   if (searchClear) {
     searchClear.onclick = () => {
       clearQuickSmsSearch();
+    };
+  }
+
+  const filterTabs = document.getElementById('smsFilterTabs');
+  if (filterTabs) {
+    filterTabs.onclick = (e: any) => {
+      const tab = e.target.closest('.sms-filter-tab');
+      if (tab && tab.dataset.filter) {
+        quickSmsFilter = tab.dataset.filter as any;
+        renderQuickSmsList();
+      }
     };
   }
 }
@@ -4073,12 +4195,47 @@ function openTemplateEditModal(tpl, type) {
   if (templateTitleInput) templateTitleInput.value = tpl ? tpl.title : '';
   if (templateBodyInput) templateBodyInput.value = tpl ? tpl.text : '';
 
+  const templateCharCounter = document.getElementById('templateCharCounter');
+  const templateDiyLinkNotice = document.getElementById('templateDiyLinkNotice');
+
+  const updateCharCounter = () => {
+    if (!templateCharCounter) return;
+    const len = templateBodyInput?.value.length || 0;
+    const segs = len === 0 ? 0 : len <= 160 ? 1 : Math.ceil(len / 153);
+    templateCharCounter.textContent = `${len} / 160 chars (${segs} SMS segment${segs > 1 ? 's' : ''})`;
+    if (len > 160) {
+      templateCharCounter.style.color = '#fbbf24';
+    } else {
+      templateCharCounter.style.color = 'var(--text-dim)';
+    }
+  };
+
+  if (templateBodyInput) {
+    templateBodyInput.oninput = updateCharCounter;
+  }
+  updateCharCounter();
+
+  if (templateDiyLinkNotice) {
+    if (type === 'sms' && tpl) {
+      const linkedTypes = types.filter(vt => vt.diyActions?.some(d => d.smsId === tpl.id));
+      if (linkedTypes.length > 0) {
+        templateDiyLinkNotice.style.display = 'inline-flex';
+        templateDiyLinkNotice.innerHTML = `${renderIcon('Zap', { size: 10 })} <span>Linked to DIY in: ${escapeHtml(linkedTypes.map(t => t.name).join(', '))}</span>`;
+      } else {
+        templateDiyLinkNotice.style.display = 'none';
+      }
+    } else {
+      templateDiyLinkNotice.style.display = 'none';
+    }
+  }
+
   if (templateEditOverlay) templateEditOverlay.style.display = 'block';
   if (templateEditModal) templateEditModal.style.display = 'flex';
   if (templateTitleInput) setTimeout(() => templateTitleInput.focus(), 50);
 }
 
 function closeTemplateEditModal() {
+  if (templateBodyInput) templateBodyInput.oninput = null;
   if (templateEditOverlay) templateEditOverlay.style.display = 'none';
   if (templateEditModal) templateEditModal.style.display = 'none';
   editingTemplateState = null;

@@ -19,12 +19,14 @@ import {
   Coffee,
   Copy,
   Download,
+  ExternalLink,
   Eye,
   FileText,
   Flag,
   HelpCircle,
   Info,
   Keyboard,
+  Link,
   Menu,
   MessageCircle,
   MessageSquare,
@@ -40,6 +42,7 @@ import {
   Upload,
   Utensils,
   X,
+  Zap,
   createIcons,
   type IconNode
 } from 'lucide';
@@ -61,12 +64,14 @@ export const SUPPORTED_ICONS: Record<string, IconNode> = {
   Coffee,
   Copy,
   Download,
+  ExternalLink,
   Eye,
   FileText,
   Flag,
   HelpCircle,
   Info,
   Keyboard,
+  Link,
   Menu,
   MessageCircle,
   MessageSquare,
@@ -82,6 +87,7 @@ export const SUPPORTED_ICONS: Record<string, IconNode> = {
   Upload,
   Utensils,
   X,
+  Zap,
   // kebab-case mappings for data-lucide attributes or kebab-case calls
   'alert-circle': AlertCircle,
   'alert-triangle': AlertTriangle,
@@ -98,12 +104,14 @@ export const SUPPORTED_ICONS: Record<string, IconNode> = {
   'coffee': Coffee,
   'copy': Copy,
   'download': Download,
+  'external-link': ExternalLink,
   'eye': Eye,
   'file-text': FileText,
   'flag': Flag,
   'help-circle': HelpCircle,
   'info': Info,
   'keyboard': Keyboard,
+  'link': Link,
   'menu': Menu,
   'message-circle': MessageCircle,
   'message-square': MessageSquare,
@@ -118,7 +126,8 @@ export const SUPPORTED_ICONS: Record<string, IconNode> = {
   'trash-2': Trash2,
   'upload': Upload,
   'utensils': Utensils,
-  'x': X
+  'x': X,
+  'zap': Zap
 };
 
 export type LucideIconName = keyof typeof SUPPORTED_ICONS | string;

@@ -270,6 +270,14 @@
             <i data-lucide="x" style="width:10px;height:10px;"></i>
           </button>
         </div>
+        <div class="sms-filter-tabs" id="smsFilterTabs">
+          <button type="button" class="sms-filter-tab active" data-filter="all">All</button>
+          <button type="button" class="sms-filter-tab" data-filter="diy">
+            <i data-lucide="zap" style="width:10px;height:10px;"></i>
+            <span>DIY Actions</span>
+          </button>
+          <button type="button" class="sms-filter-tab" data-filter="custom">Custom</button>
+        </div>
         <div class="scroll-pane" style="padding:8px 10px;" id="quickSmsList"></div>
       </div>
 
@@ -415,6 +423,10 @@
           <textarea class="template-body-textarea" id="templateBodyInput"
             placeholder="Dear Customer, kindly contact {ORGANIZATION} on {Phone Number}..." autocomplete="off"
             spellcheck="false"></textarea>
+          <div class="template-edit-meta-row">
+            <span class="sms-char-counter" id="templateCharCounter">0 / 160 characters (0 SMS)</span>
+            <span class="template-diy-link-notice" id="templateDiyLinkNotice" style="display:none;"></span>
+          </div>
         </div>
         <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:4px;">
           <button type="button" class="btn-action" id="btnCancelTemplate">Cancel</button>

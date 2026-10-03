@@ -2222,53 +2222,168 @@ textarea.mat-input.vfield-textarea::-webkit-resizer {
 .sms-search-clear:hover {
   color: var(--text-main);
 }
+/* Quick SMS Filter Tabs */
+.sms-filter-tabs {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 10px;
+  background: var(--bg-panel-alt, #1e2430);
+  border-bottom: 1px solid var(--border-line, rgba(255, 255, 255, 0.08));
+  overflow-x: auto;
+}
+
+.sms-filter-tab {
+  border: 1px solid var(--border-line, rgba(255, 255, 255, 0.12));
+  background: var(--bg-panel, #161b22);
+  color: var(--text-dim, #94a3b8);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.sms-filter-tab:hover {
+  color: var(--text-main, #f3f4f6);
+  border-color: rgba(255, 255, 255, 0.25);
+}
+
+.sms-filter-tab.active {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--saf-emerald, #10b981);
+  border-color: var(--saf-emerald, #10b981);
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.2);
+}
+
 .template-card {
   background: var(--bg-panel);
   border: 1px solid var(--border-line);
   border-radius: var(--radius-md);
-  padding: 6px 8px;
-  margin-bottom: 5px;
+  padding: 8px 10px;
+  margin-bottom: 7px;
   cursor: pointer;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 5px;
   box-sizing: border-box;
 }
+
+.template-card.is-diy-linked {
+  border-left: 3px solid var(--saf-emerald, #10b981);
+}
+
 .template-card:hover {
   border-color: var(--saf-emerald);
   box-shadow: var(--shadow-sm);
 }
+
+.template-card.card-copied {
+  animation: cardCopiedFlash 0.5s ease-out;
+}
+
+@keyframes cardCopiedFlash {
+  0% { background: rgba(16, 185, 129, 0.25); }
+  100% { background: var(--bg-panel); }
+}
+
 .template-card-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  gap: 6px;
+  gap: 8px;
 }
-.template-card-title {
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--text-main);
+
+.template-card-title-col {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
   min-width: 0;
   flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
-.template-card-actions {
+
+.template-card-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-main);
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+.sms-diy-tag-row {
   display: flex;
-  gap: 2px;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 1px;
+}
+
+.sms-diy-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9px;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(16, 185, 129, 0.12);
+  color: var(--saf-emerald, #10b981);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-decoration: none;
+}
+
+.sms-diy-chip:hover {
+  background: rgba(16, 185, 129, 0.22);
+  border-color: var(--saf-emerald);
+  transform: translateY(-1px);
+}
+
+.sms-diy-chip svg {
+  color: var(--saf-emerald);
   flex-shrink: 0;
 }
-.template-card-actions .ibtn {
-  width: 20px;
-  height: 20px;
-  padding: 2px;
+
+.template-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  flex-shrink: 0;
 }
+
+.template-card-actions .ibtn {
+  width: 22px;
+  height: 22px;
+  padding: 2px;
+  color: var(--text-dim);
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.template-card-actions .ibtn:hover {
+  color: var(--text-main);
+  background: var(--bg-hover, rgba(255, 255, 255, 0.08));
+}
+
+.template-card-actions .copy-tpl-btn:hover {
+  color: var(--saf-emerald);
+}
+
+.template-card-actions .del-tpl-btn:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.12);
+}
+
 .template-card-body {
-  font-size: 10.5px;
+  font-size: 11px;
   color: var(--text-muted);
-  line-height: 1.35;
+  line-height: 1.4;
   white-space: pre-wrap;
   word-break: break-word;
   display: -webkit-box;
@@ -2276,6 +2391,82 @@ textarea.mat-input.vfield-textarea::-webkit-resizer {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+.template-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 2px;
+  padding-top: 5px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 9.5px;
+  color: var(--text-dim);
+}
+
+.sms-meta-info {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.sms-char-badge {
+  color: var(--text-dim);
+  font-weight: 500;
+}
+
+.sms-vars-badge {
+  background: rgba(245, 158, 11, 0.12);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: 3px;
+  padding: 0 4px;
+  font-weight: 600;
+  font-size: 9px;
+}
+
+.sms-action-hint {
+  font-size: 9px;
+  color: var(--text-dim);
+  opacity: 0.8;
+  transition: opacity 0.15s ease;
+}
+
+.template-card:hover .sms-action-hint {
+  color: var(--saf-emerald);
+  opacity: 1;
+}
+
+.template-edit-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 4px;
+  font-size: 10px;
+}
+
+.sms-char-counter {
+  font-size: 10px;
+  color: var(--text-dim);
+}
+
+.template-diy-link-notice {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--saf-emerald);
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.template-diy-link-notice svg {
+  flex-shrink: 0;
+  color: var(--saf-emerald);
+}
+
 .template-var-badge {
   display: inline-block;
   padding: 1px 4px;
@@ -3880,7 +4071,7 @@ textarea.mat-input.vfield-textarea::-webkit-resizer {
   border: 1px solid var(--border-line, rgba(255, 255, 255, 0.12));
   background: var(--bg-panel, #161b22);
   border-radius: 4px;
-  color: var(--text-dim);
+  color: var(--text-main, #f3f4f6);
   cursor: pointer;
   transition: all 0.15s ease;
 }
@@ -3889,6 +4080,13 @@ textarea.mat-input.vfield-textarea::-webkit-resizer {
   color: var(--saf-emerald);
   border-color: var(--saf-emerald);
   background: rgba(16, 185, 129, 0.1);
+}
+
+.btn-edit-linked-sms svg {
+  display: block;
+  width: 13px;
+  height: 13px;
+  color: currentColor;
 }
 
 
