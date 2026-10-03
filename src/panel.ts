@@ -32,6 +32,13 @@ import 'quill/dist/quill.snow.css';
 import './panel.css';
 import { logger } from './lib/logger.js';
 import { renderIcon, initIcons } from './lib/icons.js';
+import {
+  getVarSuggestions,
+  saveVarRecord,
+  deleteVarRecord,
+  isVarRemembered,
+  migrateLegacyVars
+} from './lib/var-history.js';
 
 function renderBreakIcon(icon: string, size = 13): string {
   if (icon === 'coffee' || icon === '☕') return renderIcon('Coffee', { size });
@@ -2728,6 +2735,8 @@ const DEFAULT_QUICK_INTERACTION = [];
 let quickSmsTemplates = [];
 let quickInteractionTemplates = [];
 let rememberedTemplateVars = {};
+let varHistory = [];
+let varPreferences = { remember: {}, usageValues: {} };
 
 const quickSmsListEl = document.getElementById('quickSmsList');
 const quickInteractionListEl = document.getElementById('quickInteractionList');
@@ -2754,6 +2763,13 @@ async function loadQuickTemplates() {
   }
 
   rememberedTemplateVars = (await Storage.get('vpad.remembered_vars', {})) || {};
+  varHistory = (await Storage.get('vpad.var_history', [])) || [];
+  varPreferences = (await Storage.get('vpad.var_prefs', { remember: {}, usageValues: {} })) || { remember: {}, usageValues: {} };
+
+  if (varHistory.length === 0 && Object.keys(rememberedTemplateVars).length > 0) {
+    varHistory = migrateLegacyVars(rememberedTemplateVars);
+    Storage.set('vpad.var_history', varHistory);
+  }
 }
 
 function saveQuickSmsTemplates() {
@@ -2766,6 +2782,11 @@ function saveQuickInteractionTemplates() {
 
 function saveRememberedVars() {
   Storage.set('vpad.remembered_vars', rememberedTemplateVars);
+}
+
+function persistVarHistory() {
+  Storage.set('vpad.var_history', varHistory);
+  Storage.set('vpad.var_prefs', varPreferences);
 }
 
 function parseTemplateVariables(text) {
@@ -2950,7 +2971,20 @@ function resolveTemplateText(tplText, varValues) {
   });
 }
 
-function openVarFillModal(tpl, type) {
+function highlightVarQuery(label, query) {
+  const q = (query || '').trim();
+  if (!q) return escapeHtml(label);
+  const terms = q.split(/\s+/).filter(Boolean);
+  if (!terms.length) return escapeHtml(label);
+  let escaped = escapeHtml(label);
+  terms.forEach(term => {
+    const reg = new RegExp(`(${term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+    escaped = escaped.replace(reg, '<mark>$1</mark>');
+  });
+  return escaped;
+}
+
+function openVarFillModal(tpl, _type) {
   const vars = parseTemplateVariables(tpl.text);
   if (vars.length === 0) {
     writeToClipboard(tpl.text);
@@ -2964,8 +2998,16 @@ function openVarFillModal(tpl, type) {
   if (varFillModal) varFillModal.style.display = 'flex';
 
   const currentValues = {};
+  const manualEdits = new Set();
+
+  // Find latest matching record in varHistory for initial pre-fill
+  const latestMatching = varHistory.find(r => r && r.values && vars.some(v => r.values[v] && isVarRemembered(v, varPreferences)));
   vars.forEach(v => {
-    currentValues[v] = rememberedTemplateVars[v] || '';
+    if (isVarRemembered(v, varPreferences)) {
+      currentValues[v] = (latestMatching && latestMatching.values[v]) || rememberedTemplateVars[v] || '';
+    } else {
+      currentValues[v] = ''; // Transient variables always start fresh
+    }
   });
 
   const updatePreview = () => {
@@ -2975,27 +3017,246 @@ function openVarFillModal(tpl, type) {
   };
 
   if (varInputsList) {
-    varInputsList.innerHTML = vars.map(v => `
-      <div class="var-input-row" data-var-name="${escapeHtml(v)}">
-        <label class="var-input-label">${escapeHtml(v)}</label>
-        <div class="var-input-field-wrap">
-          <input type="text" class="var-input" value="${escapeHtml(currentValues[v])}" placeholder="Enter ${escapeHtml(v)}..." autocomplete="off" spellcheck="false">
-          <button type="button" class="var-paste-btn" title="Paste from clipboard">
-            ${renderIcon('ClipboardPaste', { size: 11 })}
-          </button>
+    varInputsList.innerHTML = vars.map(v => {
+      const isRem = isVarRemembered(v, varPreferences);
+      return `
+        <div class="var-input-row ${isRem ? '' : 'transient'}" data-var-name="${escapeHtml(v)}">
+          <div class="var-input-header">
+            <label class="var-input-label">${escapeHtml(v)}</label>
+            <button type="button" class="var-remember-btn ${isRem ? 'active' : ''}" data-var-name="${escapeHtml(v)}" title="${isRem ? 'Field remembered in history (click to disable)' : 'Transient field (not saved to history)'}">
+              ${renderIcon(isRem ? 'Bookmark' : 'BookmarkX', { size: 10 })}
+              <span>${isRem ? 'Remember' : 'Transient'}</span>
+            </button>
+          </div>
+          <div class="var-input-field-wrap">
+            <input type="text" class="var-input" value="${escapeHtml(currentValues[v])}" placeholder="Enter ${escapeHtml(v)}..." autocomplete="off" spellcheck="false">
+            <button type="button" class="var-paste-btn" title="Paste from clipboard">
+              ${renderIcon('ClipboardPaste', { size: 11 })}
+            </button>
+            <ul class="var-suggestions-dropdown" style="display:none;" role="listbox"></ul>
+          </div>
         </div>
-      </div>
-    `).join('');
+      `;
+    }).join('');
 
     varInputsList.querySelectorAll('.var-input-row').forEach(row => {
       const v = row.dataset.varName;
       const inp = row.querySelector('.var-input');
       const btnPaste = row.querySelector('.var-paste-btn');
+      const btnRemember = row.querySelector('.var-remember-btn');
+      const dropdown = row.querySelector('.var-suggestions-dropdown');
+
+      let currentSuggestions = [];
+      let activeIdx = -1;
+      let preHoverValues = null;
+
+      const hideDropdown = () => {
+        if (dropdown) dropdown.style.display = 'none';
+        row.classList.remove('open');
+        activeIdx = -1;
+        currentSuggestions = [];
+        if (preHoverValues) restoreHover();
+      };
+
+      const restoreHover = () => {
+        if (!preHoverValues) return;
+        vars.forEach(k => {
+          currentValues[k] = preHoverValues[k] || '';
+          const targetRow = varInputsList.querySelector(`.var-input-row[data-var-name="${escapeHtml(k)}"]`);
+          const targetInp = targetRow ? targetRow.querySelector('.var-input') : null;
+          if (targetInp && document.activeElement !== targetInp) {
+            targetInp.value = currentValues[k];
+          }
+        });
+        preHoverValues = null;
+        updatePreview();
+      };
+
+      const paintActive = () => {
+        if (!dropdown) return;
+        dropdown.querySelectorAll('.var-suggestion-item').forEach((li, idx) => {
+          li.classList.toggle('active', idx === activeIdx);
+        });
+      };
+
+      const applySuggestion = (sug, isCommit = false) => {
+        if (!sug) return;
+        if (!isCommit && !preHoverValues) {
+          preHoverValues = { ...currentValues };
+        }
+
+        currentValues[v] = sug.primaryValue;
+        if (isCommit) {
+          inp.value = sug.primaryValue;
+        }
+
+        // Fill accompanying variables (only if not manually edited by user in this session)
+        vars.forEach(otherVar => {
+          if (otherVar !== v && sug.accompanying && sug.accompanying[otherVar] !== undefined) {
+            if (!manualEdits.has(otherVar)) {
+              currentValues[otherVar] = sug.accompanying[otherVar];
+              const siblingRow = varInputsList.querySelector(`.var-input-row[data-var-name="${escapeHtml(otherVar)}"]`);
+              const siblingInp = siblingRow ? siblingRow.querySelector('.var-input') : null;
+              if (siblingInp) {
+                siblingInp.value = sug.accompanying[otherVar];
+              }
+            }
+          }
+        });
+
+        updatePreview();
+
+        if (isCommit) {
+          preHoverValues = null;
+          hideDropdown();
+        }
+      };
+
+      const renderSuggestions = () => {
+        if (!isVarRemembered(v, varPreferences)) {
+          hideDropdown();
+          return;
+        }
+        currentSuggestions = getVarSuggestions(varHistory, v, inp.value, varPreferences);
+        if (currentSuggestions.length === 0) {
+          hideDropdown();
+          return;
+        }
+
+        dropdown.innerHTML = currentSuggestions.map((item, idx) => `
+          <li class="var-suggestion-item" data-idx="${idx}" role="option">
+            <div class="var-suggestion-main">
+              <span class="var-suggestion-primary">${highlightVarQuery(item.primaryValue, inp.value)}</span>
+              ${item.subtext ? `<span class="var-suggestion-subtext">${escapeHtml(item.subtext)}</span>` : ''}
+            </div>
+            <button type="button" class="var-suggestion-del" title="Delete this entry from history" data-record-id="${escapeHtml(item.recordId)}">
+              ${renderIcon('X', { size: 10 })}
+            </button>
+          </li>
+        `).join('');
+
+        dropdown.querySelectorAll('.var-suggestion-item').forEach(itemEl => {
+          const idx = parseInt(itemEl.dataset.idx, 10);
+          const sug = currentSuggestions[idx];
+
+          itemEl.onmouseenter = () => {
+            activeIdx = idx;
+            paintActive();
+            applySuggestion(sug, false);
+          };
+
+          itemEl.onclick = (e) => {
+            if (e.target.closest('.var-suggestion-del')) return;
+            applySuggestion(sug, true);
+          };
+
+          const btnDel = itemEl.querySelector('.var-suggestion-del');
+          if (btnDel) {
+            btnDel.onclick = (e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              const recId = btnDel.dataset.recordId;
+              varHistory = deleteVarRecord(varHistory, recId);
+              persistVarHistory();
+              renderSuggestions();
+              inp.focus();
+            };
+          }
+        });
+
+        dropdown.onmouseleave = () => {
+          restoreHover();
+          activeIdx = -1;
+          paintActive();
+        };
+
+        dropdown.style.display = 'block';
+        row.classList.add('open');
+        paintActive();
+      };
+
+      if (btnRemember) {
+        btnRemember.onclick = (e) => {
+          e.stopPropagation();
+          const nowRemembered = !isVarRemembered(v, varPreferences);
+          varPreferences.remember[v] = nowRemembered;
+          persistVarHistory();
+
+          btnRemember.classList.toggle('active', nowRemembered);
+          btnRemember.title = nowRemembered ? 'Field remembered in history (click to disable)' : 'Transient field (not saved to history)';
+          btnRemember.innerHTML = `${renderIcon(nowRemembered ? 'Bookmark' : 'BookmarkX', { size: 10 })}<span>${nowRemembered ? 'Remember' : 'Transient'}</span>`;
+          row.classList.toggle('transient', !nowRemembered);
+
+          if (!nowRemembered) {
+            hideDropdown();
+          } else {
+            renderSuggestions();
+          }
+        };
+      }
 
       if (inp) {
         inp.oninput = () => {
+          manualEdits.add(v);
           currentValues[v] = inp.value;
           updatePreview();
+          renderSuggestions();
+        };
+
+        inp.onfocus = () => {
+          renderSuggestions();
+        };
+
+        inp.onblur = () => {
+          setTimeout(() => {
+            if (document.activeElement !== inp && (!dropdown || !dropdown.contains(document.activeElement))) {
+              if (currentSuggestions.length > 0) {
+                const exact = currentSuggestions.find(s => s.primaryValue.toLowerCase() === inp.value.trim().toLowerCase());
+                if (exact) {
+                  applySuggestion(exact, true);
+                }
+              }
+              hideDropdown();
+            }
+          }, 180);
+        };
+
+        inp.onkeydown = (e) => {
+          if (dropdown && dropdown.style.display !== 'none' && currentSuggestions.length > 0) {
+            if (e.key === 'ArrowDown') {
+              e.preventDefault();
+              activeIdx = (activeIdx + 1) % currentSuggestions.length;
+              paintActive();
+              applySuggestion(currentSuggestions[activeIdx], false);
+              const activeLi = dropdown.querySelector(`.var-suggestion-item[data-idx="${activeIdx}"]`);
+              if (activeLi) activeLi.scrollIntoView({ block: 'nearest' });
+            } else if (e.key === 'ArrowUp') {
+              e.preventDefault();
+              activeIdx = (activeIdx - 1 + currentSuggestions.length) % currentSuggestions.length;
+              paintActive();
+              applySuggestion(currentSuggestions[activeIdx], false);
+              const activeLi = dropdown.querySelector(`.var-suggestion-item[data-idx="${activeIdx}"]`);
+              if (activeLi) activeLi.scrollIntoView({ block: 'nearest' });
+            } else if (e.key === 'Enter') {
+              if (activeIdx >= 0 && activeIdx < currentSuggestions.length) {
+                e.preventDefault();
+                applySuggestion(currentSuggestions[activeIdx], true);
+              }
+            } else if (e.key === 'Escape') {
+              e.preventDefault();
+              hideDropdown();
+            } else if (e.key === 'Tab') {
+              if (activeIdx >= 0 && activeIdx < currentSuggestions.length) {
+                applySuggestion(currentSuggestions[activeIdx], true);
+              } else {
+                const exact = currentSuggestions.find(s => s.primaryValue.toLowerCase() === inp.value.trim().toLowerCase());
+                if (exact) {
+                  applySuggestion(exact, true);
+                }
+              }
+              hideDropdown();
+            }
+          }
         };
       }
 
@@ -3005,8 +3266,10 @@ function openVarFillModal(tpl, type) {
             const clipText = await navigator.clipboard.readText();
             if (clipText && inp) {
               inp.value = clipText.trim();
+              manualEdits.add(v);
               currentValues[v] = inp.value;
               updatePreview();
+              renderSuggestions();
             }
           } catch (err) {
             logger.captureError('templates', err, { action: 'pasteVariable' });
@@ -3027,15 +3290,35 @@ function openVarFillModal(tpl, type) {
       await writeToClipboard(resolved);
 
       if (chkRememberVars && chkRememberVars.checked) {
+        const saveRes = saveVarRecord(varHistory, currentValues, varPreferences);
+        varHistory = saveRes.updatedHistory;
+        varPreferences = saveRes.updatedPrefs;
+        persistVarHistory();
+
         vars.forEach(v => {
-          rememberedTemplateVars[v] = currentValues[v] || '';
+          if (isVarRemembered(v, varPreferences)) {
+            rememberedTemplateVars[v] = currentValues[v] || '';
+          } else {
+            delete rememberedTemplateVars[v];
+          }
         });
-      } else {
-        vars.forEach(v => {
-          delete rememberedTemplateVars[v];
-        });
+        saveRememberedVars();
+
+        if (saveRes.autoMutedVars.length > 0) {
+          const mutedVar = saveRes.autoMutedVars[0];
+          showBanner(
+            `Excluded '${mutedVar}' from history`,
+            'Keep Remembering',
+            () => {
+              varPreferences.remember[mutedVar] = true;
+              persistVarHistory();
+              showBanner(`'${mutedVar}' will be remembered`, null, null, 2000, 'success');
+            },
+            4500,
+            'info'
+          );
+        }
       }
-      saveRememberedVars();
 
       const origHtml = btnCopyResolved.innerHTML;
       btnCopyResolved.classList.add('copied-success');
