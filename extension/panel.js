@@ -12,7 +12,7 @@ import {
   formatShortDuration
 } from './lib/break-timer.js';
 import { attachAutoExpand } from './lib/multiline.js';
-import { escapeHtml, uid } from './lib/utils.js';
+import { escapeHtml, uid, getAppVersion } from './lib/utils.js';
 import { SmartCallPad } from './lib/callpad.js';
 import { parseVettingText, isVettingClipboardText } from './lib/parser.js';
 import { initShortcuts } from './lib/shortcuts.js';
@@ -314,9 +314,11 @@ const topBanner = document.getElementById('topBanner');
 const topBannerMsg = document.getElementById('topBannerMsg');
 const topBannerBtn = document.getElementById('topBannerBtn');
 const topBannerClose = document.getElementById('topBannerClose');
+const topBannerProgress = document.getElementById('topBannerProgress');
 
 let bannerTimer = null;
 let bannerRemainingMs = 0;
+let bannerTotalDurationMs = 0;
 let bannerStartTime = 0;
 let isBannerHovered = false;
 
@@ -328,10 +330,13 @@ function showBanner(message, actionLabel = null, actionCallback = null, duration
   }
 
   bannerRemainingMs = durationMs;
+  bannerTotalDurationMs = durationMs;
   bannerStartTime = Date.now();
 
   topBanner.className = `top-banner banner-${type}`;
+  topBanner.title = message;
   topBannerMsg.textContent = message;
+  topBannerMsg.title = message;
 
   if (actionLabel && actionCallback) {
     topBannerBtn.style.display = 'inline-block';
@@ -356,6 +361,19 @@ function showBanner(message, actionLabel = null, actionCallback = null, duration
     topBanner.style.animation = 'bannerSlideIn 0.22s cubic-bezier(0.16, 1, 0.3, 1)';
   }
 
+  if (topBannerProgress) {
+    if (durationMs > 0) {
+      topBannerProgress.style.display = 'block';
+      topBannerProgress.style.transition = 'none';
+      topBannerProgress.style.transform = 'scaleX(1)';
+      void topBannerProgress.offsetWidth;
+      topBannerProgress.style.transition = `transform ${durationMs}ms linear`;
+      topBannerProgress.style.transform = 'scaleX(0)';
+    } else {
+      topBannerProgress.style.display = 'none';
+    }
+  }
+
   if (durationMs > 0 && !isBannerHovered) {
     bannerTimer = setTimeout(() => {
       hideBanner();
@@ -370,6 +388,11 @@ function hideBanner() {
     bannerTimer = null;
   }
   bannerRemainingMs = 0;
+  if (topBannerProgress) {
+    topBannerProgress.style.transition = 'none';
+    topBannerProgress.style.transform = 'scaleX(0)';
+    topBannerProgress.style.display = 'none';
+  }
   topBanner.style.display = 'none';
 }
 
@@ -381,6 +404,11 @@ if (topBanner) {
       bannerRemainingMs = Math.max(0, bannerRemainingMs - elapsed);
       clearTimeout(bannerTimer);
       bannerTimer = null;
+      if (topBannerProgress && bannerTotalDurationMs > 0) {
+        const remainingScale = Math.max(0, bannerRemainingMs / bannerTotalDurationMs);
+        topBannerProgress.style.transition = 'none';
+        topBannerProgress.style.transform = `scaleX(${remainingScale})`;
+      }
     }
   });
 
@@ -388,7 +416,12 @@ if (topBanner) {
     isBannerHovered = false;
     if (topBanner.style.display !== 'none' && bannerRemainingMs > 0) {
       bannerStartTime = Date.now();
-      const resumeMs = Math.max(1000, bannerRemainingMs);
+      const resumeMs = Math.max(800, bannerRemainingMs);
+      if (topBannerProgress) {
+        void topBannerProgress.offsetWidth;
+        topBannerProgress.style.transition = `transform ${resumeMs}ms linear`;
+        topBannerProgress.style.transform = 'scaleX(0)';
+      }
       bannerTimer = setTimeout(() => {
         hideBanner();
       }, resumeMs);
@@ -1873,14 +1906,20 @@ let pasteCooldown = false;
 
 function setMiddleActionButton(mode) {
   if (!btnPaste || !btnClear) return;
+  btnPaste.style.display = '';
+  btnClear.style.display = '';
   if (mode === 'paste') {
     pasteCooldown = true;
     setTimeout(() => { pasteCooldown = false; }, 350);
-    btnPaste.style.display = 'inline-flex';
-    btnClear.style.display = 'none';
+    btnPaste.classList.add('flip-visible');
+    btnPaste.classList.remove('flip-hidden');
+    btnClear.classList.add('flip-hidden');
+    btnClear.classList.remove('flip-visible');
   } else {
-    btnPaste.style.display = 'none';
-    btnClear.style.display = 'inline-flex';
+    btnPaste.classList.add('flip-hidden');
+    btnPaste.classList.remove('flip-visible');
+    btnClear.classList.add('flip-visible');
+    btnClear.classList.remove('flip-hidden');
   }
 }
 
@@ -3332,7 +3371,7 @@ function renderSettingsView() {
         }
 
         const diagnostics = buildDebugDiagnostics({
-          version: '3.0.0',
+          version: getAppVersion(),
           types,
           settings,
           activeTypeId,
@@ -3439,6 +3478,14 @@ initShortcuts({
       renderBreakNotifierView();
     }
   },
+  toggleQuickSms: () => {
+    if (quickSmsView && quickSmsView.style.display !== 'none') {
+      quickSmsView.style.display = 'none';
+    } else if (quickSmsView) {
+      quickSmsView.style.display = 'flex';
+      renderQuickSmsList();
+    }
+  },
   toggleSettings: () => {
     if (settingsView && settingsView.style.display !== 'none') {
       settingsView.style.display = 'none';
@@ -3464,6 +3511,10 @@ initShortcuts({
     }
     if (breakNotifierView && breakNotifierView.style.display !== 'none') {
       breakNotifierView.style.display = 'none';
+      return;
+    }
+    if (quickSmsView && quickSmsView.style.display !== 'none') {
+      quickSmsView.style.display = 'none';
       return;
     }
     if (notesView && notesView.style.display !== 'none') {

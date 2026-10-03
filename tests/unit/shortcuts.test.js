@@ -10,6 +10,7 @@ describe('Central Keyboard Shortcuts Engine', () => {
       toggleNotes: vi.fn(),
       toggleCallpad: vi.fn(),
       toggleBreaks: vi.fn(),
+      toggleQuickSms: vi.fn(),
       toggleSettings: vi.fn(),
       togglePreview: vi.fn(),
       handleEscape: vi.fn(),
@@ -90,6 +91,19 @@ describe('Central Keyboard Shortcuts Engine', () => {
     });
     document.dispatchEvent(event);
     expect(handlers.togglePreview).toHaveBeenCalledTimes(1);
+  });
+
+  it('triggers toggleQuickSms on Alt+Shift+M', () => {
+    const event = new KeyboardEvent('keydown', {
+      key: 'M',
+      code: 'KeyM',
+      altKey: true,
+      shiftKey: true,
+      bubbles: true,
+      cancelable: true
+    });
+    document.dispatchEvent(event);
+    expect(handlers.toggleQuickSms).toHaveBeenCalledTimes(1);
   });
 
   it('triggers handleEscape on Escape', () => {

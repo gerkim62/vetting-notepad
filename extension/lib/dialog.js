@@ -224,6 +224,7 @@ export const DEFAULT_KEYBOARD_SHORTCUTS = [
       { desc: 'Notes', keys: ['Alt', 'Shift', 'N'] },
       { desc: 'Scratchpad', keys: ['Alt', 'Shift', 'C'] },
       { desc: 'Break Notifier', keys: ['Alt', 'Shift', 'B'] },
+      { desc: 'Quick SMS', keys: ['Alt', 'Shift', 'M'] },
       { desc: 'Settings', keys: ['Alt', 'Shift', 'S'] },
       { desc: 'Toggle Preview', keys: ['Alt', 'Shift', 'P'] }
     ]

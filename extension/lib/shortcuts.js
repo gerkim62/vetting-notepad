@@ -35,6 +35,11 @@ export function initShortcuts(handlers = {}) {
         handlers.togglePreview?.();
         return;
       }
+      if (code === 'KeyM' || key === 'M') {
+        e.preventDefault();
+        handlers.toggleQuickSms?.();
+        return;
+      }
     }
 
     // 2. Escape -> Return to main / close open modal/screen

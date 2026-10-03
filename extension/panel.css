@@ -907,6 +907,36 @@ textarea.mat-input.vfield-textarea::-webkit-resizer {
   border-color: var(--saf-emerald);
 }
 
+.middle-action-wrap {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  perspective: 500px;
+}
+.middle-action-wrap .btn-action {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+  transition: transform 0.22s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.18s ease;
+}
+.middle-action-wrap .btn-action.flip-visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: rotateX(0deg);
+  z-index: 2;
+}
+.middle-action-wrap .btn-action.flip-hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: rotateX(-90deg);
+  z-index: 1;
+}
+
 .btn-clear, .btn-paste {
   position: relative;
   white-space: nowrap;
@@ -1037,29 +1067,35 @@ textarea.mat-input.vfield-textarea::-webkit-resizer {
   align-items: center;
   justify-content: space-between;
   gap: 6px;
-  padding: 5px 8px;
+  padding: 6px 9px 8px 9px;
   background: var(--bg-panel);
   border: 1px solid var(--border-line);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-md);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.22);
   font-size: 11px;
   color: var(--text-main);
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(10px);
+  overflow: hidden;
+  cursor: default;
+  transition: box-shadow 0.15s ease, border-color 0.15s ease;
   animation: bannerSlideIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.top-banner:hover {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
 }
 .top-banner.banner-info,
 .top-banner.banner-success {
   background: var(--bg-panel);
   color: var(--saf-emerald);
   border-color: var(--saf-emerald);
-  box-shadow: 0 4px 12px var(--saf-emerald-glow);
+  box-shadow: 0 4px 14px var(--saf-emerald-glow);
   animation: bannerSlideIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .top-banner.banner-warn {
   background: var(--bg-panel);
   color: var(--color-warn);
   border-color: var(--color-warn);
-  box-shadow: 0 4px 12px var(--color-warn-soft);
+  box-shadow: 0 4px 14px var(--color-warn-soft);
   animation: bannerPop 0.22s ease-out;
 }
 .top-banner.banner-danger,
@@ -1067,7 +1103,7 @@ textarea.mat-input.vfield-textarea::-webkit-resizer {
   background: var(--bg-panel);
   color: var(--color-danger);
   border-color: var(--color-danger);
-  box-shadow: 0 4px 12px var(--color-danger-soft);
+  box-shadow: 0 4px 14px var(--color-danger-soft);
   animation: bannerShake 0.35s ease-in-out;
 }
 .top-banner-msg {
@@ -1078,20 +1114,23 @@ textarea.mat-input.vfield-textarea::-webkit-resizer {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  cursor: inherit;
 }
 .top-banner-btn {
   font-size: 10px;
   font-weight: 700;
-  background: none;
+  background: rgba(255, 255, 255, 0.08);
   border: 1px solid currentColor;
-  border-radius: var(--radius-sm);
-  padding: 1px 6px;
+  border-radius: 4px;
+  padding: 1.5px 7px;
   color: inherit;
   cursor: pointer;
   flex: none;
+  transition: background 0.12s ease, transform 0.1s ease;
 }
 .top-banner-btn:hover {
-  background: rgba(0, 0, 0, 0.08);
+  background: rgba(255, 255, 255, 0.18);
+  transform: scale(1.03);
 }
 .top-banner-close {
   background: none;
@@ -1104,11 +1143,24 @@ textarea.mat-input.vfield-textarea::-webkit-resizer {
   display: grid;
   place-items: center;
   border-radius: 3px;
-  opacity: 0.8;
+  opacity: 0.75;
   flex: none;
+  transition: opacity 0.12s ease, transform 0.1s ease;
 }
 .top-banner-close:hover {
   opacity: 1;
+  transform: scale(1.1);
+}
+.top-banner-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2.5px;
+  width: 100%;
+  background: currentColor;
+  opacity: 0.85;
+  transform-origin: left;
+  pointer-events: none;
 }
 
 @keyframes bannerSlideIn {
@@ -1937,7 +1989,8 @@ textarea.mat-input.vfield-textarea::-webkit-resizer {
   position: absolute;
   top: 36px;
   right: 6px;
-  width: 175px;
+  min-width: 195px;
+  width: max-content;
   max-width: calc(100vw - 12px);
   background: var(--bg-panel);
   border: 1px solid var(--border-line);
@@ -1968,6 +2021,7 @@ textarea.mat-input.vfield-textarea::-webkit-resizer {
   border-radius: var(--radius-sm);
   cursor: pointer;
   text-align: left;
+  white-space: nowrap;
   transition: background 0.12s ease, color 0.12s ease;
 }
 .menu-item:hover, .menu-item:focus-visible {
@@ -1985,6 +2039,8 @@ textarea.mat-input.vfield-textarea::-webkit-resizer {
 .menu-item span {
   flex: 1;
   text-align: left;
+  white-space: nowrap;
+  margin-right: 6px;
 }
 .menu-kbd {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
