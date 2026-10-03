@@ -46,6 +46,11 @@ const storageMemory: Record<string, any> = {};
   },
   downloads: {
     download: vi.fn().mockResolvedValue(123)
+  },
+  runtime: {
+    getManifest: vi.fn(() => ({ version: '2.0.0' })),
+    getURL: vi.fn((path: string) => `chrome-extension://mock-id/${path}`),
+    lastError: null
   }
 };
 

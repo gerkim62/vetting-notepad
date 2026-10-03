@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import { escapeHtml, uid, debounce, sanitizeRedacted } from '../../src/lib/utils.js';
+import { escapeHtml, uid, debounce, sanitizeRedacted, getAppVersion } from '../../src/lib/utils.js';
+import manifest from '../../src/manifest.json';
 
 describe('Shared Utilities Module (utils.js)', () => {
   describe('escapeHtml', () => {
@@ -70,6 +71,24 @@ describe('Shared Utilities Module (utils.js)', () => {
       expect(sanitizeRedacted('   ')).toBe('');
       expect(sanitizeRedacted(null)).toBe('');
       expect(sanitizeRedacted(undefined)).toBe('');
+    });
+  });
+
+  describe('getAppVersion', () => {
+    it('retrieves the version dynamically matching manifest.json', () => {
+      const ver = getAppVersion();
+      expect(ver).toBe(manifest.version);
+      expect(ver).toMatch(/^\d+\.\d+\.\d+/);
+    });
+
+    it('reads from chrome.runtime.getManifest when available', () => {
+      const original = (globalThis as any).chrome?.runtime?.getManifest;
+      try {
+        (globalThis as any).chrome.runtime.getManifest = vi.fn(() => ({ version: '9.9.9' }));
+        expect(getAppVersion()).toBe('9.9.9');
+      } finally {
+        (globalThis as any).chrome.runtime.getManifest = original;
+      }
     });
   });
 });

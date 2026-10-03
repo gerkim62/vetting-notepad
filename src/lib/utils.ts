@@ -6,6 +6,7 @@
 
 import DOMPurify from 'dompurify';
 import { logger } from './logger.js';
+import manifest from '../manifest.json';
 
 /**
  * Retrieves the dynamic extension version from the Chrome manifest without hardcoding.
@@ -13,13 +14,13 @@ import { logger } from './logger.js';
 export function getAppVersion(): string {
   if (typeof chrome !== 'undefined' && chrome.runtime?.getManifest) {
     try {
-      const manifest = chrome.runtime.getManifest();
-      if (manifest?.version) return manifest.version;
+      const runtimeManifest = chrome.runtime.getManifest();
+      if (runtimeManifest?.version) return runtimeManifest.version;
     } catch (err) {
       logger.captureError('utils', err, { action: 'getAppVersion' });
     }
   }
-  return '2.0.0';
+  return manifest.version;
 }
 
 /**
