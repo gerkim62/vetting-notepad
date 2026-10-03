@@ -4,10 +4,20 @@ export interface VettingField {
   len?: number;
   info?: string;
   v360?: string;
+  article?: string;
+  defaultValue?: string;
+  excludeFromCount?: boolean;
   multiline?: boolean;
   maxLines?: number;
   group?: string;
   groupMin?: number;
+}
+
+export interface VettingDiyAction {
+  id: string;
+  label: string;
+  adviceText: string;
+  smsId?: string;
 }
 
 export interface VettingType {
@@ -19,6 +29,7 @@ export interface VettingType {
   required: VettingField[];
   optional: VettingField[];
   comments?: string[];
+  diyActions?: VettingDiyAction[];
   isCustom?: boolean;
 }
 
@@ -54,10 +65,9 @@ export interface BreakState {
 export interface NoteItem {
   id: string;
   title: string;
-  contentHtml: string;
-  contentText: string;
-  createdAt: string;
-  updatedAt: string;
+  text: string;
+  html: string;
+  updatedAt: number;
 }
 
 export interface ShortcutItem {
@@ -88,6 +98,18 @@ export interface ShortcutHandlers {
   failField?: () => void;
 }
 
+export interface QuickSmsTemplate {
+  id: string;
+  title: string;
+  text: string;
+}
+
+export interface QuickInteractionTemplate {
+  id: string;
+  title: string;
+  text: string;
+}
+
 export interface ExportPayload {
   app: string;
   version: number;
@@ -97,4 +119,6 @@ export interface ExportPayload {
   settings: AppSettings;
   savedComments: string[];
   activeTypeId: string | null;
+  quickSmsTemplates?: QuickSmsTemplate[];
+  quickInteractionTemplates?: QuickInteractionTemplate[];
 }

@@ -79,15 +79,26 @@
           <pre id="previewText" class="empty">Nothing filled yet</pre>
         </div>
 
+        <!-- Contextual DIY Action Chips Row -->
+        <div class="diy-chips-row" id="diyChipsRow" style="display:none;"></div>
+
         <!-- Material Underline Comment Input with Suggestions -->
         <div class="field-container comment-container">
           <div class="material-field" id="commentFieldBox">
-            <label class="mat-label" for="commentInput">Comment (optional)</label>
-            <textarea class="mat-input vfield-textarea" id="commentInput" rows="1" data-max-lines="5" autocomplete="off"
+            <label class="mat-label" for="commentInput">Notes / Comment (optional)</label>
+            <textarea class="mat-input vfield-textarea" id="commentInput" rows="1" data-max-lines="4" autocomplete="off"
               spellcheck="false"></textarea>
             <div class="mat-underline-continuous"></div>
           </div>
           <ul class="comment-suggestions-menu" id="commentSuggestionsMenu" role="listbox"></ul>
+          <div class="notes-line-picker" id="notesLinePicker" style="display:none;">
+            <span class="nlp-label">Max lines:</span>
+            <button type="button" class="nlp-btn" data-lines="2">2</button>
+            <button type="button" class="nlp-btn" data-lines="3">3</button>
+            <button type="button" class="nlp-btn" data-lines="4">4</button>
+            <button type="button" class="nlp-btn" data-lines="5">5</button>
+            <button type="button" class="nlp-btn" data-lines="8">8</button>
+          </div>
         </div>
 
         <!-- Action Row -->

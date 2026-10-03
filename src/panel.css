@@ -3451,4 +3451,205 @@ textarea.mat-input.vfield-textarea::-webkit-resizer {
   }
 }
 
+/* ==========================================================================
+   Micro-Interactions Animations & Button Morphs
+   ========================================================================== */
+@keyframes microShake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-4px); }
+  40%, 80% { transform: translateX(4px); }
+}
+
+@keyframes formGentleShake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-3px); }
+  75% { transform: translateX(3px); }
+}
+
+@keyframes microPulseSuccess {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+
+@keyframes microPulseError {
+  0% { transform: scale(1); }
+  50% { transform: scale(0.97); }
+  100% { transform: scale(1); }
+}
+
+.form-subtle-shake {
+  animation: formGentleShake 0.35s ease-in-out;
+}
+
+.btn-action.morph-success {
+  background: var(--saf-emerald, #10b981) !important;
+  color: #ffffff !important;
+  border-color: var(--saf-emerald, #10b981) !important;
+  animation: microPulseSuccess 0.25s ease-out;
+}
+
+.btn-action.morph-error {
+  background: var(--color-danger, #ef4444) !important;
+  color: #ffffff !important;
+  border-color: var(--color-danger, #ef4444) !important;
+  animation: microShake 0.35s ease-in-out;
+}
+
+/* ==========================================================================
+   Contextual DIY Action Split Chips Row
+   ========================================================================== */
+.diy-chips-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 6px;
+  padding: 0 1px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  white-space: nowrap;
+}
+.diy-chips-row::-webkit-scrollbar {
+  display: none;
+}
+
+.diy-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  border-radius: 11px;
+  border: 1px solid var(--border-line);
+  background: var(--bg-hover);
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-muted);
+  user-select: none;
+  transition: all 0.15s ease;
+  line-height: 1;
+}
+
+.diy-chip:hover {
+  border-color: var(--text-muted);
+  color: var(--text-main);
+}
+
+.diy-chip.active {
+  background: var(--saf-emerald-soft, rgba(16, 185, 129, 0.15));
+  border-color: var(--saf-emerald, #10b981);
+  color: var(--saf-emerald, #10b981);
+}
+
+.diy-chip-label {
+  padding: 0 7px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 100%;
+}
+
+.diy-chip-copy {
+  border-left: 1px solid var(--border-line);
+  padding: 0 5px;
+  height: 100%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0.65;
+  transition: all 0.15s ease;
+}
+.diy-chip.active .diy-chip-copy {
+  border-left-color: rgba(16, 185, 129, 0.3);
+}
+
+.diy-chip-copy:hover {
+  opacity: 1;
+  color: var(--saf-emerald, #10b981);
+}
+
+.diy-chip-copy.copied {
+  color: var(--saf-emerald, #10b981);
+  animation: microPulseSuccess 0.3s ease;
+}
+
+/* ==========================================================================
+   Notes / Comment Right-Click Max Lines Picker
+   ========================================================================== */
+.notes-line-picker {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  right: 0;
+  z-index: 105;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-line);
+  border-radius: 6px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  animation: fadeIn 0.15s ease-out;
+}
+
+.nlp-label {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin-right: 2px;
+}
+
+.nlp-btn {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border-line);
+  background: var(--bg-hover);
+  color: var(--text-main);
+  cursor: pointer;
+  transition: all 0.12s ease;
+  line-height: 1;
+}
+
+.nlp-btn:hover,
+.nlp-btn.active {
+  background: var(--saf-emerald, #10b981);
+  color: #ffffff;
+  border-color: var(--saf-emerald, #10b981);
+}
+
+/* ==========================================================================
+   SMS Usage Badges & DIY Drawer in Type Editor
+   ========================================================================== */
+.sms-usage-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 9px;
+  padding: 1px 6px;
+  border-radius: 8px;
+  background: rgba(59, 130, 246, 0.12);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  margin-left: 6px;
+}
+
+.diy-editor-card {
+  background: var(--bg-hover);
+  border: 1px solid var(--border-line);
+  border-radius: 6px;
+  padding: 8px;
+  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.diy-editor-card .row-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+
 

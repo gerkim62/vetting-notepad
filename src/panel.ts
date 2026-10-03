@@ -511,6 +511,38 @@ if (topBannerClose) {
 // Alias for backwards compatibility
 const showToast = showBanner;
 
+let activeDiyState: Record<string, string[]> = {};
+
+function morphButton(btn: HTMLElement | null, text: string, iconName = 'Check', type: 'success' | 'error' = 'success', durationMs = 1200) {
+  if (!btn) return;
+  const originalHtml = btn.dataset.origHtml || btn.innerHTML;
+  btn.dataset.origHtml = originalHtml;
+
+  btn.classList.remove('morph-success', 'morph-error');
+  btn.classList.add(type === 'error' ? 'morph-error' : 'morph-success');
+
+  const icon = renderIcon(iconName, { size: 12, strokeWidth: 2.2 });
+  btn.innerHTML = `${icon}<span>${escapeHtml(text)}</span>`;
+
+  if ((btn as any)._morphTimer) clearTimeout((btn as any)._morphTimer);
+  (btn as any)._morphTimer = setTimeout(() => {
+    btn.classList.remove('morph-success', 'morph-error');
+    btn.innerHTML = originalHtml;
+    delete btn.dataset.origHtml;
+    (btn as any)._morphTimer = null;
+  }, durationMs);
+}
+
+function shakeForm() {
+  if (!mainForm) return;
+  mainForm.classList.remove('form-subtle-shake');
+  void (mainForm as HTMLElement).offsetWidth;
+  mainForm.classList.add('form-subtle-shake');
+  setTimeout(() => {
+    mainForm.classList.remove('form-subtle-shake');
+  }, 400);
+}
+
 /* ==========================================================================
    View 360 Bio-Card Clipboard Parser
    ========================================================================== */
@@ -688,12 +720,49 @@ function buildCopyText(t) {
   const st = curStatus();
   const lines = [];
 
-  const title = t.copyTitle || `${t.name} – Vetting`;
-  lines.push(title);
+  const cb = getCallbackInfo(t, st, v);
+  const failedItems = [...t.required, ...t.optional].filter(it => st[it.id] === 'failed');
+  const isFailed = cb.show || failedItems.length > 0;
 
-  const c = (v._comment || '').trim();
-  if (c) lines.push(c);
+  // 1. Line 1: Top Advice / Action Taken (CEE Priority)
+  const manualComment = (v._comment || '').trim();
+  const typeName = t.name || t.copyTitle?.replace(/ – Vetting$/i, '') || 'Vetting';
 
+  let topAdvice = '';
+  if (manualComment) {
+    topAdvice = `${typeName}: ${manualComment}`;
+  } else {
+    const activeDiyIds = activeDiyState[t.id] || [];
+    const activeDiys = (t.diyActions || []).filter(d => activeDiyIds.includes(d.id));
+
+    if (activeDiys.length > 0) {
+      const diyText = activeDiys.map(d => d.adviceText || d.label).join(' and ');
+      topAdvice = `${typeName}: Processed. ${diyText}.`;
+    } else if (!isFailed) {
+      topAdvice = `${typeName}: Customer vetted successfully on primary details. Guided as per policy.`;
+    } else {
+      if (cb.primary) {
+        topAdvice = `${typeName}: Failed vetting. Referred to Retail Centre / Care Desk with original ID.`;
+      } else if (callAttempt === 2) {
+        topAdvice = `${typeName}: Failed vetting again. Referred to Retail Centre / Care Desk with original ID.`;
+      } else if (cb.labels && cb.labels.length > 0) {
+        topAdvice = `${typeName}: Failed vetting. Advised customer to confirm ${cb.labels.join(', ')} and call back.`;
+      } else {
+        topAdvice = `${typeName}: Failed vetting. Advised customer to confirm registration details and call back.`;
+      }
+    }
+  }
+  lines.push(topAdvice);
+
+  // 2. Line 2: Vetting Outcome
+  if (isFailed) {
+    const failedNames = failedItems.map(it => parseLabel(it.label).copy);
+    lines.push(`Vetting: Failed${failedNames.length > 0 ? ` (${failedNames.join(', ')})` : ''}`);
+  } else {
+    lines.push('Vetting: Passed');
+  }
+
+  // 3. Compact Vetted Fields
   const allItems = [...t.required, ...t.optional];
   const seenGroups = new Set();
 
@@ -744,18 +813,6 @@ function buildCopyText(t) {
         const { copy: copyLabel } = parseLabel(it.label);
         lines.push(`${copyLabel}: Failed (Failed)`);
       }
-    }
-  }
-
-  // SAKA Failed Callback / Referral appended text
-  const cb = getCallbackInfo(t, st, v);
-  if (cb.show) {
-    if (cb.primary) {
-      lines.push('Referred to Retail Centre / Care Desk with original ID.');
-    } else if (callAttempt === 2) {
-      lines.push('Failed vetting again. Not asked to call back. Referred to Retail Centre / Care Desk with original ID.');
-    } else {
-      lines.push(`Failed vetting. Advised to confirm ${cb.labels.join(', ')} and call back.`);
     }
   }
 
@@ -824,6 +881,7 @@ function startAutoClear(typeId) {
       stopAutoClear();
       formValues[typeId] = {};
       itemStatus[typeId] = {};
+      activeDiyState[typeId] = [];
       renderForm();
       updateCommentInput();
       syncPreview();
@@ -861,9 +919,11 @@ btnClear.onclick = async () => {
   const snapVal = JSON.parse(JSON.stringify(formValues));
   const snapStatus = JSON.parse(JSON.stringify(itemStatus));
   const snapAttempt = callAttempt;
+  const snapDiy = JSON.parse(JSON.stringify(activeDiyState));
 
   formValues = {};
   itemStatus = {};
+  activeDiyState = {};
   callAttempt = 1;
 
   if (commentInput) {
@@ -888,6 +948,7 @@ btnClear.onclick = async () => {
   showBanner(bannerMsg, 'Undo', () => {
     formValues = snapVal;
     itemStatus = snapStatus;
+    activeDiyState = snapDiy;
     callAttempt = snapAttempt;
     renderForm();
     updateCommentInput();
@@ -1405,7 +1466,90 @@ function renderForm() {
   updateTiedGroupBrackets();
   updateSecondaryCounter();
   setupInfoPopovers();
+  renderDiyChips(t);
   syncPreview();
+}
+
+function renderDiyChips(t) {
+  const diyRow = document.getElementById('diyChipsRow');
+  if (!diyRow) return;
+  if (!t || !Array.isArray(t.diyActions) || t.diyActions.length === 0) {
+    diyRow.style.display = 'none';
+    diyRow.innerHTML = '';
+    return;
+  }
+
+  diyRow.style.display = 'flex';
+  const activeIds = activeDiyState[t.id] || [];
+
+  diyRow.innerHTML = t.diyActions.map(diy => {
+    const isActive = activeIds.includes(diy.id);
+    const linkedTpl = diy.smsId ? quickSmsTemplates.find(s => s.id === diy.smsId) : null;
+    return `
+      <div class="diy-chip ${isActive ? 'active' : ''}" data-diy-id="${escapeHtml(diy.id)}">
+        <span class="diy-chip-label" title="${escapeHtml(diy.adviceText || diy.label)}">
+          ${isActive ? renderIcon('Check', { size: 10, strokeWidth: 2.5 }) : '+'} ${escapeHtml(diy.label)}
+        </span>
+        ${linkedTpl ? `
+          <span class="diy-chip-copy" data-diy-copy="${escapeHtml(diy.id)}" title="Copy SMS: ${escapeHtml(linkedTpl.title)}">
+            ${renderIcon('Copy', { size: 10 })}
+          </span>
+        ` : ''}
+      </div>
+    `;
+  }).join('');
+
+  diyRow.querySelectorAll('.diy-chip-label').forEach(labelEl => {
+    (labelEl as HTMLElement).onclick = (e) => {
+      e.stopPropagation();
+      const chipEl = labelEl.closest('.diy-chip') as HTMLElement;
+      const diyId = chipEl?.dataset.diyId;
+      if (!diyId) return;
+
+      if (!activeDiyState[t.id]) activeDiyState[t.id] = [];
+      const idx = activeDiyState[t.id].indexOf(diyId);
+      if (idx === -1) {
+        activeDiyState[t.id].push(diyId);
+      } else {
+        activeDiyState[t.id].splice(idx, 1);
+      }
+      renderDiyChips(t);
+      syncPreview();
+    };
+  });
+
+  diyRow.querySelectorAll('.diy-chip-copy').forEach(copyBtn => {
+    (copyBtn as HTMLElement).onclick = async (e) => {
+      e.stopPropagation();
+      const diyId = (copyBtn as HTMLElement).dataset.diyCopy;
+      const diy = t.diyActions?.find(d => d.id === diyId);
+      if (!diy || !diy.smsId) return;
+
+      const foundTpl = quickSmsTemplates.find(s => s.id === diy.smsId);
+      if (!foundTpl || !foundTpl.text) return;
+
+      let smsText = foundTpl.text;
+      const v = curValues();
+      const allItems = [...t.required, ...t.optional];
+      for (const it of allItems) {
+        const val = (v[it.id] || '').trim();
+        if (val) {
+          const { copy: copyLabel } = parseLabel(it.label);
+          smsText = smsText.replace(new RegExp(`\\{${escapeRegExp(copyLabel)}\\}`, 'gi'), val);
+          smsText = smsText.replace(new RegExp(`\\{${escapeRegExp(it.label)}\\}`, 'gi'), val);
+        }
+      }
+
+      await writeToClipboard(smsText);
+
+      copyBtn.classList.add('copied');
+      copyBtn.innerHTML = renderIcon('Check', { size: 10, strokeWidth: 2.5 });
+      setTimeout(() => {
+        copyBtn.classList.remove('copied');
+        copyBtn.innerHTML = renderIcon('Copy', { size: 10 });
+      }, 1200);
+    };
+  });
 }
 
 function createRowHtml(it, kind, idx) {
@@ -1729,10 +1873,54 @@ async function smartPasteField(input) {
 /* ==========================================================================
    Comment Handling & Suggestions Dropdown with Instant Deletion
    ========================================================================== */
-const commentInput = document.getElementById('commentInput');
-const commentInputAutoExpand = attachAutoExpand(commentInput, 5);
+const commentInput = document.getElementById('commentInput') as HTMLTextAreaElement | null;
 const commentFieldBox = document.getElementById('commentFieldBox');
 const commentSuggestionsMenu = document.getElementById('commentSuggestionsMenu');
+const notesLinePicker = document.getElementById('notesLinePicker');
+
+let commentInputAutoExpand = attachAutoExpand(commentInput, {
+  maxLines: 4,
+  onResizeLines: (lines) => {
+    Storage.set('vpad.notes_max_lines', lines);
+  }
+});
+
+async function loadNotesMaxLines() {
+  const saved = await Storage.get('vpad.notes_max_lines', 4);
+  const n = parseInt(saved, 10);
+  if (n && commentInputAutoExpand) {
+    commentInputAutoExpand.setMaxLines(n);
+  }
+}
+
+if (commentInput && notesLinePicker) {
+  commentInput.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    const curLines = parseInt(commentInput.dataset.maxLines || '4', 10);
+    notesLinePicker.querySelectorAll('.nlp-btn').forEach(btn => {
+      btn.classList.toggle('active', parseInt((btn as HTMLElement).dataset.lines || '0', 10) === curLines);
+    });
+    notesLinePicker.style.display = 'flex';
+  });
+
+  document.addEventListener('click', (e) => {
+    if (notesLinePicker && !notesLinePicker.contains(e.target as Node) && e.target !== commentInput) {
+      notesLinePicker.style.display = 'none';
+    }
+  });
+
+  notesLinePicker.querySelectorAll('.nlp-btn').forEach(btn => {
+    (btn as HTMLElement).onclick = (e) => {
+      e.stopPropagation();
+      const lines = parseInt((btn as HTMLElement).dataset.lines || '0', 10);
+      if (lines && commentInputAutoExpand) {
+        commentInputAutoExpand.setMaxLines(lines);
+        Storage.set('vpad.notes_max_lines', lines);
+      }
+      notesLinePicker.style.display = 'none';
+    };
+  });
+}
 
 let activeSuggestionIdx = -1;
 let currentFilteredSuggestions = [];
@@ -1964,17 +2152,35 @@ function resetCopyBtn() {
   }
 }
 
+function hasFormContent(t) {
+  if (!t) return false;
+  const v = curValues();
+  const st = curStatus();
+  const hasValues = Object.entries(v).some(([k, val]) => k !== '_comment' && val && String(val).trim().length > 0);
+  const hasStatus = Object.values(st).some(Boolean);
+  const hasComment = Boolean((v._comment || '').trim());
+  const hasDiy = (activeDiyState[t.id] || []).length > 0;
+  return hasValues || hasStatus || hasComment || hasDiy;
+}
+
 async function doCopy() {
   const t = curType();
+  if (!t || !hasFormContent(t)) {
+    morphButton(btnCopy, 'Empty!', 'AlertCircle', 'error', 1200);
+    shakeForm();
+    return;
+  }
+
   const text = buildCopyText(t);
   if (!text) {
-    showToast('Nothing to copy. Fill in some details first.', null, null, 2500, 'warn');
+    morphButton(btnCopy, 'Empty!', 'AlertCircle', 'error', 1200);
+    shakeForm();
     return;
   }
 
   const ok = await writeToClipboard(text);
   if (!ok) {
-    showToast('Copy failed. Clipboard error.', null, null, 2500, 'danger');
+    morphButton(btnCopy, 'Failed', 'AlertCircle', 'error', 1500);
     return;
   }
 
@@ -1989,14 +2195,7 @@ async function doCopy() {
     }
   }
 
-  if (copyBtnTimer) clearTimeout(copyBtnTimer);
-  if (btnCopy) {
-    btnCopy.classList.add('copied-success');
-    btnCopy.innerHTML = `${renderIcon('Check', { size: 12, strokeWidth: 2.5 })}<span id="copyBtnText">Copied</span>`;
-    copyBtnTimer = setTimeout(() => {
-      resetCopyBtn();
-    }, 1400);
-  }
+  morphButton(btnCopy, 'Copied', 'Check', 'success', 1200);
 
   if (t) {
     startAutoClear(t.id);
@@ -2015,7 +2214,7 @@ function resetPasteBtn() {
     pasteBtnTimer = null;
   }
   if (btnPaste) {
-    btnPaste.classList.remove('copied-success');
+    btnPaste.classList.remove('copied-success', 'morph-success', 'morph-error');
     btnPaste.innerHTML = `${renderIcon('ClipboardPaste', { size: 12 })}<span id="pasteBtnText">Paste</span>`;
   }
 }
@@ -2049,14 +2248,14 @@ async function doPasteWholeVetting(clipText = null) {
         text = await navigator.clipboard.readText();
       } catch (err) {
         logger.captureError('clipboard', err, { action: 'doPasteWholeVetting' });
-        showBanner('Clipboard access denied. Please paste manually.', null, null, 2500, 'danger');
+        morphButton(btnPaste, 'Denied', 'AlertCircle', 'error', 1500);
         return;
       }
     }
   }
 
   if (!text || !text.trim()) {
-    showBanner('Clipboard is empty', null, null, 2000, 'warn');
+    morphButton(btnPaste, 'Empty', 'AlertCircle', 'error', 1200);
     return;
   }
 
@@ -2078,20 +2277,10 @@ async function doPasteWholeVetting(clipText = null) {
   syncPreview();
 
   const count = Object.keys(parsed.values).length;
-  if (btnPaste) {
-    if (pasteBtnTimer) clearTimeout(pasteBtnTimer);
-    btnPaste.classList.add('copied-success');
-    btnPaste.innerHTML = `${renderIcon('Check', { size: 12, strokeWidth: 2.5 })}<span id="pasteBtnText">Pasted</span>`;
-    pasteBtnTimer = setTimeout(() => {
-      resetPasteBtn();
-      setMiddleActionButton('clear');
-    }, 1200);
-  } else {
+  morphButton(btnPaste, `Pasted (${count})`, 'Check', 'success', 1400);
+  setTimeout(() => {
     setMiddleActionButton('clear');
-  }
-
-  const typeName = curType() ? curType().name : '';
-  showBanner(`Pasted ${count} ${count === 1 ? 'field' : 'fields'} into ${typeName}`, null, null, 2500, 'info');
+  }, 1400);
 }
 
 if (btnPaste) {
@@ -2251,6 +2440,41 @@ function renderEditView() {
       ${t.optional.map((it, i) => createEditRowHtml(it, 'optional', i, t.optional.length, t.optional)).join('')}
     </div>
     <button class="btn-action" style="width:100%;margin-top:5px;" id="btnAddOpt">+ Add Secondary Item</button>
+
+    <div class="section-head" style="margin-top:14px;">
+      <span>DIY & Advice Actions</span>
+      <span style="font-size:9.5px;color:var(--text-dim);">Chips for Post-Vetting Guidance</span>
+    </div>
+    <div id="editDiyList">
+      ${((t.diyActions) || []).map((diy, i) => `
+        <div class="diy-editor-card" data-diy-idx="${i}">
+          <div class="row-head">
+            <span style="font-size:11px;font-weight:600;color:var(--text-main);">${escapeHtml(diy.label || 'New DIY')}</span>
+            <button type="button" class="ibtn btn-del-diy" data-diy-idx="${i}" title="Delete DIY Action">
+              ${renderIcon('Trash2', { size: 10 })}
+            </button>
+          </div>
+          <div style="display:flex;gap:6px;">
+            <input type="text" class="mat-input diy-edit-label" data-diy-idx="${i}" value="${escapeHtml(diy.label)}" placeholder="Chip Label (e.g. Hakikisha)" style="flex:1;">
+          </div>
+          <input type="text" class="mat-input diy-edit-advice" data-diy-idx="${i}" value="${escapeHtml(diy.adviceText)}" placeholder="Siebel Advice Text (e.g. Educated on Hakikisha)">
+          <div style="display:flex;align-items:center;gap:6px;margin-top:2px;">
+            <select class="mat-input diy-edit-sms-id" data-diy-idx="${i}" style="flex:1;font-size:11px;padding:4px 8px;">
+              <option value="">-- No Linked SMS --</option>
+              ${quickSmsTemplates.map(s => `
+                <option value="${escapeHtml(s.id)}" ${diy.smsId === s.id ? 'selected' : ''}>
+                  ${escapeHtml(s.title)}
+                </option>
+              `).join('')}
+            </select>
+            <button type="button" class="ibtn btn-edit-linked-sms" data-sms-id="${escapeHtml(diy.smsId || '')}" title="Open template in Quick SMS" ${!diy.smsId ? 'style="display:none;"' : ''}>
+              ${renderIcon('ExternalLink', { size: 11 })}
+            </button>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+    <button class="btn-action" style="width:100%;margin-top:5px;" id="btnAddDiy">+ Add DIY Action</button>
 
     <button class="btn-action" id="btnDeleteType" style="width:100%;margin-top:20px;color:var(--color-danger);border-color:var(--border-line);">
       Delete this Vetting Type
@@ -2424,6 +2648,37 @@ function bindEditEvents() {
       } else if (e.target.id === 'btnAddOpt') {
         t.optional.push({ id: uid(), label: 'New Optional', len: 0 });
         renderEditView();
+      } else if (e.target.id === 'btnAddDiy' || e.target.closest('#btnAddDiy')) {
+        if (!Array.isArray(t.diyActions)) t.diyActions = [];
+        t.diyActions.push({
+          id: 'diy_' + Date.now(),
+          label: 'New DIY',
+          adviceText: 'Educated customer on DIY self-service',
+          smsId: undefined
+        });
+        saveTypes();
+        renderEditView();
+      } else if (e.target.closest('.btn-edit-linked-sms')) {
+        const btn = e.target.closest('.btn-edit-linked-sms') as HTMLElement;
+        const smsId = btn.dataset.smsId;
+        if (smsId) {
+          const tpl = quickSmsTemplates.find(s => s.id === smsId);
+          if (tpl) {
+            if (quickSmsView) {
+              quickSmsView.style.display = 'flex';
+              renderQuickSmsList();
+            }
+            openTemplateEditModal(tpl, 'sms');
+          }
+        }
+      } else if (e.target.closest('.btn-del-diy')) {
+        const delBtn = e.target.closest('.btn-del-diy');
+        const dIdx = parseInt(delBtn.dataset.diyIdx, 10);
+        if (t.diyActions && t.diyActions[dIdx]) {
+          t.diyActions.splice(dIdx, 1);
+          saveTypes();
+          renderEditView();
+        }
       } else if (e.target.id === 'btnDeleteType') {
         if (types.length <= 1) {
           showToast('Cannot delete the last vetting type', null, null, 2500, 'warn');
@@ -2545,7 +2800,38 @@ function bindEditEvents() {
     }
   };
 
-  editPane.oninput = (e) => {
+  editPane.oninput = (e: any) => {
+    if (e.target.classList.contains('diy-edit-label')) {
+      const dIdx = parseInt(e.target.dataset.diyIdx, 10);
+      if (t.diyActions && t.diyActions[dIdx]) {
+        t.diyActions[dIdx].label = e.target.value;
+        saveTypes();
+      }
+      return;
+    }
+    if (e.target.classList.contains('diy-edit-advice')) {
+      const dIdx = parseInt(e.target.dataset.diyIdx, 10);
+      if (t.diyActions && t.diyActions[dIdx]) {
+        t.diyActions[dIdx].adviceText = e.target.value;
+        saveTypes();
+      }
+      return;
+    }
+    if (e.target.classList.contains('diy-edit-sms-id')) {
+      const dIdx = parseInt(e.target.dataset.diyIdx, 10);
+      if (t.diyActions && t.diyActions[dIdx]) {
+        const val = e.target.value.trim() || undefined;
+        t.diyActions[dIdx].smsId = val;
+        saveTypes();
+        const extBtn = e.target.parentElement?.querySelector('.btn-edit-linked-sms') as HTMLElement;
+        if (extBtn) {
+          extBtn.dataset.smsId = val || '';
+          extBtn.style.display = val ? '' : 'none';
+        }
+      }
+      return;
+    }
+
     const group = e.target.closest('.edit-item-group');
     if (!group) return;
     const kind = group.dataset.kind;
@@ -2802,6 +3088,26 @@ const DEFAULT_QUICK_SMS = [
     id: 'sms_paybill_rev',
     title: 'Paybill Reversal Request',
     text: 'Dear Customer, kindly contact {ORGANIZATION} on {Phone Number} during working hours for reversal request of transaction {TXN CODE}. Thank You.'
+  },
+  {
+    id: 'sms_hakikisha',
+    title: 'Hakikisha Verification Advice',
+    text: 'Dear Customer, always confirm the recipient name via Hakikisha before entering your M-PESA PIN. Dial *334# to reverse wrong transactions within 2 hours. Safaricom.'
+  },
+  {
+    id: 'sms_rev_334',
+    title: 'M-PESA Self-Service Reversal (*334#)',
+    text: 'Dear Customer, you can reverse wrong M-PESA transactions instantly by dialing *334# > Select My Account > Reverse Transaction, or send the transaction SMS to 456. Thank You.'
+  },
+  {
+    id: 'sms_pin_334',
+    title: 'M-PESA Self PIN Unlock (*334#)',
+    text: 'Dear Customer, to unlock your M-PESA PIN, dial *334# from your line > My Account > Unlock PIN, or use the M-PESA App. Safaricom.'
+  },
+  {
+    id: 'sms_puk_100',
+    title: 'Self-Service PUK Retrieval (*100#)',
+    text: 'Dear Customer, you can get your PUK anytime by dialing *100# or *200# from another Safaricom line, or visit safaricomapp.page.link/get-puk. Safaricom.'
   }
 ];
 
@@ -2809,7 +3115,6 @@ const DEFAULT_QUICK_INTERACTION = [];
 
 let quickSmsTemplates = [];
 let quickInteractionTemplates = [];
-let rememberedTemplateVars = {};
 let varHistory = [];
 let varPreferences = { remember: {}, usageValues: {}, ignoredWarnings: {} };
 
@@ -2822,6 +3127,16 @@ async function loadQuickTemplates() {
   const savedSms = await Storage.get('vpad.quick_sms', null);
   if (Array.isArray(savedSms) && savedSms.length > 0) {
     quickSmsTemplates = savedSms;
+    let seeded = false;
+    for (const defSms of DEFAULT_QUICK_SMS) {
+      if (!quickSmsTemplates.some(s => s.id === defSms.id)) {
+        quickSmsTemplates.push({ ...defSms });
+        seeded = true;
+      }
+    }
+    if (seeded) {
+      Storage.set('vpad.quick_sms', quickSmsTemplates);
+    }
   } else {
     quickSmsTemplates = JSON.parse(JSON.stringify(DEFAULT_QUICK_SMS));
     Storage.set('vpad.quick_sms', quickSmsTemplates);
@@ -2837,14 +3152,27 @@ async function loadQuickTemplates() {
     Storage.set('vpad.quick_interaction', quickInteractionTemplates);
   }
 
-  rememberedTemplateVars = (await Storage.get('vpad.remembered_vars', {})) || {};
+  // Variable Store: Sunset legacy vpad.remembered_vars into vpad.var_history and vpad.var_prefs
+  const legacyRemembered = await Storage.get('vpad.remembered_vars', null);
   varHistory = (await Storage.get('vpad.var_history', [])) || [];
   varPreferences = (await Storage.get('vpad.var_prefs', { remember: {}, usageValues: {}, ignoredWarnings: {} })) || { remember: {}, usageValues: {}, ignoredWarnings: {} };
   if (!varPreferences.ignoredWarnings) varPreferences.ignoredWarnings = {};
+  if (!varPreferences.usageValues) varPreferences.usageValues = {};
+  if (!varPreferences.remember) varPreferences.remember = {};
 
-  if (varHistory.length === 0 && Object.keys(rememberedTemplateVars).length > 0) {
-    varHistory = migrateLegacyVars(rememberedTemplateVars);
-    Storage.set('vpad.var_history', varHistory);
+  if (legacyRemembered && typeof legacyRemembered === 'object' && Object.keys(legacyRemembered).length > 0) {
+    if (varHistory.length === 0) {
+      varHistory = migrateLegacyVars(legacyRemembered);
+      Storage.set('vpad.var_history', varHistory);
+    }
+    for (const [k, v] of Object.entries(legacyRemembered)) {
+      if (typeof v === 'string' && v) {
+        varPreferences.remember[k] = true;
+        if (!varPreferences.usageValues[k]) varPreferences.usageValues[k] = v;
+      }
+    }
+    persistVarHistory();
+    await Storage.remove('vpad.remembered_vars');
   }
 }
 
@@ -2854,10 +3182,6 @@ function saveQuickSmsTemplates() {
 
 function saveQuickInteractionTemplates() {
   Storage.set('vpad.quick_interaction', quickInteractionTemplates);
-}
-
-function saveRememberedVars() {
-  Storage.set('vpad.remembered_vars', rememberedTemplateVars);
 }
 
 function persistVarHistory() {
@@ -2891,22 +3215,46 @@ function renderTemplateCards(container, list, type) {
     return;
   }
 
-  container.innerHTML = list.map(item => `
-    <div class="template-card" data-template-id="${escapeHtml(item.id)}">
-      <div class="template-card-header">
-        <span class="template-card-title">${escapeHtml(item.title)}</span>
-        <div class="template-card-actions">
-          <button type="button" class="ibtn edit-tpl-btn" data-template-id="${escapeHtml(item.id)}" title="Edit template" aria-label="Edit template">
-            ${renderIcon('Pencil', { size: 11 })}
-          </button>
-          <button type="button" class="ibtn del-tpl-btn" data-template-id="${escapeHtml(item.id)}" title="Delete template" aria-label="Delete template">
-            ${renderIcon('Trash2', { size: 11 })}
-          </button>
+  container.innerHTML = list.map(item => {
+    let usageBadgeHtml = '';
+    if (type === 'sms') {
+      const usages: string[] = [];
+      for (const vt of types) {
+        if (Array.isArray(vt.diyActions)) {
+          for (const diy of vt.diyActions) {
+            if (diy.smsId === item.id) {
+              usages.push(`${vt.name}: ${diy.label}`);
+            }
+          }
+        }
+      }
+      if (usages.length > 0) {
+        usageBadgeHtml = `<span class="sms-usage-badge" title="Linked to: ${escapeHtml(usages.join(', '))}">
+          ${renderIcon('Link', { size: 9 })} ${escapeHtml(usages[0])}${usages.length > 1 ? ` +${usages.length - 1}` : ''}
+        </span>`;
+      }
+    }
+
+    return `
+      <div class="template-card" data-template-id="${escapeHtml(item.id)}">
+        <div class="template-card-header">
+          <div style="display:flex;align-items:center;overflow:hidden;gap:4px;">
+            <span class="template-card-title">${escapeHtml(item.title)}</span>
+            ${usageBadgeHtml}
+          </div>
+          <div class="template-card-actions">
+            <button type="button" class="ibtn edit-tpl-btn" data-template-id="${escapeHtml(item.id)}" title="Edit template" aria-label="Edit template">
+              ${renderIcon('Pencil', { size: 11 })}
+            </button>
+            <button type="button" class="ibtn del-tpl-btn" data-template-id="${escapeHtml(item.id)}" title="Delete template" aria-label="Delete template">
+              ${renderIcon('Trash2', { size: 11 })}
+            </button>
+          </div>
         </div>
+        <div class="template-card-body">${highlightVariables(item.text)}</div>
       </div>
-      <div class="template-card-body">${highlightVariables(item.text)}</div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 
   container.querySelectorAll('.template-card').forEach(card => {
     const id = card.dataset.templateId;
@@ -2928,9 +3276,9 @@ function renderTemplateCards(container, list, type) {
 
     const btnDel = card.querySelector('.del-tpl-btn');
     if (btnDel) {
-      btnDel.onclick = (e) => {
+      btnDel.onclick = async (e) => {
         e.stopPropagation();
-        deleteTemplate(id, type);
+        await deleteTemplate(id, type);
       };
     }
   });
@@ -3013,8 +3361,47 @@ function renderQuickInteractionList() {
   renderTemplateCards(quickInteractionListEl, quickInteractionTemplates, 'interaction');
 }
 
-function deleteTemplate(id, type) {
+async function deleteTemplate(id, type) {
   if (type === 'sms') {
+    const linkedUsages: string[] = [];
+    for (const vt of types) {
+      if (Array.isArray(vt.diyActions)) {
+        for (const diy of vt.diyActions) {
+          if (diy.smsId === id) {
+            linkedUsages.push(`${vt.name} (${diy.label || 'Action'})`);
+          }
+        }
+      }
+    }
+
+    if (linkedUsages.length > 0) {
+      const confirmed = await AppDialog.confirm({
+        title: 'Delete Linked SMS Template?',
+        message: `This SMS template is currently linked to the following DIY checklist action(s):\n• ${linkedUsages.join('\n• ')}\n\nDeleting it will remove the template and detach it from these actions. Do you want to proceed?`,
+        confirmText: 'Delete & Detach',
+        danger: true
+      });
+      if (!confirmed) return;
+
+      // Auto-detach from affected DIY actions
+      let typesModified = false;
+      for (const vt of types) {
+        if (Array.isArray(vt.diyActions)) {
+          for (const diy of vt.diyActions) {
+            if (diy.smsId === id) {
+              delete diy.smsId;
+              typesModified = true;
+            }
+          }
+        }
+      }
+      if (typesModified) {
+        saveTypes();
+        const curType = types.find(t => t.id === activeTypeId);
+        if (curType) renderDiyChips(curType);
+      }
+    }
+
     quickSmsTemplates = quickSmsTemplates.filter(t => t.id !== id);
     saveQuickSmsTemplates();
     renderQuickSmsList();
@@ -3094,7 +3481,7 @@ function openVarFillModal(tpl, _type) {
   const latestMatching = varHistory.find(r => r && r.values && vars.some(v => r.values[v] && isVarRemembered(v, varPreferences)));
   vars.forEach(v => {
     if (isVarRemembered(v, varPreferences)) {
-      currentValues[v] = (latestMatching && latestMatching.values[v]) || rememberedTemplateVars[v] || '';
+      currentValues[v] = (latestMatching && latestMatching.values[v]) || varPreferences.usageValues?.[v] || '';
     } else {
       currentValues[v] = ''; // Transient variables always start fresh
     }
@@ -3567,12 +3954,12 @@ function openVarFillModal(tpl, _type) {
 
       vars.forEach(v => {
         if (isVarRemembered(v, varPreferences)) {
-          rememberedTemplateVars[v] = currentValues[v] || '';
+          varPreferences.usageValues[v] = currentValues[v] || '';
         } else {
-          delete rememberedTemplateVars[v];
+          delete varPreferences.usageValues[v];
         }
       });
-      saveRememberedVars();
+      persistVarHistory();
 
       if (saveRes.autoMutedVars.length > 0) {
         const mutedVar = saveRes.autoMutedVars[0];
@@ -3997,21 +4384,19 @@ function renderSettingsView() {
           types,
           settings,
           savedComments,
-          activeTypeId
+          activeTypeId,
+          quickSmsTemplates,
+          quickInteractionTemplates
         });
         const result = await exportConfiguration(payload);
         if (result.success) {
-          if (result.method === 'clipboard') {
-            showBanner('Export copied to clipboard! (Paste to save as .json)', null, null, 4000, 'info');
-          } else {
-            showBanner('Configuration exported successfully', null, null, 2500, 'info');
-          }
+          morphButton(btnExportData, 'Exported ✓', 'Check', 'success', 2000);
         } else {
-          showBanner('Export failed: ' + (result.error?.message || 'Unknown error'), null, null, 3500, 'danger');
+          morphButton(btnExportData, 'Failed', 'AlertCircle', 'error', 2000);
         }
       } catch (err) {
         logger.captureError('export', err, { action: 'exportConfiguration' });
-        showBanner('Export error: ' + err.message, null, null, 3500, 'danger');
+        morphButton(btnExportData, 'Error', 'AlertCircle', 'error', 2000);
       }
     };
   }
@@ -4070,6 +4455,17 @@ function renderSettingsView() {
             activeTypeId = types[0].id;
           }
 
+          if (Array.isArray(data.quickSmsTemplates) && data.quickSmsTemplates.length > 0) {
+            quickSmsTemplates = data.quickSmsTemplates;
+            saveQuickSmsTemplates();
+            renderQuickSmsList();
+          }
+          if (Array.isArray(data.quickInteractionTemplates) && data.quickInteractionTemplates.length > 0) {
+            quickInteractionTemplates = data.quickInteractionTemplates;
+            saveQuickInteractionTemplates();
+            renderQuickInteractionList();
+          }
+
           formValues = {};
           itemStatus = {};
 
@@ -4123,18 +4519,14 @@ function renderSettingsView() {
 
         const result = await exportDebugDiagnostics(diagnostics);
         if (result.success) {
-          if (result.method === 'clipboard') {
-            showBanner('Debug logs copied to clipboard', null, null, 3000, 'info');
-          } else {
-            showBanner('Debug logs exported successfully', null, null, 2500, 'info');
-          }
+          morphButton(btnExportDebugLogs, 'Copied ✓', 'Check', 'success', 2000);
         } else {
           logger.error('export-diagnostics', 'Export failed', { error: result.error });
-          showBanner('Export failed: ' + (result.error?.message || 'Unknown error'), null, null, 3500, 'danger');
+          morphButton(btnExportDebugLogs, 'Failed', 'AlertCircle', 'error', 2000);
         }
       } catch (err) {
         logger.captureError('export-diagnostics', err);
-        showBanner('Export error: ' + err.message, null, null, 3500, 'danger');
+        morphButton(btnExportDebugLogs, 'Error', 'AlertCircle', 'error', 2000);
       }
     };
   }
@@ -4740,20 +5132,35 @@ async function init() {
   const loadedTypes = await Storage.get('vpad.types', null);
   const defaults = defaultVettingTypes();
 
-  if (configVer < 10 || !Array.isArray(loadedTypes) || loadedTypes.length < 15) {
+  if (configVer < 12 || !Array.isArray(loadedTypes) || loadedTypes.length < 15) {
     if (!Array.isArray(loadedTypes) || loadedTypes.length === 0) {
       types = defaults;
     } else {
       types = [...loadedTypes];
       defaults.forEach(defType => {
-        if (!types.some(t => t.id === defType.id)) {
+        const existing = types.find(t => t.id === defType.id);
+        if (!existing) {
           types.push(defType);
+        } else if (defType.diyActions) {
+          existing.diyActions = defType.diyActions.map(d => ({
+            id: d.id,
+            label: d.label,
+            adviceText: d.adviceText,
+            smsId: d.smsId
+          }));
+        }
+      });
+      types.forEach(t => {
+        if (Array.isArray(t.diyActions)) {
+          t.diyActions.forEach(d => {
+            delete (d as any).smsText;
+          });
         }
       });
     }
     Storage.setMultiple({
       'vpad.types': types,
-      'vpad.config_version': 10
+      'vpad.config_version': 12
     });
   } else {
     types = loadedTypes;
@@ -4772,11 +5179,15 @@ async function init() {
 
   applyTheme(settings.theme || 'auto');
   initTypeSelect();
+  await loadNotesMaxLines();
   renderForm();
   updateCommentInput();
   await initCallPad();
   initMenu();
   await loadQuickTemplates();
+
+
+
   initQuickSmsSearch();
   clearCallpadOnClear = Boolean(await Storage.get('vpad.clear_callpad_on_clear', false));
   await initBreakNotifier();

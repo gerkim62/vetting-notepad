@@ -12,24 +12,47 @@ describe('Configuration Exporter & Importer', () => {
     types: [{ id: 'sim_swap', name: 'SIM Swap', required: [], optional: [] }],
     settings: { theme: 'dark', autoClear: 10 },
     savedComments: ['Verified'],
-    activeTypeId: 'sim_swap'
+    activeTypeId: 'sim_swap',
+    quickSmsTemplates: [{ id: 'sms_1', title: 'Test SMS', text: 'Hello' }],
+    quickInteractionTemplates: [{ id: 'int_1', title: 'Test Int', text: 'Notes' }]
   };
 
-  it('builds a standard export payload with metadata', () => {
+  it('builds a standard export payload with metadata (Schema v2)', () => {
     const exported = buildExportPayload(samplePayload);
     expect(exported.app).toBe('vetting-notepad');
-    expect(exported.version).toBe(1);
+    expect(exported.version).toBe(2);
     expect(exported.exportedAt).toBeDefined();
     expect(exported.types.length).toBe(1);
     expect(exported.types[0].id).toBe('sim_swap');
+    expect(exported.quickSmsTemplates?.length).toBe(1);
+    expect(exported.quickInteractionTemplates?.length).toBe(1);
   });
 
   describe('Import Validation', () => {
-    it('accepts valid export JSON data', () => {
+    it('accepts valid export JSON data with templates', () => {
       const exported = buildExportPayload(samplePayload);
       const res = validateImportPayload(exported);
       expect(res.valid).toBe(true);
-      expect(res.payload.types.length).toBe(1);
+      expect(res.payload?.types.length).toBe(1);
+      expect(res.payload?.quickSmsTemplates?.length).toBe(1);
+      expect(res.payload?.quickSmsTemplates?.[0].id).toBe('sms_1');
+    });
+
+    it('accepts legacy v1 export files without templates (backward-compatible)', () => {
+      const legacyPayload = {
+        app: 'vetting-notepad',
+        version: 1,
+        appVersion: '1.0.0',
+        exportedAt: new Date().toISOString(),
+        types: [{ id: 'sim_swap', name: 'SIM Swap', required: [], optional: [] }],
+        settings: { theme: 'light', autoClear: 0 },
+        savedComments: [],
+        activeTypeId: 'sim_swap'
+      };
+      const res = validateImportPayload(legacyPayload);
+      expect(res.valid).toBe(true);
+      expect(res.payload?.types.length).toBe(1);
+      expect(res.payload?.quickSmsTemplates).toBeUndefined();
     });
 
     it('rejects invalid or corrupted JSON data', () => {

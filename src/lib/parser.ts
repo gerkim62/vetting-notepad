@@ -170,20 +170,38 @@ export function parseVettingText(rawText: string | null | undefined, types: Vett
 
   // 2. Parse lines
   let startIndex = 0;
-  // If first line was header, skip it
+  // If first line was header, check for embedded advice/comment
   if (lines.length > 0) {
-    const l0 = (lines[0] ?? '').toLowerCase();
+    const l0 = lines[0] ?? '';
+    const l0Lower = l0.toLowerCase();
     const copyTitle = (matchedType.copyTitle || `${matchedType.name} – Vetting`).toLowerCase();
-    if (l0 === copyTitle || l0.includes(matchedType.name.toLowerCase())) {
+    const typeName = matchedType.name.toLowerCase();
+    if (l0Lower === copyTitle || l0Lower.includes(typeName)) {
       startIndex = 1;
+      const colonIdx = l0.indexOf(':');
+      if (colonIdx !== -1) {
+        const potentialComment = l0.slice(colonIdx + 1).trim();
+        // If not empty and not just the type name/vetting
+        if (potentialComment && !potentialComment.toLowerCase().includes('– vetting')) {
+          result.comment = potentialComment;
+        }
+      }
     }
   }
 
   for (let i = startIndex; i < lines.length; i++) {
     const line = lines[i] ?? '';
+    const lineLower = line.toLowerCase();
 
-    // Check for referral / callback footer notes to skip
-    if (line.startsWith('Referred to Retail') || line.startsWith('Failed vetting. Advised') || line.startsWith('Failed vetting again.')) {
+    // Check for Siebel summary lines or referral / callback footer notes to skip
+    if (
+      lineLower.startsWith('vetting: passed') ||
+      lineLower.startsWith('vetting: failed') ||
+      lineLower.startsWith('advised:') ||
+      line.startsWith('Referred to Retail') ||
+      line.startsWith('Failed vetting. Advised') ||
+      line.startsWith('Failed vetting again.')
+    ) {
       continue;
     }
 

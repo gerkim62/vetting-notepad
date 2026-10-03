@@ -239,6 +239,20 @@
         "Transaction older than 30 days. Advised customer to liaise directly with recipient or police.",
         "Funds already utilized by recipient. Advised sender to engage recipient or report to police."
       ],
+      "diyActions": [
+        {
+          "id": "diy_hakikisha",
+          "label": "Hakikisha",
+          "adviceText": "Educated customer on Hakikisha verification",
+          "smsId": "sms_hakikisha"
+        },
+        {
+          "id": "diy_reversal_334",
+          "label": "DIY Reversal (*334#)",
+          "adviceText": "Guided on *334# self-service reversal",
+          "smsId": "sms_rev_334"
+        }
+      ],
       "copyTitle": "M-PESA & Airtime Reversal – Vetting"
     },
     {
@@ -622,6 +636,14 @@
         "Account unlocked on G3. Advised customer to wait for SMS and use correct PIN to transact.",
         "Customer failed primary vetting. Advised to confirm registration details and call back or visit shop."
       ],
+      "diyActions": [
+        {
+          "id": "diy_pin_334",
+          "label": "DIY Unlock (*334#)",
+          "adviceText": "Educated on *334# self-service PIN unlock",
+          "smsId": "sms_pin_334"
+        }
+      ],
       "copyTitle": "M-PESA PIN Unlock – Vetting"
     },
     {
@@ -842,6 +864,14 @@
         "PUK issued after primary vetting. Sent PUK via CRM SMS with customer consent. Educated on DIY *100#.",
         "Repeat caller for PUK not working. SIM serial verified on CRM. Advised customer to test on another handset or swap.",
         "SIM damaged after 10 incorrect PUK attempts. Advised customer on SIM replacement at shop."
+      ],
+      "diyActions": [
+        {
+          "id": "diy_puk_100",
+          "label": "DIY PUK (*100#)",
+          "adviceText": "Educated on *100# self-service PUK retrieval",
+          "smsId": "sms_puk_100"
+        }
       ],
       "copyTitle": "PUK Retrieval – Vetting"
     },

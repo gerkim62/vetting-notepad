@@ -8,7 +8,13 @@
 
 import { sanitizeRedacted, getAppVersion } from './utils.js';
 import { logger } from './logger.js';
-import { VettingType, AppSettings, ExportPayload } from '../types/index.js';
+import {
+  VettingType,
+  AppSettings,
+  ExportPayload,
+  QuickSmsTemplate,
+  QuickInteractionTemplate
+} from '../types/index.js';
 
 export interface BuildExportOptions {
   types?: VettingType[];
@@ -16,6 +22,8 @@ export interface BuildExportOptions {
   savedComments?: string[];
   activeTypeId?: string | null;
   appVersion?: string | null;
+  quickSmsTemplates?: QuickSmsTemplate[];
+  quickInteractionTemplates?: QuickInteractionTemplate[];
 }
 
 export interface ExportResult {
@@ -45,14 +53,16 @@ export interface DiagnosticsContext {
 }
 
 /**
- * Builds a standardized export payload with metadata.
+ * Builds a standardized export payload with metadata (Schema Version 2).
  */
 export function buildExportPayload({
   types = [],
   settings = {},
   savedComments = [],
   activeTypeId = null,
-  appVersion = null
+  appVersion = null,
+  quickSmsTemplates = [],
+  quickInteractionTemplates = []
 }: BuildExportOptions = {}): ExportPayload {
   const completeSettings: AppSettings = {
     theme: settings.theme ?? 'auto',
@@ -61,18 +71,20 @@ export function buildExportPayload({
 
   return {
     app: 'vetting-notepad',
-    version: 1,
+    version: 2,
     appVersion: appVersion ?? getAppVersion(),
     exportedAt: new Date().toISOString(),
     types,
     settings: completeSettings,
     savedComments,
-    activeTypeId
+    activeTypeId,
+    quickSmsTemplates,
+    quickInteractionTemplates
   };
 }
 
 /**
- * Validates whether an incoming payload is a valid Vetting Notepad export file.
+ * Validates whether an incoming payload is a valid Vetting Notepad export file (supports v1 & v2).
  */
 export function validateImportPayload(data: unknown): ValidationResult {
   if (!data || typeof data !== 'object' || Array.isArray(data)) {
@@ -94,7 +106,7 @@ export function validateImportPayload(data: unknown): ValidationResult {
 
   const parsedPayload: ExportPayload = {
     app: 'vetting-notepad',
-    version: typeof record.version === 'number' ? record.version : 1,
+    version: typeof record.version === 'number' ? record.version : 2,
     appVersion: typeof record.appVersion === 'string' ? record.appVersion : getAppVersion(),
     exportedAt: typeof record.exportedAt === 'string' ? record.exportedAt : new Date().toISOString(),
     types: Array.isArray(record.types) ? record.types.filter((t): t is VettingType => typeof t === 'object' && t !== null && 'id' in t && 'name' in t) : [],
@@ -103,7 +115,13 @@ export function validateImportPayload(data: unknown): ValidationResult {
       autoClear: typeof settingsRecord.autoClear === 'number' ? settingsRecord.autoClear : 0
     },
     savedComments: Array.isArray(record.savedComments) ? record.savedComments.filter((c): c is string => typeof c === 'string') : [],
-    activeTypeId: typeof record.activeTypeId === 'string' ? record.activeTypeId : null
+    activeTypeId: typeof record.activeTypeId === 'string' ? record.activeTypeId : null,
+    quickSmsTemplates: Array.isArray(record.quickSmsTemplates)
+      ? record.quickSmsTemplates.filter((s): s is QuickSmsTemplate => typeof s === 'object' && s !== null && typeof (s as any).id === 'string' && typeof (s as any).title === 'string' && typeof (s as any).text === 'string')
+      : undefined,
+    quickInteractionTemplates: Array.isArray(record.quickInteractionTemplates)
+      ? record.quickInteractionTemplates.filter((s): s is QuickInteractionTemplate => typeof s === 'object' && s !== null && typeof (s as any).id === 'string' && typeof (s as any).title === 'string' && typeof (s as any).text === 'string')
+      : undefined
   };
 
   return { valid: true, payload: parsedPayload };
