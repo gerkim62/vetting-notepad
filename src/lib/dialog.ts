@@ -305,10 +305,10 @@ export const AppDialog = {
 
       const closeBtn = overlay.querySelector('#shortcutsDialogClose');
       const doneBtn = overlay.querySelector('#shortcutsDialogDone');
-      const searchInput = overlay.querySelector('#shortcutsSearchInput') as HTMLInputElement | null;
-      const emptyState = overlay.querySelector('#shortcutsEmptyState') as HTMLElement | null;
-      const allRows = Array.from(overlay.querySelectorAll('.shortcut-row')) as HTMLElement[];
-      const allGroups = Array.from(overlay.querySelectorAll('.shortcuts-group')) as HTMLElement[];
+      const searchInput = overlay.querySelector<HTMLInputElement>('#shortcutsSearchInput');
+      const emptyState = overlay.querySelector<HTMLElement>('#shortcutsEmptyState');
+      const allRows = Array.from(overlay.querySelectorAll<HTMLElement>('.shortcut-row'));
+      const allGroups = Array.from(overlay.querySelectorAll<HTMLElement>('.shortcuts-group'));
 
       let activeIndex = -1;
       let onKeyDown: ((e: KeyboardEvent) => void) | null = null;
@@ -342,7 +342,7 @@ export const AppDialog = {
         let totalVisible = 0;
 
         allGroups.forEach(group => {
-          const rows = Array.from(group.querySelectorAll('.shortcut-row')) as HTMLElement[];
+          const rows = Array.from(group.querySelectorAll<HTMLElement>('.shortcut-row'));
           let groupHasVisible = false;
           rows.forEach(row => {
             const desc = row.dataset.desc || '';

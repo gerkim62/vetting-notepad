@@ -1,6 +1,6 @@
 import { defineConfig } from 'vite';
 import { crx } from '@crxjs/vite-plugin';
-import manifest from './src/manifest.json';
+import manifest from './src/manifest.json' with { type: 'json' };
 
 export default defineConfig({
   plugins: [
@@ -11,6 +11,15 @@ export default defineConfig({
     emptyOutDir: true,
     sourcemap: false,
     minify: 'esbuild',
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules') && (id.includes('quill') || id.includes('marked') || id.includes('dompurify'))) {
+            return 'vendor';
+          }
+        },
+      },
+    },
   },
   server: {
     port: 5173,

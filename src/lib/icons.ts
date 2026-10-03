@@ -1,12 +1,118 @@
 /**
  * Vetting Notepad - Unified Lucide Icon Provider
- * Replaces hardcoded SVGs and emojis with crisp, consistent Lucide icons.
+ * Tree-shaken, crisp, consistent Lucide icons.
  */
 
-import { icons, createIcons } from 'lucide';
+import {
+  AlertTriangle,
+  Ban,
+  Bookmark,
+  BookmarkX,
+  Bug,
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  Clipboard,
+  ClipboardPaste,
+  Clock,
+  Coffee,
+  Copy,
+  Download,
+  Eye,
+  FileText,
+  Flag,
+  HelpCircle,
+  Info,
+  Keyboard,
+  Menu,
+  MessageCircle,
+  MessageSquare,
+  Pencil,
+  Phone,
+  Plus,
+  RotateCcw,
+  Search,
+  Settings,
+  Trash2,
+  Upload,
+  Utensils,
+  X,
+  createIcons,
+  type IconNode
+} from 'lucide';
 import { logger } from './logger.js';
 
-export type LucideIconName = keyof typeof icons;
+export const SUPPORTED_ICONS: Record<string, IconNode> = {
+  AlertTriangle,
+  Ban,
+  Bookmark,
+  BookmarkX,
+  Bug,
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  Clipboard,
+  ClipboardPaste,
+  Clock,
+  Coffee,
+  Copy,
+  Download,
+  Eye,
+  FileText,
+  Flag,
+  HelpCircle,
+  Info,
+  Keyboard,
+  Menu,
+  MessageCircle,
+  MessageSquare,
+  Pencil,
+  Phone,
+  Plus,
+  RotateCcw,
+  Search,
+  Settings,
+  Trash2,
+  Upload,
+  Utensils,
+  X,
+  // kebab-case mappings for data-lucide attributes or kebab-case calls
+  'alert-triangle': AlertTriangle,
+  'ban': Ban,
+  'bookmark': Bookmark,
+  'bookmark-x': BookmarkX,
+  'bug': Bug,
+  'check': Check,
+  'chevron-down': ChevronDown,
+  'chevron-left': ChevronLeft,
+  'clipboard': Clipboard,
+  'clipboard-paste': ClipboardPaste,
+  'clock': Clock,
+  'coffee': Coffee,
+  'copy': Copy,
+  'download': Download,
+  'eye': Eye,
+  'file-text': FileText,
+  'flag': Flag,
+  'help-circle': HelpCircle,
+  'info': Info,
+  'keyboard': Keyboard,
+  'menu': Menu,
+  'message-circle': MessageCircle,
+  'message-square': MessageSquare,
+  'pencil': Pencil,
+  'phone': Phone,
+  'plus': Plus,
+  'rotate-ccw': RotateCcw,
+  'search': Search,
+  'settings': Settings,
+  'trash-2': Trash2,
+  'upload': Upload,
+  'utensils': Utensils,
+  'x': X
+};
+
+export type LucideIconName = keyof typeof SUPPORTED_ICONS | string;
 
 export interface IconAttrs {
   size?: number;
@@ -22,7 +128,7 @@ export function renderIcon(
   name: LucideIconName,
   attrs: IconAttrs = {}
 ): string {
-  const icon = icons[name];
+  const icon = SUPPORTED_ICONS[name];
   if (!icon) return '';
 
   const size = attrs.size ?? 14;
@@ -51,7 +157,7 @@ export function initIcons(root?: HTMLElement): void {
   if (typeof document === 'undefined') return;
   try {
     createIcons({
-      icons,
+      icons: SUPPORTED_ICONS,
       nameAttr: 'data-lucide',
       attrs: {
         'stroke-width': '2'

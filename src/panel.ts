@@ -8,9 +8,6 @@ import { AppDialog, DEFAULT_KEYBOARD_SHORTCUTS } from './lib/dialog.js';
 import {
   DEFAULT_BREAK_SCHEDULE,
   calculateBreakState,
-  formatCountdown,
-  formatBigCountdown,
-  formatShortDuration,
   formatActiveBreakDisplay,
   parseTimeToDate
 } from './lib/break-timer.js';
@@ -27,7 +24,6 @@ import {
   buildDebugDiagnostics,
   exportDebugDiagnostics
 } from './lib/exporter.js';
-import Quill from 'quill';
 import 'quill/dist/quill.snow.css';
 import './panel.css';
 import { logger } from './lib/logger.js';
