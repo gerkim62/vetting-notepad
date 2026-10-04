@@ -18,6 +18,7 @@
           "id": "sw_callno",
           "label": "Calling Number",
           "len": 10,
+          "mpesaTxn": "msisdn",
           "info": "[SAKA SCEK-0002 / SSCB-0006]\nCalling number must be active on IN-Data. Maximum 2 swap requests per 24 hours."
         },
         {
@@ -31,7 +32,8 @@
           "label": "Full Names // View 360",
           "len": 0,
           "info": "[SAKA VMDA-0001]\nFull names as registered on View 360. Must completely match registration.",
-          "v360": "fullName"
+          "v360": "fullName",
+          "mpesaTxn": "customerName"
         },
         {
           "id": "sw_idnum",
@@ -88,6 +90,7 @@
           "label": "Self-Txn 1 // Last 30d",
           "len": 0,
           "group": "self_txn",
+          "mpesaTxn": "txn1",
           "info": "[SAKA VMDA-0001]\nSelf-initiated M-PESA transaction from customer account in last 30 days. Must provide Amount, Date/Time, and Recipient name. (2 txns count as 1 pass)."
         },
         {
@@ -95,6 +98,7 @@
           "label": "Self-Txn 2 // Last 30d",
           "len": 0,
           "group": "self_txn",
+          "mpesaTxn": "txn2",
           "info": "[SAKA VMDA-0001]\nSecond self-initiated M-PESA transaction in last 30 days."
         },
         {
@@ -171,42 +175,49 @@
           "id": "rev_callno",
           "label": "Calling Number",
           "len": 10,
+          "mpesaTxn": "msisdn",
           "info": "[SAKA MRMM-0003]\nMandatory calling number. If calling on behalf, capture caller number on interaction."
         },
         {
           "id": "rev_tid",
           "label": "Transaction ID",
           "len": 10,
+          "mpesaTxn": "tid",
           "info": "[SAKA MRMM-0003]\n10-character alphanumeric transaction reference (e.g. TGI7...)."
         },
         {
           "id": "rev_sender_msisdn",
           "label": "Sender Number",
           "len": 10,
+          "mpesaTxn": "msisdn",
           "info": "[SAKA MRMM-0003]\nMSISDN of the person who initiated the transaction."
         },
         {
           "id": "rev_sender_name",
           "label": "Sender Name // 2 Names",
           "len": 0,
+          "mpesaTxn": "customerName",
           "info": "[SAKA MRMM-0003]\nConfirm ownership using Customer Name as per M-PESA G3. Accept if customer gives 2 correct names. (No ID/YOB required for P2P reversal)."
         },
         {
           "id": "rev_amount",
           "label": "Amount",
           "len": 0,
+          "mpesaTxn": "amount",
           "info": "[SAKA MRMM-0003]\nExact amount sent in the transaction."
         },
         {
           "id": "rev_recipient",
           "label": "Recipient Number / Till",
-          "len": 10,
+          "len": 0,
+          "mpesaTxn": "recipient",
           "info": "[SAKA MRMM-0003 / LBCF-0003]\nParty B phone number, Buy Goods Till number, or Paybill business number."
         },
         {
           "id": "rev_date_time",
           "label": "Date & Time // <30 days",
           "len": 0,
+          "mpesaTxn": "dateTime",
           "info": "[SAKA MRMM-0003 / MALP-0001]\nTransaction must be within last 30 days for M-PESA P2P, or within 48h for M-PESA airtime reversal. If >30 days, advise customer to liaise with recipient/police."
         }
       ],
@@ -215,6 +226,7 @@
           "id": "rev_type",
           "label": "Reversal Type",
           "len": 0,
+          "mpesaTxn": "type",
           "info": "[SAKA MRMM-0003]\nSpecify transaction type: P2P, LNM Till, Paybill 200200, Pochi la Biashara, or Airtime Purchase."
         },
         {
@@ -253,14 +265,19 @@
         {
           "id": "diy_hakikisha",
           "label": "Hakikisha",
-          "adviceText": "Educated customer on Hakikisha verification",
-          "smsId": "sms_hakikisha"
+          "adviceText": "Educated customer on Hakikisha verification"
         },
         {
-          "id": "diy_reversal_334",
-          "label": "DIY Reversal (*334#)",
-          "adviceText": "Guided on *334# self-service reversal",
-          "smsId": "sms_rev_334"
+          "id": "diy_reversal_456",
+          "label": "DIY Reversal (456)",
+          "adviceText": "Educated on DIY reversal 456",
+          "smsId": "sms_rev_456"
+        },
+        {
+          "id": "diy_till_rev_100",
+          "label": "DIY Till (*100#)",
+          "adviceText": "Educated on *100# Buy Goods self-service reversal",
+          "smsId": "sms_till_rev_100"
         }
       ],
       "copyTitle": "M-PESA & Airtime Reversal – Vetting"
@@ -671,6 +688,7 @@
           "id": "sk_callno",
           "label": "Calling Number // Active IN",
           "len": 10,
+          "mpesaTxn": "msisdn",
           "info": "[SAKA SKKI-0001]\nMust be a Safaricom number active on IN-Data. Calling on behalf: CEE can only give Start Key DIY."
         },
         {
@@ -683,6 +701,7 @@
           "id": "sk_name",
           "label": "Full Names // View 360",
           "len": 0,
+          "mpesaTxn": "customerName",
           "info": "[SAKA SKKI-0001]\nFull names as registered on View 360 & G3.",
           "v360": "fullName"
         },
@@ -750,6 +769,7 @@
           "id": "sk_mpesa_txn1",
           "label": "Self-Txn 1 // Last 30d",
           "len": 0,
+          "mpesaTxn": "txn1",
           "group": "self_txn",
           "info": "[SAKA SKKI-0001 / VMDA-0001]\nSelf-initiated M-PESA transaction from customer account in last 30 days. Must provide Amount, Date/Time, and Recipient name. (2 txns count as 1 pass)."
         },
@@ -757,6 +777,7 @@
           "id": "sk_mpesa_txn2",
           "label": "Self-Txn 2 // Last 30d",
           "len": 0,
+          "mpesaTxn": "txn2",
           "group": "self_txn",
           "info": "[SAKA SKKI-0001 / VMDA-0001]\nSecond self-initiated M-PESA transaction in last 30 days."
         },
@@ -808,6 +829,14 @@
         "Positive authenticated PIN txn in last 24h. Referred customer to Retail Center as per fraud policy.",
         "SIM replacement done within 24h. Advised customer to call back after 24h or visit shop.",
         "Educated customer on setting M-PESA security questions on *334# for future DIY PIN resets."
+      ],
+      "diyActions": [
+        {
+          "id": "diy_pin_manager_334",
+          "label": "DIY PIN Manager (*334#)",
+          "adviceText": "Educated on *334# M-PESA PIN Manager",
+          "smsId": "sms_pin_manager_334"
+        }
       ],
       "copyTitle": "M-PESA Start Key – Vetting"
     },
@@ -882,8 +911,8 @@
       "diyActions": [
         {
           "id": "diy_puk_100",
-          "label": "DIY PUK (*100#)",
-          "adviceText": "Educated on *100# self-service PUK retrieval",
+          "label": "DIY PUK (*100# / *456#)",
+          "adviceText": "Educated on self-service PUK retrieval (*100# / *456#)",
           "smsId": "sms_puk_100"
         }
       ],
@@ -1129,6 +1158,7 @@
           "id": "mpu_callno",
           "label": "Calling Number",
           "len": 10,
+          "mpesaTxn": "msisdn",
           "info": "[SAKA VMDA-0001]\nCalling number requesting unsuspension."
         },
         {
@@ -1141,6 +1171,7 @@
           "id": "mpu_name",
           "label": "Full Names // View 360",
           "len": 0,
+          "mpesaTxn": "customerName",
           "info": "[SAKA VMDA-0001]\nFull names as registered on View 360 & G3.",
           "v360": "fullName"
         },
@@ -1199,6 +1230,7 @@
           "id": "mpu_self_txn1",
           "label": "Self-Txn 1 // Last 30d",
           "len": 0,
+          "mpesaTxn": "txn1",
           "group": "self_txn",
           "info": "[SAKA VMDA-0001]\nSelf-initiated M-PESA transaction from customer account in last 30 days. Must provide Amount, Date/Time, and Recipient name. (2 txns count as 1 pass)."
         },
@@ -1206,6 +1238,7 @@
           "id": "mpu_self_txn2",
           "label": "Self-Txn 2 // Last 30d",
           "len": 0,
+          "mpesaTxn": "txn2",
           "group": "self_txn",
           "info": "[SAKA VMDA-0001]\nSecond self-initiated M-PESA transaction in last 30 days."
         },

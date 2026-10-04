@@ -4,6 +4,7 @@ export interface VettingField {
   len?: number;
   info?: string;
   v360?: string;
+  mpesaTxn?: string;
   article?: string;
   defaultValue?: string;
   excludeFromCount?: boolean;

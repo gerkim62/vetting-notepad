@@ -12,9 +12,9 @@ import {
   parseTimeToDate
 } from './lib/break-timer.js';
 import { attachAutoExpand } from './lib/multiline.js';
-import { escapeHtml, uid, getAppVersion } from './lib/utils.js';
+import { escapeHtml, escapeRegExp, uid, getAppVersion } from './lib/utils.js';
 import { SmartCallPad, migrateCallpadStorage } from './lib/callpad.js';
-import { parseVettingText, isVettingClipboardText } from './lib/parser.js';
+import { parseVettingText, isVettingClipboardText, parseMpesaTxnText, resolveMpesaPastedFieldValue } from './lib/parser.js';
 import { initShortcuts } from './lib/shortcuts.js';
 import { RichNotepad, writeDualClipboard, calculateNoteStats } from './lib/notepad.js';
 import {
@@ -460,6 +460,7 @@ function showBanner(message, actionLabel = null, actionCallback = null, duration
 
 function hideBanner() {
   if (!topBanner) return;
+  topBanner.classList.remove('is-expanded');
   if (bannerTimer) {
     clearTimeout(bannerTimer);
     bannerTimer = null;
@@ -503,6 +504,13 @@ if (topBanner) {
         hideBanner();
       }, resumeMs);
     }
+  });
+}
+
+if (topBannerMsg) {
+  topBannerMsg.addEventListener('click', (e) => {
+    e.stopPropagation();
+    topBanner?.classList.toggle('is-expanded');
   });
 }
 
@@ -809,12 +817,12 @@ function buildCopyText(t) {
           }
           continue;
         }
-        const val = (v[git.id] || '').trim();
+        const val = String(v[git.id] ?? '').trim();
         const isUnchangedDefault = git.defaultValue && val === git.defaultValue.trim() && !st[git.id];
         if (git.omitDefault && isUnchangedDefault) {
           continue;
         }
-        if (val) {
+        if (val.length > 0) {
           const { copy: copyLabel } = parseLabel(git.label);
           let str = `${copyLabel}: ${val}`;
           if (isVettingItem(git)) {
@@ -845,12 +853,12 @@ function buildCopyText(t) {
         }
         continue;
       }
-      const val = (v[it.id] || '').trim();
+      const val = String(v[it.id] ?? '').trim();
       const isUnchangedDefault = it.defaultValue && val === it.defaultValue.trim() && !st[it.id];
       if (it.omitDefault && isUnchangedDefault) {
         continue;
       }
-      if (val) {
+      if (val.length > 0) {
         const { copy: copyLabel } = parseLabel(it.label);
         let line = `${copyLabel}: ${val}`;
         if (isVettingItem(it)) {
@@ -1144,7 +1152,7 @@ function setupInfoPopovers() {
 function getItemEffectiveStatus(it, st, val) {
   if (!it) return null;
   if (st[it.id] === 'failed') return 'failed';
-  if ((val || '').trim().length > 0) return 'passed';
+  if (val !== undefined && val !== null && String(val).trim().length > 0) return 'passed';
   return null;
 }
 
@@ -1591,12 +1599,16 @@ function renderDiyChips(t) {
         await writeToClipboard(smsText);
         const updatedChip = diyRow.querySelector<HTMLElement>(`.diy-chip[data-diy-id="${diyId}"]`);
         if (updatedChip) {
+          const textEl = updatedChip.querySelector<HTMLElement>('.diy-chip-text');
+          const originalLabel = textEl ? textEl.textContent : '';
+          if (textEl) textEl.textContent = 'Copied! ✓';
           updatedChip.classList.remove('chip-copied');
           void updatedChip.offsetWidth;
           updatedChip.classList.add('chip-copied');
           setTimeout(() => {
+            if (textEl && originalLabel) textEl.textContent = originalLabel;
             updatedChip.classList.remove('chip-copied');
-          }, 1250);
+          }, 1500);
         }
       }
     };
@@ -1606,11 +1618,11 @@ function renderDiyChips(t) {
 function createRowHtml(it, kind, _idx) {
   let val = curValues()[it.id];
   const hasStatus = !!curStatus()[it.id];
-  if ((val === undefined || (val === '' && it.defaultValue && !hasStatus))) {
+  if (val === undefined || (val === '' && it.defaultValue && !hasStatus)) {
     val = it.defaultValue || '';
     curValues()[it.id] = val;
   }
-  const isFilled = val.length > 0;
+  const isFilled = String(val ?? '').trim().length > 0;
   const isMandatory = kind === 'mandatory';
   const st = curStatus()[it.id] || '';
   const isExpanded = isFilled || !!st;
@@ -1989,9 +2001,11 @@ async function smartPasteField(input) {
     const allItems = t ? [...(t.required || []), ...(t.optional || [])] : [];
     const item = allItems.find(x => x.id === id);
     const parsedV360 = parseView360Text(rawClipboard);
+    const parsedMpesa = parseMpesaTxnText(rawClipboard);
 
     let textToPaste = '';
     let showUnmappedWarning = false;
+    let unmappedType = '';
     const previousVal = input.value;
 
     if (parsedV360) {
@@ -2001,6 +2015,16 @@ async function smartPasteField(input) {
       } else {
         textToPaste = rawClipboard.replace(/\s*[\r\n]+\s*/g, ' ').trim();
         showUnmappedWarning = true;
+        unmappedType = 'View 360';
+      }
+    } else if (parsedMpesa) {
+      const resolved = resolveMpesaPastedFieldValue(item, parsedMpesa);
+      if (resolved !== null) {
+        textToPaste = resolved;
+      } else {
+        textToPaste = rawClipboard.replace(/\s*[\r\n]+\s*/g, ' ').trim();
+        showUnmappedWarning = true;
+        unmappedType = 'M-PESA statement';
       }
     } else {
       textToPaste = rawClipboard.replace(/\s*[\r\n]+\s*/g, ' ').trim();
@@ -2017,6 +2041,7 @@ async function smartPasteField(input) {
     const box = input.closest('.material-field');
     if (box) box.classList.add('expanded');
     updateRowGuide(id);
+    updateSecondaryCounter();
     syncPreview();
     input.focus();
 
@@ -2026,7 +2051,7 @@ async function smartPasteField(input) {
 
     if (showUnmappedWarning) {
       showBanner(
-        'Pasted raw text (no View 360 mapping for this field)',
+        `Pasted raw text (no ${unmappedType || 'mapping'} for this field)`,
         'Undo',
         () => {
           input.value = previousVal;
@@ -2035,6 +2060,7 @@ async function smartPasteField(input) {
             box.classList.remove('expanded');
           }
           updateRowGuide(id);
+          updateSecondaryCounter();
           syncPreview();
           input.focus();
         },
@@ -2380,6 +2406,7 @@ function syncPreview() {
     previewText.textContent = 'Nothing filled in yet';
     previewText.classList.add('empty');
   }
+  updateMiddleActionButton();
 }
 
 const btnCopy = document.getElementById('btnCopy');
@@ -2392,7 +2419,7 @@ function hasFormContent(t) {
   const itemMap = new Map(allItems.map(it => [it.id, it]));
 
   const hasValues = Object.entries(v).some(([k, val]) => {
-    if (k === '_comment' || !val || String(val).trim().length === 0) return false;
+    if (k === '_comment' || val === undefined || val === null || String(val).trim().length === 0) return false;
     const it = itemMap.get(k);
     if (it && it.defaultValue && it.omitDefault && String(val).trim() === it.defaultValue.trim() && !st[k]) {
       return false;
@@ -2460,25 +2487,54 @@ function resetPasteBtn() {
   }
 }
 
-function setMiddleActionButton(mode) {
+let lastDetectedClipboardPasteable = false;
+
+function updateMiddleActionButton(forceMode?: string) {
   if (!btnPaste || !btnClear) return;
-  btnPaste.style.display = '';
-  btnClear.style.display = '';
-  if (mode === 'paste') {
+  const wrap = btnClear.closest<HTMLElement>('.middle-action-wrap');
+  const t = curType();
+  const canClear = hasFormContent(t);
+
+  if (canClear) {
+    if (wrap) wrap.style.display = '';
+    resetPasteBtn();
+    btnPaste.style.display = 'none';
+    btnPaste.classList.add('flip-hidden');
+    btnPaste.classList.remove('flip-visible');
+    btnClear.style.display = '';
+    btnClear.classList.add('flip-visible');
+    btnClear.classList.remove('flip-hidden');
+    return;
+  }
+
+  const canPaste = forceMode === 'paste' || lastDetectedClipboardPasteable;
+  if (canPaste) {
+    if (wrap) wrap.style.display = '';
     resetPasteBtn();
     pasteCooldown = true;
     setTimeout(() => { pasteCooldown = false; }, 350);
-    btnPaste.classList.add('flip-visible');
-    btnPaste.classList.remove('flip-hidden');
+    btnClear.style.display = 'none';
     btnClear.classList.add('flip-hidden');
     btnClear.classList.remove('flip-visible');
-  } else {
-    resetPasteBtn();
-    btnPaste.classList.add('flip-hidden');
-    btnPaste.classList.remove('flip-visible');
-    btnClear.classList.add('flip-visible');
-    btnClear.classList.remove('flip-hidden');
+    btnPaste.style.display = '';
+    btnPaste.classList.add('flip-visible');
+    btnPaste.classList.remove('flip-hidden');
+    return;
   }
+
+  resetPasteBtn();
+  btnClear.style.display = 'none';
+  btnPaste.style.display = 'none';
+  if (wrap) wrap.style.display = 'none';
+}
+
+function setMiddleActionButton(mode) {
+  if (mode === 'paste') {
+    lastDetectedClipboardPasteable = true;
+  } else if (mode === 'clear') {
+    lastDetectedClipboardPasteable = false;
+  }
+  updateMiddleActionButton(mode);
 }
 
 async function doPasteWholeVetting(clipText = null) {
@@ -2536,17 +2592,20 @@ let lastCheckedClip = null;
 async function checkClipboardForVetting(showPromptBanner = false) {
   try {
     if (!navigator.clipboard || !navigator.clipboard.readText) {
-      setMiddleActionButton('clear');
+      lastDetectedClipboardPasteable = false;
+      updateMiddleActionButton();
       return;
     }
     const clip = await navigator.clipboard.readText();
     if (!clip || !clip.trim()) {
-      setMiddleActionButton('clear');
+      lastDetectedClipboardPasteable = false;
+      updateMiddleActionButton();
       return;
     }
     const isVetting = isVettingClipboardText(clip, types);
     if (isVetting) {
-      setMiddleActionButton('paste');
+      lastDetectedClipboardPasteable = true;
+      updateMiddleActionButton('paste');
       if (showPromptBanner && clip !== lastCheckedClip) {
         lastCheckedClip = clip;
         showBanner(
@@ -2562,11 +2621,13 @@ async function checkClipboardForVetting(showPromptBanner = false) {
         lastCheckedClip = clip;
       }
     } else {
-      setMiddleActionButton('clear');
+      lastDetectedClipboardPasteable = false;
+      updateMiddleActionButton();
     }
   } catch (e) {
     logger.captureError('clipboard', e, { action: 'checkClipboardForVetting' });
-    setMiddleActionButton('clear');
+    lastDetectedClipboardPasteable = false;
+    updateMiddleActionButton();
   }
 }
 
@@ -2739,7 +2800,7 @@ function renderEditView() {
 }
 
 function createEditRowHtml(it, kind, idx, total, list) {
-  const hasRich = !!(it.article || it.info || it.v360 || it.defaultValue || it.excludeFromCount || it.multiline);
+  const hasRich = !!(it.article || it.info || it.v360 || it.mpesaTxn || it.defaultValue || it.excludeFromCount || it.multiline);
   const isTied = !!it.group;
   let canMoveUp = idx > 0;
   let canMoveDown = idx < total - 1;
@@ -2762,7 +2823,7 @@ function createEditRowHtml(it, kind, idx, total, list) {
         </div>
         <input type="text" class="el-label" value="${escapeHtml(it.label)}" placeholder="Label // hint" title="Label name (use // for uncopied hint, e.g. Name // If 3rd Party)">
         <input type="number" class="el-len" value="${it.len || ''}" placeholder="len" title="Guide length in characters">
-        <button type="button" class="ibtn btn-toggle-drawer ${hasRich ? 'has-rich' : ''}" data-drawer-btn="${it.id}" title="Details & View 360 mapping" aria-label="Field details">
+        <button type="button" class="ibtn btn-toggle-drawer ${hasRich ? 'has-rich' : ''}" data-drawer-btn="${it.id}" title="Details, View 360 & M-PESA mapping" aria-label="Field details">
           ${renderIcon('ChevronDown', { size: 12, class: 'drawer-chevron-icon' })}
         </button>
         <button type="button" class="ibtn btn-tie-pair ${isTied ? 'is-tied' : ''}" data-tie-id="${it.id}" title="${isTied ? 'Tied pair (counts as 1 pass). Click to unlink.' : 'Click to tie with adjacent item as 1 pass count'}" aria-label="Tie pair">
@@ -2790,6 +2851,23 @@ function createEditRowHtml(it, kind, idx, total, list) {
             <option value="dob" ${it.v360 === 'dob' ? 'selected' : ''}>Date of Birth (Full D.O.B)</option>
             <option value="gender" ${it.v360 === 'gender' ? 'selected' : ''}>Gender</option>
             <option value="docType" ${it.v360 === 'docType' ? 'selected' : ''}>Document Type</option>
+          </select>
+        </div>
+        <div class="drawer-field">
+          <span class="drawer-label">M-PESA Statement Auto-fill:</span>
+          <select class="el-mpesa-txn">
+            <option value="" ${!it.mpesaTxn ? 'selected' : ''}>-- None (Manual) --</option>
+            <option value="txn1" ${it.mpesaTxn === 'txn1' ? 'selected' : ''}>Self-Txn 1 (Compact Delimiter)</option>
+            <option value="txn2" ${it.mpesaTxn === 'txn2' ? 'selected' : ''}>Self-Txn 2 (Compact Delimiter)</option>
+            <option value="tid" ${it.mpesaTxn === 'tid' ? 'selected' : ''}>Transaction ID / Receipt</option>
+            <option value="amount" ${it.mpesaTxn === 'amount' ? 'selected' : ''}>Amount</option>
+            <option value="dateTime" ${it.mpesaTxn === 'dateTime' ? 'selected' : ''}>Date & Time</option>
+            <option value="recipient" ${it.mpesaTxn === 'recipient' ? 'selected' : ''}>Recipient (Full Name & Till/Number)</option>
+            <option value="recipientNumber" ${it.mpesaTxn === 'recipientNumber' ? 'selected' : ''}>Recipient Number / Till Only</option>
+            <option value="recipientName" ${it.mpesaTxn === 'recipientName' ? 'selected' : ''}>Recipient Name Only</option>
+            <option value="type" ${it.mpesaTxn === 'type' ? 'selected' : ''}>Transaction / Reversal Type</option>
+            <option value="msisdn" ${it.mpesaTxn === 'msisdn' ? 'selected' : ''}>Calling Number / Sender MSISDN</option>
+            <option value="customerName" ${it.mpesaTxn === 'customerName' ? 'selected' : ''}>Customer / Sender Name</option>
           </select>
         </div>
         <div class="drawer-field">
@@ -3111,7 +3189,12 @@ function bindEditEvents() {
     else if (e.target.classList.contains('el-v360')) {
       item.v360 = e.target.value || null;
       const btn = group.querySelector('.btn-toggle-drawer');
-      if (btn) btn.classList.toggle('has-rich', !!(item.article || item.info || item.v360 || item.defaultValue));
+      if (btn) btn.classList.toggle('has-rich', !!(item.article || item.info || item.v360 || item.mpesaTxn || item.defaultValue));
+    }
+    else if (e.target.classList.contains('el-mpesa-txn')) {
+      item.mpesaTxn = e.target.value || undefined;
+      const btn = group.querySelector('.btn-toggle-drawer');
+      if (btn) btn.classList.toggle('has-rich', !!(item.article || item.info || item.v360 || item.mpesaTxn || item.defaultValue));
     }
     else if (e.target.classList.contains('el-default')) {
       item.defaultValue = e.target.value.trim() || undefined;
@@ -3122,7 +3205,7 @@ function bindEditEvents() {
         else delete curValues()[item.id]; // allow createRowHtml to re-init as ''
       }
       const btn = group.querySelector('.btn-toggle-drawer');
-      if (btn) btn.classList.toggle('has-rich', !!(item.article || item.info || item.v360 || item.defaultValue));
+      if (btn) btn.classList.toggle('has-rich', !!(item.article || item.info || item.v360 || item.mpesaTxn || item.defaultValue));
     }
     saveTypes();
   };
@@ -3137,7 +3220,18 @@ function bindEditEvents() {
       if (!item) return;
       item.v360 = e.target.value || null;
       const btn = group.querySelector('.btn-toggle-drawer');
-      if (btn) btn.classList.toggle('has-rich', !!(item.article || item.info || item.v360 || item.defaultValue));
+      if (btn) btn.classList.toggle('has-rich', !!(item.article || item.info || item.v360 || item.mpesaTxn || item.defaultValue));
+      saveTypes();
+    } else if (e.target.classList.contains('el-mpesa-txn')) {
+      const group = e.target.closest('.edit-item-group');
+      if (!group) return;
+      const kind = group.dataset.kind;
+      const list = kind === 'required' ? t.required : t.optional;
+      const item = list.find(x => x.id === group.dataset.id);
+      if (!item) return;
+      item.mpesaTxn = e.target.value || undefined;
+      const btn = group.querySelector('.btn-toggle-drawer');
+      if (btn) btn.classList.toggle('has-rich', !!(item.article || item.info || item.v360 || item.mpesaTxn || item.defaultValue));
       saveTypes();
     } else if (e.target.classList.contains('el-omit-default')) {
       const group = e.target.closest('.edit-item-group');
@@ -3416,28 +3510,33 @@ function initMenu() {
 const DEFAULT_QUICK_SMS = [
   {
     id: 'sms_paybill_rev',
-    title: 'Paybill Reversal Request',
-    text: 'Dear Customer, kindly contact {ORGANIZATION} on {Phone Number} during working hours for reversal request of transaction {TXN CODE}. Thank You.'
+    title: 'Paybill Merchant Contact Details',
+    text: 'Dear Customer, kindly contact {ORGANIZATION} on {PHONE} for reversal request of transaction {TXN CODE}. Safaricom.'
   },
   {
-    id: 'sms_hakikisha',
-    title: 'Hakikisha Verification Advice',
-    text: 'Dear Customer, always confirm the recipient name via Hakikisha before entering your M-PESA PIN. Dial *334# to reverse wrong transactions within 2 hours. Safaricom.'
-  },
-  {
-    id: 'sms_rev_334',
-    title: 'M-PESA Self-Service Reversal (*334#)',
-    text: 'Dear Customer, you can reverse wrong M-PESA transactions instantly by dialing *334# > Select My Account > Reverse Transaction, or send the transaction SMS to 456. Thank You.'
+    id: 'sms_rev_456',
+    title: 'M-PESA Self-Service Reversal (456)',
+    text: 'Dear Customer, you can reverse a wrong M-PESA transaction by forwarding the M-PESA transaction message to 456. Safaricom.'
   },
   {
     id: 'sms_pin_334',
     title: 'M-PESA Self PIN Unlock (*334#)',
-    text: 'Dear Customer, to unlock your M-PESA PIN, dial *334# from your line > My Account > Unlock PIN, or use the M-PESA App. Safaricom.'
+    text: 'Dear Customer, to unlock your M-PESA PIN, dial *334# > My Account > Unlock M-PESA PIN > Enter your ID Number. Safaricom.'
   },
   {
     id: 'sms_puk_100',
-    title: 'Self-Service PUK Retrieval (*100#)',
-    text: 'Dear Customer, you can get your PUK anytime by dialing *100# or *200# from another Safaricom line, or visit safaricomapp.page.link/get-puk. Safaricom.'
+    title: 'Self-Service PUK Retrieval (*100# / *456#)',
+    text: 'Dear Customer, to get PUK for a blocked line, dial *100# or *456# from another line > Get PUK > Enter mobile number > Enter ID number. Safaricom.'
+  },
+  {
+    id: 'sms_pin_manager_334',
+    title: 'M-PESA PIN Manager (*334#)',
+    text: 'Dear Customer, to set security questions or reset your forgotten M-PESA PIN, dial *334# > My Account > M-PESA PIN Manager and follow the prompts. Safaricom.'
+  },
+  {
+    id: 'sms_till_rev_100',
+    title: 'Buy Goods / Till Reversal (*100#)',
+    text: 'Dear Customer, to reverse a wrong Buy Goods transaction, dial *100# > Mpesa/Reversal > Reverse Buy Goods Transaction and follow the prompts. Safaricom.'
   }
 ];
 
@@ -3457,14 +3556,37 @@ async function loadQuickTemplates() {
   const savedSms = await Storage.get('vpad.quick_sms', null);
   if (Array.isArray(savedSms) && savedSms.length > 0) {
     quickSmsTemplates = savedSms;
-    let seeded = false;
+    let modified = false;
+
+    // Purge stale or inaccurate legacy SMS templates
+    const staleIds = ['sms_hakikisha', 'sms_rev_334'];
+    const originalLen = quickSmsTemplates.length;
+    quickSmsTemplates = quickSmsTemplates.filter(s => !staleIds.includes(s.id));
+    if (quickSmsTemplates.length !== originalLen) {
+      modified = true;
+    }
+
+    // Seed missing default templates or update legacy default texts
     for (const defSms of DEFAULT_QUICK_SMS) {
-      if (!quickSmsTemplates.some(s => s.id === defSms.id)) {
+      const existing = quickSmsTemplates.find(s => s.id === defSms.id);
+      if (!existing) {
         quickSmsTemplates.push({ ...defSms });
-        seeded = true;
+        modified = true;
+      } else if (defSms.id === 'sms_paybill_rev' && (existing.text.includes('during working hours') || existing.text.includes('{Phone Number}'))) {
+        existing.title = defSms.title;
+        existing.text = defSms.text;
+        modified = true;
+      } else if (defSms.id === 'sms_pin_334' && existing.text.includes('> Unlock PIN')) {
+        existing.title = defSms.title;
+        existing.text = defSms.text;
+        modified = true;
+      } else if (defSms.id === 'sms_puk_100' && existing.text.includes('safaricomapp.page.link')) {
+        existing.title = defSms.title;
+        existing.text = defSms.text;
+        modified = true;
       }
     }
-    if (seeded) {
+    if (modified) {
       Storage.set('vpad.quick_sms', quickSmsTemplates);
     }
   } else {
@@ -5768,7 +5890,7 @@ async function init() {
   const loadedTypes = await Storage.get('vpad.types', null);
   const defaults = defaultVettingTypes();
 
-  if (configVer < 13 || !Array.isArray(loadedTypes) || loadedTypes.length < 15) {
+  if (configVer < 15 || !Array.isArray(loadedTypes) || loadedTypes.length < 15) {
     if (!Array.isArray(loadedTypes) || loadedTypes.length === 0) {
       types = defaults;
     } else {
@@ -5812,7 +5934,7 @@ async function init() {
     }
     Storage.setMultiple({
       'vpad.types': types,
-      'vpad.config_version': 13
+      'vpad.config_version': 15
     });
   } else {
     types = loadedTypes;
@@ -5841,6 +5963,13 @@ async function init() {
 
 
   initQuickSmsSearch();
+  document.querySelectorAll<HTMLElement>('.view-sub').forEach(v => {
+    v.scrollLeft = 0;
+    v.addEventListener('scroll', () => {
+      if (v.scrollLeft !== 0) v.scrollLeft = 0;
+    });
+  });
+
   clearCallpadOnClear = Boolean(await Storage.get('vpad.clear_callpad_on_clear', false));
   await initBreakNotifier();
   await checkClipboardForVetting();

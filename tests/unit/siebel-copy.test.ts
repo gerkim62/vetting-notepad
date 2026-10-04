@@ -59,4 +59,16 @@ Sender Name: Jane Smith (Failed)`;
     expect(parsed.values['rev_sender_name']).toBe('Jane Smith');
     expect(parsed.status['rev_sender_name']).toBe('failed');
   });
+
+  it('parses zero values (0 or 0.00) accurately without dropping them as falsy', () => {
+    const rawZeroText = `M-PESA & Airtime Reversal – Vetting
+Vetting: Passed
+Calling Number: 0712345678
+Transaction ID: TGI7XYZ123
+Amount: 0
+Recipient Number: 0722000000`;
+
+    const parsed = parseVettingText(rawZeroText, types, 'reversal');
+    expect(parsed.values['rev_amount']).toBe('0');
+  });
 });

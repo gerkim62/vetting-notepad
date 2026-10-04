@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { escapeHtml, uid, debounce, sanitizeRedacted, getAppVersion } from '../../src/lib/utils.js';
+import { escapeHtml, escapeRegExp, uid, debounce, sanitizeRedacted, getAppVersion } from '../../src/lib/utils.js';
 import manifest from '../../src/manifest.json';
 
 describe('Shared Utilities Module (utils.js)', () => {
@@ -18,6 +18,22 @@ describe('Shared Utilities Module (utils.js)', () => {
     it('converts numbers to string and preserves clean characters', () => {
       expect(escapeHtml(12345)).toBe('12345');
       expect(escapeHtml(0)).toBe('0');
+    });
+  });
+
+  describe('escapeRegExp', () => {
+    it('escapes special regex metacharacters', () => {
+      const str = 'Calling Number [Active IN] (2x)? *+$^';
+      const escaped = escapeRegExp(str);
+      expect(escaped).toBe('Calling Number \\[Active IN\\] \\(2x\\)\\? \\*\\+\\$\\^');
+      const re = new RegExp(escaped);
+      expect(re.test(str)).toBe(true);
+    });
+
+    it('returns empty string for null, undefined, or empty string', () => {
+      expect(escapeRegExp(null)).toBe('');
+      expect(escapeRegExp(undefined)).toBe('');
+      expect(escapeRegExp('')).toBe('');
     });
   });
 

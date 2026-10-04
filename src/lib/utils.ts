@@ -37,6 +37,14 @@ export function escapeHtml(str: unknown): string {
 }
 
 /**
+ * Escapes characters that have special meaning in regular expressions.
+ */
+export function escapeRegExp(str: unknown): string {
+  if (str === null || str === undefined) return '';
+  return String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
  * Sanitizes rich HTML markup using direct npm DOMPurify.
  */
 export function sanitizeHtml(dirty: unknown): string {

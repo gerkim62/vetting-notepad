@@ -243,3 +243,188 @@ export function parseVettingText(rawText: string | null | undefined, types: Vett
 
   return result;
 }
+
+/* ==========================================================================
+   Smart M-PESA Transaction Statement Parser (View360-style)
+   ========================================================================== */
+
+export interface MpesaTxnItem {
+  tid: string;
+  dateTime: string;
+  type: string;
+  otherParty: string;
+  recipientNumber: string;
+  recipientName: string;
+  status: string;
+  currency: string;
+  amount: string;
+  formattedCompact: string;
+}
+
+export interface ParsedMpesaResult {
+  [key: string]: unknown;
+  msisdn?: string;
+  customerName?: string;
+  transactions: MpesaTxnItem[];
+  txn1?: string;
+  txn2?: string;
+  tid?: string;
+  amount?: string;
+  dateTime?: string;
+  recipient?: string;
+  recipientNumber?: string;
+  recipientName?: string;
+  type?: string;
+}
+
+/**
+ * Parses raw copied M-PESA transaction extracts into structured details.
+ */
+export function parseMpesaTxnText(rawText: string | null | undefined): ParsedMpesaResult | null {
+  if (!rawText || typeof rawText !== 'string') return null;
+  const text = rawText.trim();
+  if (!text) return null;
+
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  if (lines.length === 0) return null;
+
+  const tidRegex = /^(?:(?:receipt\s*(?:no\.?|id)?|txn\s*(?:id|no\.?)?|transaction\s*id)[:\s-]*)?([A-Z0-9]{10})$/i;
+  const dateTimeRegex = /^\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}(?::\d{2})?$/;
+  const amountRegex = /^-?\d+(?:,\d{3})*(?:\.\d{1,2})?$/;
+  const currencyRegex = /^(?:KES|KSH|USD)$/i;
+  const statusRegex = /^(?:Completed|Failed|Reversed|Cancelled|Pending)$/i;
+
+  const tidIndices: { index: number; tid: string }[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const match = line.match(tidRegex);
+    if (match) {
+      if (
+        (i + 1 < lines.length && dateTimeRegex.test(lines[i + 1])) ||
+        (i + 2 < lines.length && dateTimeRegex.test(lines[i + 2]))
+      ) {
+        tidIndices.push({ index: i, tid: match[1].toUpperCase() });
+      }
+    }
+  }
+
+  if (tidIndices.length === 0) {
+    return null;
+  }
+
+  let headerPhone = '';
+  let headerName = '';
+
+  const firstTidIdx = tidIndices[0].index;
+  const headerLines = lines.slice(0, firstTidIdx);
+  for (const hLine of headerLines) {
+    const phoneMatch = hLine.match(/^(?:one|\+?254|0)?([17]\d{8})$/i);
+    if (phoneMatch) {
+      headerPhone = '0' + phoneMatch[1];
+      continue;
+    }
+    if (/^[A-Za-z\s]{2,40}$/.test(hLine) && !currencyRegex.test(hLine) && !statusRegex.test(hLine)) {
+      if (!headerName) headerName = hLine;
+    }
+  }
+
+  const transactions: MpesaTxnItem[] = [];
+
+  for (let t = 0; t < tidIndices.length; t++) {
+    const startIdx = tidIndices[t].index;
+    const endIdx = t + 1 < tidIndices.length ? tidIndices[t + 1].index : lines.length;
+    const block = lines.slice(startIdx, endIdx);
+
+    const tid = tidIndices[t].tid;
+    let dateTime = '';
+    let type = '';
+    let otherParty = '';
+    let status = '';
+    let currency = 'KES';
+    let rawAmount = '';
+
+    for (let j = 1; j < block.length; j++) {
+      const line = block[j];
+      const combinedAmountMatch = line.match(/^(?:KES|KSH)\s*(-?\d+(?:,\d{3})*(?:\.\d{1,2})?)$/i) ||
+                                  line.match(/^(-?\d+(?:,\d{3})*(?:\.\d{1,2})?)\s*(?:KES|KSH)$/i);
+
+      if (!dateTime && dateTimeRegex.test(line)) {
+        dateTime = line;
+      } else if (currencyRegex.test(line)) {
+        currency = line.toUpperCase();
+      } else if (statusRegex.test(line)) {
+        status = line;
+      } else if (combinedAmountMatch) {
+        rawAmount = combinedAmountMatch[1];
+      } else if (amountRegex.test(line.replace(/,/g, ''))) {
+        rawAmount = line;
+      } else if (!type && !line.includes('****') && !/^\d/.test(line)) {
+        type = line;
+      } else if (!otherParty) {
+        otherParty = line;
+      }
+    }
+
+    let recipientName = otherParty;
+    let recipientNumber = otherParty;
+    if (otherParty.includes('-')) {
+      const parts = otherParty.split('-');
+      recipientNumber = parts[0].trim().replace(/^\+?254([17]\d)/, '0$1');
+      const candidate = parts.slice(1).join('-').trim();
+      if (candidate) recipientName = candidate;
+    } else {
+      recipientNumber = otherParty.replace(/^\+?254([17]\d)/, '0$1');
+    }
+
+    const cleanAmount = (rawAmount || '').replace(/^[-\s]+/, '').replace(/,/g, '').trim();
+    const formattedCompact = `${tid} | ${dateTime} | ${recipientName || otherParty} | ${cleanAmount}`;
+
+    transactions.push({
+      tid,
+      dateTime,
+      type,
+      otherParty,
+      recipientNumber,
+      recipientName,
+      status,
+      currency,
+      amount: cleanAmount,
+      formattedCompact
+    });
+  }
+
+  const txn1 = transactions[0]?.formattedCompact || '';
+  const txn2 = transactions[1]?.formattedCompact || '';
+  const firstTxn = transactions[0];
+
+  return {
+    msisdn: headerPhone || undefined,
+    customerName: headerName || undefined,
+    transactions,
+    txn1,
+    txn2,
+    tid: firstTxn?.tid,
+    amount: firstTxn?.amount,
+    dateTime: firstTxn?.dateTime,
+    recipient: firstTxn?.otherParty,
+    recipientNumber: firstTxn?.recipientNumber,
+    recipientName: firstTxn?.recipientName,
+    type: firstTxn?.type
+  };
+}
+
+/**
+ * Resolves the appropriate value from a parsed M-PESA statement for a given vetting field.
+ * Strictly config-driven via item.mpesaTxn (identical to item.v360) — zero guessing.
+ * Returns null if no explicit mpesaTxn mapping exists on the field.
+ */
+export function resolveMpesaPastedFieldValue(
+  item: VettingField | null | undefined,
+  parsedMpesa: ParsedMpesaResult | null | undefined
+): string | null {
+  if (!item || !parsedMpesa || !item.mpesaTxn) return null;
+  const val = parsedMpesa[item.mpesaTxn];
+  return typeof val === 'string' && val.length > 0 ? val : null;
+}
+
+

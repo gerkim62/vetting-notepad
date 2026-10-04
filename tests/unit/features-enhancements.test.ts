@@ -64,14 +64,24 @@ describe('Feature Enhancements: Policy, DIY Unified, Shift+Enter & Multiline', (
   });
 
   describe('2. Unified DIY Action Chips', () => {
-    it('verifies DIY actions have valid adviceText and linked smsId in config', () => {
+    it('verifies DIY actions have valid adviceText and optional linked smsId in config', () => {
       const reversal = config.types.find(t => t.id === 'reversal');
       expect(reversal?.diyActions).toBeDefined();
-      const diy = reversal?.diyActions?.[0];
-      expect(diy?.id).toBe('diy_hakikisha');
-      expect(diy?.label).toBe('Hakikisha');
-      expect(diy?.adviceText).toBeDefined();
-      expect(diy?.smsId).toBe('sms_hakikisha');
+      const hakikisha = reversal?.diyActions?.find(d => d.id === 'diy_hakikisha');
+      expect(hakikisha?.id).toBe('diy_hakikisha');
+      expect(hakikisha?.label).toBe('Hakikisha');
+      expect(hakikisha?.adviceText).toBeDefined();
+      expect(hakikisha?.smsId).toBeUndefined();
+
+      const rev456 = reversal?.diyActions?.find(d => d.id === 'diy_reversal_456');
+      expect(rev456?.id).toBe('diy_reversal_456');
+      expect(rev456?.label).toBe('DIY Reversal (456)');
+      expect(rev456?.smsId).toBe('sms_rev_456');
+
+      const tillRev = reversal?.diyActions?.find(d => d.id === 'diy_till_rev_100');
+      expect(tillRev?.id).toBe('diy_till_rev_100');
+      expect(tillRev?.label).toBe('DIY Till (*100#)');
+      expect(tillRev?.smsId).toBe('sms_till_rev_100');
     });
   });
 

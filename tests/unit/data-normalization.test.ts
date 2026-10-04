@@ -33,27 +33,27 @@ describe('Data Normalization & Drift Elimination', () => {
   it('dynamically resolves SMS text from quickSmsTemplates via smsId (zero data drift)', () => {
     const mockQuickSms: QuickSmsTemplate[] = [
       {
-        id: 'sms_hakikisha',
-        title: 'Hakikisha Verification Advice',
+        id: 'sms_rev_456',
+        title: 'M-PESA Self-Service Reversal (456)',
         text: 'Original SMS text'
       }
     ];
 
-    const hakikishaDiy = reversalType?.diyActions?.find(d => d.id === 'diy_hakikisha');
-    expect(hakikishaDiy).toBeDefined();
-    expect(hakikishaDiy?.smsId).toBe('sms_hakikisha');
+    const reversalDiy = reversalType?.diyActions?.find(d => d.id === 'diy_reversal_456');
+    expect(reversalDiy).toBeDefined();
+    expect(reversalDiy?.smsId).toBe('sms_rev_456');
 
     // Initial resolution
-    let resolvedText = mockQuickSms.find(s => s.id === hakikishaDiy?.smsId)?.text;
+    let resolvedText = mockQuickSms.find(s => s.id === reversalDiy?.smsId)?.text;
     expect(resolvedText).toBe('Original SMS text');
 
     // Agent edits template in Quick SMS manager
-    const tpl = mockQuickSms.find(s => s.id === 'sms_hakikisha')!;
-    tpl.text = 'Updated SMS text with new *334# instructions';
+    const tpl = mockQuickSms.find(s => s.id === 'sms_rev_456')!;
+    tpl.text = 'Updated SMS text with new 456 instructions';
 
     // DIY resolution immediately reflects updated template without modifying VettingType
-    resolvedText = mockQuickSms.find(s => s.id === hakikishaDiy?.smsId)?.text;
-    expect(resolvedText).toBe('Updated SMS text with new *334# instructions');
+    resolvedText = mockQuickSms.find(s => s.id === reversalDiy?.smsId)?.text;
+    expect(resolvedText).toBe('Updated SMS text with new 456 instructions');
   });
 
   it('handles detached or unlinked DIY actions gracefully without errors', () => {
@@ -70,11 +70,16 @@ describe('Data Normalization & Drift Elimination', () => {
 
     const resolved = unlinkedDiy.smsId ? mockQuickSms.find(s => s.id === unlinkedDiy.smsId)?.text : undefined;
     expect(resolved).toBeUndefined();
+
+    // Verify Hakikisha in default config is unlinked (no SMS template attached)
+    const hakikishaDiy = reversalType?.diyActions?.find(d => d.id === 'diy_hakikisha');
+    expect(hakikishaDiy).toBeDefined();
+    expect(hakikishaDiy?.smsId).toBeUndefined();
   });
 
   it('preserves Quick SMS templates and DIY links across Schema v2 Export & Import', () => {
     const sampleSms: QuickSmsTemplate[] = [
-      { id: 'sms_hakikisha', title: 'Hakikisha', text: 'Confirm recipient name' },
+      { id: 'sms_rev_456', title: 'M-PESA Self-Service Reversal (456)', text: 'Forward to 456' },
       { id: 'sms_custom_1', title: 'Custom Quick SMS', text: 'Hello customer' }
     ];
 
@@ -96,14 +101,14 @@ describe('Data Normalization & Drift Elimination', () => {
     expect(validation.valid).toBe(true);
     expect(validation.payload?.version).toBe(2);
     expect(validation.payload?.quickSmsTemplates).toHaveLength(2);
-    expect(validation.payload?.quickSmsTemplates?.[0].id).toBe('sms_hakikisha');
+    expect(validation.payload?.quickSmsTemplates?.[0].id).toBe('sms_rev_456');
 
     // Verify linked DIY action in imported types matches the imported template
     const importedReversal = validation.payload?.types.find(t => t.id === 'reversal');
-    const importedDiy = importedReversal?.diyActions?.find(d => d.id === 'diy_hakikisha');
-    expect(importedDiy?.smsId).toBe('sms_hakikisha');
+    const importedDiy = importedReversal?.diyActions?.find(d => d.id === 'diy_reversal_456');
+    expect(importedDiy?.smsId).toBe('sms_rev_456');
     const matchedSms = validation.payload?.quickSmsTemplates?.find(s => s.id === importedDiy?.smsId);
-    expect(matchedSms?.text).toBe('Confirm recipient name');
+    expect(matchedSms?.text).toBe('Forward to 456');
   });
 
   it('maintains backward compatibility with Schema v1 import files', () => {
