@@ -3511,32 +3511,37 @@ const DEFAULT_QUICK_SMS = [
   {
     id: 'sms_paybill_rev',
     title: 'Paybill Merchant Contact Details',
-    text: 'Dear Customer, kindly contact {ORGANIZATION} on {PHONE} for reversal request of transaction {TXN CODE}. Safaricom.'
+    text: 'Jambo, kindly contact {ORGANIZATION} on {PHONE} for reversal request of transaction {TXN CODE}. Safaricom.'
   },
   {
     id: 'sms_rev_456',
     title: 'M-PESA Self-Service Reversal (456)',
-    text: 'Dear Customer, you can reverse a wrong M-PESA transaction by forwarding the M-PESA transaction message to 456. Safaricom.'
+    text: 'Jambo, you can reverse a wrong M-PESA transaction by forwarding the M-PESA transaction message to 456. Safaricom.'
   },
   {
     id: 'sms_pin_334',
     title: 'M-PESA Self PIN Unlock (*334#)',
-    text: 'Dear Customer, to unlock your M-PESA PIN, dial *334# > My Account > Unlock M-PESA PIN > Enter your ID Number. Safaricom.'
+    text: 'Jambo, to unlock your M-PESA PIN, dial *334# > My Account > Unlock M-PESA PIN > Enter your ID Number. Safaricom.'
   },
   {
     id: 'sms_puk_100',
     title: 'Self-Service PUK Retrieval (*100# / *456#)',
-    text: 'Dear Customer, to get PUK for a blocked line, dial *100# or *456# from another line > Get PUK > Enter mobile number > Enter ID number. Safaricom.'
+    text: 'Jambo, to get PUK for a blocked line, dial *100# or *456# from another line > Get PUK > Enter mobile number > Enter ID number. Safaricom.'
   },
   {
     id: 'sms_pin_manager_334',
     title: 'M-PESA PIN Manager (*334#)',
-    text: 'Dear Customer, to set security questions or reset your forgotten M-PESA PIN, dial *334# > My Account > M-PESA PIN Manager and follow the prompts. Safaricom.'
+    text: 'Jambo, to set security questions or reset your forgotten M-PESA PIN, dial *334# > My Account > M-PESA PIN Manager and follow the prompts. Safaricom.'
   },
   {
     id: 'sms_till_rev_100',
     title: 'Buy Goods / Till Reversal (*100#)',
-    text: 'Dear Customer, to reverse a wrong Buy Goods transaction, dial *100# > Mpesa/Reversal > Reverse Buy Goods Transaction and follow the prompts. Safaricom.'
+    text: 'Jambo, to reverse a wrong Buy Goods transaction, dial *100# > Mpesa/Reversal > Reverse Buy Goods Transaction and follow the prompts. Safaricom.'
+  },
+  {
+    id: 'sms_inaudible_call',
+    title: 'Inaudible Call / Voice Break Reversal',
+    text: 'Jambo, sorry we cannot hear you on call. Dial 100, 200 or 234 for assistance or call us from a different phone. To reverse M-PESA forward the message to 456. Thank you.'
   }
 ];
 
