@@ -3529,6 +3529,11 @@ const DEFAULT_QUICK_SMS = [
     text: 'Jambo, to get PUK for a blocked line, dial *100# or *456# from another line > Get PUK > Enter mobile number > Enter ID number. Safaricom.'
   },
   {
+    id: 'sms_puk_issuance',
+    title: 'PUK Number Issuance to Caller',
+    text: 'Jambo, your PUK number for {MSISDN} is {PUK}. Do not share your PIN or PUK with anyone. Safaricom.'
+  },
+  {
     id: 'sms_pin_manager_334',
     title: 'M-PESA PIN Manager (*334#)',
     text: 'Jambo, to set security questions or reset your forgotten M-PESA PIN, dial *334# > My Account > M-PESA PIN Manager and follow the prompts. Safaricom.'
@@ -3537,6 +3542,31 @@ const DEFAULT_QUICK_SMS = [
     id: 'sms_till_rev_100',
     title: 'Buy Goods / Till Reversal (*100#)',
     text: 'Jambo, to reverse a wrong Buy Goods transaction, dial *100# > Mpesa/Reversal > Reverse Buy Goods Transaction and follow the prompts. Safaricom.'
+  },
+  {
+    id: 'sms_agent_rev_2530',
+    title: 'Agent Self-Reversal (2530)',
+    text: 'Jambo, M-PESA agents can reverse wrong customer deposits and withdrawals within 1 hour by forwarding the transaction SMS to 2530. Safaricom.'
+  },
+  {
+    id: 'sms_till_sim_swap_234',
+    title: 'Till Self SIM Swap (*234#)',
+    text: 'Jambo, to swap your Till notification SIM, dial *234# from the Nominated Number > M-PESA Business Till > Account Services > SIM Swap, or use the M-PESA Business App. Safaricom.'
+  },
+  {
+    id: 'sms_statement_334',
+    title: 'M-PESA Statement DIY (*334# / App)',
+    text: 'Jambo, to get your M-PESA statement, dial *334# > My Account > M-PESA Statement or download it via the M-PESA App / MySafaricom App. Safaricom.'
+  },
+  {
+    id: 'sms_stop_promo_456',
+    title: 'Stop Promotional SMS (*456*9# / 40044)',
+    text: 'Jambo, to stop unwanted marketing SMS or manage subscriptions, dial *456*9# > Stop Promotional Messages or send STOP to 40044. Safaricom.'
+  },
+  {
+    id: 'sms_report_fraud_333',
+    title: 'Report Fraud or Scam (333)',
+    text: 'Dear Customer, to report fraud or con messages, forward the message or caller number via SMS to 333 for investigation. Safaricom.'
   },
   {
     id: 'sms_inaudible_call',
