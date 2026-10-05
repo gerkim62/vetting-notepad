@@ -15,7 +15,7 @@ describe('Siebel Interaction Ready Text & DIY Actions', () => {
   });
 
   it('parses Siebel formatted copy text with top advice line and Vetting Passed', () => {
-    const rawSiebelText = `M-PESA & Airtime Reversal: Reversal processed. Educated customer on Hakikisha.
+    const rawSiebelText = `M-PESA Reversal: Reversal processed. Educated customer on Hakikisha.
 Vetting: Passed
 Calling Number: 0712345678
 Transaction ID: TGI7XYZ123
@@ -34,7 +34,7 @@ Recipient Number: 0722000000`;
   });
 
   it('parses Siebel formatted copy text with custom comment on Line 1', () => {
-    const rawSiebelText = `M-PESA & Airtime Reversal: Customer requested urgent reversal for Paybill.
+    const rawSiebelText = `M-PESA Reversal: Customer requested urgent reversal for Paybill.
 Vetting: Passed
 Calling Number: 0712345678
 Transaction ID: TGI7XYZ123`;
@@ -47,7 +47,7 @@ Transaction ID: TGI7XYZ123`;
   });
 
   it('skips Vetting: Failed line and extracts failed statuses', () => {
-    const rawFailedText = `M-PESA & Airtime Reversal: Failed vetting. Advised customer to confirm details.
+    const rawFailedText = `M-PESA Reversal: Failed vetting. Advised customer to confirm details.
 Vetting: Failed (Sender Name)
 Calling Number: 0712345678
 Transaction ID: TGI7XYZ123
@@ -61,7 +61,7 @@ Sender Name: Jane Smith (Failed)`;
   });
 
   it('parses zero values (0 or 0.00) accurately without dropping them as falsy', () => {
-    const rawZeroText = `M-PESA & Airtime Reversal – Vetting
+    const rawZeroText = `M-PESA Reversal – Vetting
 Vetting: Passed
 Calling Number: 0712345678
 Transaction ID: TGI7XYZ123

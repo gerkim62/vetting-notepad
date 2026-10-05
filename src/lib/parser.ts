@@ -80,25 +80,26 @@ export function parseVettingText(rawText: string | null | undefined, types: Vett
   let matchedType: VettingType | null = null;
   const firstLine = (lines[0] ?? '').toLowerCase();
 
-  // Legacy header aliases for existing saved interactions & tests
-  if (firstLine.includes('m-pesa & airtime reversal')) {
-    matchedType = types.find(t => t.id === 'reversal') || null;
-  } else if (firstLine.includes('agent calling (personal number)')) {
-    matchedType = types.find(t => t.id === 'agent_personal') || null;
-  } else if (firstLine.includes('till notification msisdn replacement') || firstLine.includes('till notification sim swap')) {
-    matchedType = types.find(t => t.id === 'till_notif_replacement') || null;
-  }
+  // Sort by copyTitle / name length descending so longer/more specific names match first (e.g. 'Airtime Reversal' before 'M-PESA Reversal')
+  const sortedTypes = [...types].sort((a, b) => {
+    const aLen = Math.max((a.copyTitle || '').length, a.name.length);
+    const bLen = Math.max((b.copyTitle || '').length, b.name.length);
+    return bLen - aLen;
+  });
 
-  if (!matchedType) {
-    // Sort by name length descending so longer/more specific names match first (e.g. 'Airtime Reversal' vs 'Reversal')
-    const sortedTypes = [...types].sort((a, b) => b.name.length - a.name.length);
-    for (const t of sortedTypes) {
-      const copyTitle = (t.copyTitle || `${t.name} – Vetting`).toLowerCase();
-      const typeName = t.name.toLowerCase();
-      if (firstLine === copyTitle || firstLine.startsWith(`${typeName}:`) || firstLine.startsWith(`${typeName} –`) || firstLine.startsWith(`${typeName} -`) || firstLine.includes(typeName)) {
-        matchedType = t;
-        break;
-      }
+  for (const t of sortedTypes) {
+    const copyTitle = (t.copyTitle || `${t.name} – Vetting`).toLowerCase();
+    const typeName = t.name.toLowerCase();
+    if (
+      firstLine === copyTitle ||
+      firstLine.startsWith(`${copyTitle}:`) ||
+      firstLine.startsWith(`${typeName}:`) ||
+      firstLine.startsWith(`${typeName} –`) ||
+      firstLine.startsWith(`${typeName} -`) ||
+      firstLine.includes(typeName)
+    ) {
+      matchedType = t;
+      break;
     }
   }
 
@@ -189,7 +190,14 @@ export function parseVettingText(rawText: string | null | undefined, types: Vett
     const l0Lower = l0.toLowerCase();
     const copyTitle = (matchedType.copyTitle || `${matchedType.name} – Vetting`).toLowerCase();
     const typeName = matchedType.name.toLowerCase();
-    if (l0Lower === copyTitle || l0Lower.includes(typeName)) {
+    if (
+      l0Lower === copyTitle ||
+      l0Lower.startsWith(`${copyTitle}:`) ||
+      l0Lower.startsWith(`${typeName}:`) ||
+      l0Lower.startsWith(`${typeName} –`) ||
+      l0Lower.startsWith(`${typeName} -`) ||
+      l0Lower.includes(typeName)
+    ) {
       startIndex = 1;
       const colonIdx = l0.indexOf(':');
       if (colonIdx !== -1) {
