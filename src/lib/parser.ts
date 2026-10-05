@@ -80,12 +80,25 @@ export function parseVettingText(rawText: string | null | undefined, types: Vett
   let matchedType: VettingType | null = null;
   const firstLine = (lines[0] ?? '').toLowerCase();
 
-  for (const t of types) {
-    const copyTitle = (t.copyTitle || `${t.name} – Vetting`).toLowerCase();
-    const typeName = t.name.toLowerCase();
-    if (firstLine === copyTitle || firstLine.includes(typeName)) {
-      matchedType = t;
-      break;
+  // Legacy header aliases for existing saved interactions & tests
+  if (firstLine.includes('m-pesa & airtime reversal')) {
+    matchedType = types.find(t => t.id === 'reversal') || null;
+  } else if (firstLine.includes('agent calling (personal number)')) {
+    matchedType = types.find(t => t.id === 'agent_personal') || null;
+  } else if (firstLine.includes('till notification msisdn replacement') || firstLine.includes('till notification sim swap')) {
+    matchedType = types.find(t => t.id === 'till_notif_replacement') || null;
+  }
+
+  if (!matchedType) {
+    // Sort by name length descending so longer/more specific names match first (e.g. 'Airtime Reversal' vs 'Reversal')
+    const sortedTypes = [...types].sort((a, b) => b.name.length - a.name.length);
+    for (const t of sortedTypes) {
+      const copyTitle = (t.copyTitle || `${t.name} – Vetting`).toLowerCase();
+      const typeName = t.name.toLowerCase();
+      if (firstLine === copyTitle || firstLine.startsWith(`${typeName}:`) || firstLine.startsWith(`${typeName} –`) || firstLine.startsWith(`${typeName} -`) || firstLine.includes(typeName)) {
+        matchedType = t;
+        break;
+      }
     }
   }
 

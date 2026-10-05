@@ -7,7 +7,7 @@ const types = config.types;
 describe('Vetting Text Parser', () => {
 
   it('detects vetting clipboard text header', () => {
-    const text = `SIM Swap (Enhanced Vetting) – Vetting\nFull Name: John Doe (Passed)\nID Number: 12345678 (Passed)`;
+    const text = `SIM Swap – Vetting\nFull Name: John Doe (Passed)\nID Number: 12345678 (Passed)`;
     expect(isVettingClipboardText(text, types)).toBe(true);
   });
 

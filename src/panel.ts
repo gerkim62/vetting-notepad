@@ -3569,6 +3569,11 @@ const DEFAULT_QUICK_SMS = [
     text: 'Dear Customer, to report fraud or con messages, forward the message or caller number via SMS to 333 for investigation. Safaricom.'
   },
   {
+    id: 'sms_pooled_reactivation',
+    title: 'Pooled Line Reactivation (*100# / *456#)',
+    text: 'Jambo, to recreate your pooled line, dial *100# > SIM Card Queries > SIM Card Reactivation or *456# from another line and enter your ID and Old SIM serial. Top up within 7 days. Safaricom.'
+  },
+  {
     id: 'sms_inaudible_call',
     title: 'Inaudible Call / Voice Break Reversal',
     text: 'Jambo, sorry we cannot hear you on call. Dial 100, 200 or 234 for assistance or call us from a different phone. To reverse M-PESA forward the message to 456. Thank you.'

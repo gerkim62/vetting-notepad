@@ -10,7 +10,7 @@
   "types": [
     {
       "id": "swap",
-      "name": "SIM Swap (Enhanced Vetting)",
+      "name": "SIM Swap",
       "article": "SSCB-0006",
       "minSecondary": 2,
       "required": [
@@ -168,8 +168,8 @@
     },
     {
       "id": "reversal",
-      "name": "M-PESA & Airtime Reversal",
-      "article": "MRMM-0003",
+      "name": "M-PESA Reversal",
+      "article": "MRMM-0003 / LRIK-0002",
       "required": [
         {
           "id": "rev_callno",
@@ -197,7 +197,7 @@
           "label": "Sender Name // 2 Names",
           "len": 0,
           "mpesaTxn": "customerName",
-          "info": "[SAKA MRMM-0003]\nConfirm ownership using Customer Name as per M-PESA G3. Accept if customer gives 2 correct names. (No ID/YOB required for P2P reversal)."
+          "info": "[SAKA MRMM-0003]\nConfirm ownership using Customer Name as per M-PESA G3. Accept if customer gives 2 correct names."
         },
         {
           "id": "rev_amount",
@@ -211,14 +211,14 @@
           "label": "Recipient Number / Till",
           "len": 0,
           "mpesaTxn": "recipient",
-          "info": "[SAKA MRMM-0003 / LBCF-0003]\nParty B phone number, Buy Goods Till number, or Paybill business number."
+          "info": "[SAKA MRMM-0003 / LBCF-0003]\nParty B phone number, Buy Goods Till number, or Pochi wallet."
         },
         {
           "id": "rev_date_time",
           "label": "Date & Time // <30 days",
           "len": 0,
           "mpesaTxn": "dateTime",
-          "info": "[SAKA MRMM-0003 / MALP-0001]\nTransaction must be within last 30 days for M-PESA P2P, or within 48h for M-PESA airtime reversal. If >30 days, advise customer to liaise with recipient/police."
+          "info": "[SAKA MRMM-0003 / MALP-0001]\nTransaction must be within last 30 days for M-PESA P2P."
         }
       ],
       "optional": [
@@ -227,39 +227,20 @@
           "label": "Reversal Type",
           "len": 0,
           "mpesaTxn": "type",
-          "info": "[SAKA MRMM-0003]\nSpecify transaction type: P2P, LNM Till, Paybill 200200, Pochi la Biashara, or Airtime Purchase."
-        },
-        {
-          "id": "rev_wrong_acc",
-          "label": "Wrong Account / Ref",
-          "len": 0,
-          "info": "[SAKA LBCF-0003]\nWrong account or reference number keyed in (for Paybill/LNM)."
-        },
-        {
-          "id": "rev_correct_acc",
-          "label": "Correct Account",
-          "len": 0,
-          "info": "[SAKA LBCF-0003]\nIntended correct account or phone number."
-        },
-        {
-          "id": "rev_recipient_airtime",
-          "label": "Recipient Airtime Bal",
-          "len": 0,
-          "info": "[SAKA MALP-0001]\nFor airtime reversal: Recipient must have sufficient balance equal to or greater than amount purchased. Partial airtime reversal not possible."
+          "info": "[SAKA MRMM-0003]\nSpecify transaction type: P2P, LNM Till, or Pochi la Biashara."
         },
         {
           "id": "rev_sr_num",
           "label": "SR Number // 72h SLA",
           "len": 0,
-          "info": "[SAKA LBCF-0003 / LPPP-0014]\nService Request number if escalated to LNM/Aggregator/Postpay team (72h SLA). Normal P2P SLA is 2 hours."
+          "info": "[SAKA LBCF-0003 / LPPP-0014]\nService Request number if escalated to LNM/Admin team (72h SLA). Normal P2P SLA is 2 hours."
         }
       ],
       "comments": [
         "P2P reversal initiated on G3. Verified sender names and transaction within 30 days. Advised on 2h SLA.",
-        "LNM Reversal requested. Verified transaction details. Escalated to LNM Support via SR, advised on 72h SLA.",
-        "Airtime reversal processed on CRM. Recipient airtime balance verified. Advised customer.",
+        "Buy Goods / Till Reversal requested. Verified transaction details. Escalated to Merchant Support via SR (72h SLA).",
         "Transaction older than 30 days. Advised customer to liaise directly with recipient or police.",
-        "Funds already utilized by recipient. Advised sender to engage recipient or report to police."
+        "Funds already utilized by recipient on M-PESA. Advised sender to liaise directly with recipient or report to police."
       ],
       "diyActions": [
         {
@@ -280,7 +261,205 @@
           "smsId": "sms_till_rev_100"
         }
       ],
-      "copyTitle": "M-PESA & Airtime Reversal – Vetting"
+      "copyTitle": "M-PESA Reversal – Vetting"
+    },
+    {
+      "id": "paybill_reversal",
+      "name": "Paybill Reversal",
+      "article": "LPPP-0014 / LBCF-0003",
+      "copyTitle": "Paybill Reversal – Vetting",
+      "minSecondary": 0,
+      "required": [
+        {
+          "id": "pbr_callno",
+          "label": "Calling Number",
+          "len": 10,
+          "mpesaTxn": "msisdn",
+          "info": "[SAKA LPPP-0014]\nCustomer calling number."
+        },
+        {
+          "id": "pbr_txnid",
+          "label": "Transaction ID",
+          "len": 10,
+          "mpesaTxn": "receiptNumber",
+          "info": "[SAKA LPPP-0014]\nOriginal 10-digit M-PESA receipt code."
+        },
+        {
+          "id": "pbr_senderno",
+          "label": "Sender Number",
+          "len": 10,
+          "info": "[SAKA LPPP-0014]\nNumber that paid the Paybill."
+        },
+        {
+          "id": "pbr_sendername",
+          "label": "Sender Name // 2 Names",
+          "len": 0,
+          "mpesaTxn": "customerName",
+          "info": "[SAKA LPPP-0014]\nCustomer registered names."
+        },
+        {
+          "id": "pbr_amount",
+          "label": "Amount Paid",
+          "len": 0,
+          "mpesaTxn": "amount",
+          "info": "[SAKA LPPP-0014]\nAmount paid to Paybill."
+        },
+        {
+          "id": "pbr_paybillno",
+          "label": "Paybill / Business Number",
+          "len": 0,
+          "mpesaTxn": "otherParty",
+          "info": "[SAKA LPPP-0014]\nShortcode paid to."
+        },
+        {
+          "id": "pbr_orgname",
+          "label": "Organization Name",
+          "len": 0,
+          "info": "[SAKA LPPP-0014]\nOfficial business/utility/institution name on G2."
+        },
+        {
+          "id": "pbr_wrongacc",
+          "label": "Wrong Account Number",
+          "len": 0,
+          "info": "[SAKA LPPP-0014]\nAccount number entered erroneously by customer."
+        },
+        {
+          "id": "pbr_correctacc",
+          "label": "Correct Account Number",
+          "len": 0,
+          "info": "[SAKA LPPP-0014]\nCustomer intended account number."
+        },
+        {
+          "id": "pbr_datetime",
+          "label": "Date & Time // <30 days",
+          "len": 0,
+          "mpesaTxn": "completionTime",
+          "info": "[SAKA LPPP-0014]\nDate and time of payment."
+        }
+      ],
+      "optional": [
+        {
+          "id": "pbr_merchantphone",
+          "label": "Merchant Contact Number",
+          "len": 10,
+          "info": "[SAKA LPPP-0014]\nMerchant official customer service phone."
+        },
+        {
+          "id": "pbr_srno",
+          "label": "SR Number // 72h SLA",
+          "len": 0,
+          "info": "[SAKA LPPP-0014]\nSR Cat: LNM PAYBILL, Type: Reversal (72h SLA). Raised if merchant unreachable or repeat caller."
+        }
+      ],
+      "diyActions": [
+        {
+          "id": "diy_paybill_merchant_sms",
+          "label": "Send Merchant Contacts",
+          "smsId": "sms_paybill_rev",
+          "adviceText": "Merchant contact details sent to customer via SMS"
+        }
+      ],
+      "comments": [
+        "Customer provided transaction details. Merchant contact details issued via SMS per LPPP-0014. Advised customer to engage merchant.",
+        "Utility/Bank Paybill. Advised customer to engage organization directly for reversal/account correction.",
+        "SR raised to LNM Support for merchant consent follow-up (72h SLA)."
+      ]
+    },
+    {
+      "id": "airtime_reversal",
+      "name": "Airtime Reversal",
+      "article": "MALP-0001 / VTJN-0003",
+      "copyTitle": "Airtime Reversal – Vetting",
+      "minSecondary": 0,
+      "required": [
+        {
+          "id": "atr_callno",
+          "label": "Calling Number",
+          "len": 10,
+          "mpesaTxn": "msisdn",
+          "info": "[SAKA MALP-0001]\nNumber calling customer service."
+        },
+        {
+          "id": "atr_txnid",
+          "label": "Transaction ID",
+          "len": 10,
+          "mpesaTxn": "receiptNumber",
+          "info": "[SAKA MALP-0001]\nM-PESA airtime purchase receipt code."
+        },
+        {
+          "id": "atr_buyerno",
+          "label": "Buyer / Sender Number",
+          "len": 10,
+          "info": "[SAKA MALP-0001]\nNumber that bought the airtime from M-PESA."
+        },
+        {
+          "id": "atr_buyername",
+          "label": "Buyer Full Name",
+          "len": 0,
+          "mpesaTxn": "customerName",
+          "info": "[SAKA MALP-0001]\nRegistered customer names on View 360."
+        },
+        {
+          "id": "atr_amount",
+          "label": "Airtime Amount",
+          "len": 0,
+          "mpesaTxn": "amount",
+          "info": "[SAKA MALP-0001]\nAirtime value bought."
+        },
+        {
+          "id": "atr_recipientno",
+          "label": "Recipient Mobile Number",
+          "len": 10,
+          "mpesaTxn": "otherParty",
+          "info": "[SAKA MALP-0001]\nNumber that received the airtime."
+        },
+        {
+          "id": "atr_inbalance",
+          "label": "Recipient Airtime Bal // IN-Data",
+          "len": 0,
+          "info": "[SAKA MALP-0001 / VTJN-0003]\nMandatory check on IN-Data: Recipient airtime balance must be equal or greater than amount to reverse."
+        },
+        {
+          "id": "atr_type",
+          "label": "Purchase Type",
+          "len": 0,
+          "info": "[SAKA MALP-0001]\nBought for Self (DIY 456) vs Bought for Other (Airtime Reversal Link)."
+        },
+        {
+          "id": "atr_datetime",
+          "label": "Date & Time // <48 Hours",
+          "len": 0,
+          "mpesaTxn": "completionTime",
+          "info": "[SAKA MALP-0001]\nReversal claim must be made within 48 hours of purchase. Recipient must have unutilized balance >= purchase amount."
+        }
+      ],
+      "optional": [
+        {
+          "id": "atr_link_escalation",
+          "label": "Reversal Link Escalation",
+          "len": 0,
+          "info": "[SAKA MALP-0001]\nAirtime Reversal Link OM Public ID / Link submission status."
+        },
+        {
+          "id": "atr_srno",
+          "label": "Escalation / Link / SR // 2h SLA",
+          "len": 0,
+          "info": "[SAKA MALP-0001]\nEscalated via Airtime Reversal Link or SR with 2h SLA (from 8am next day if after 8pm)."
+        }
+      ],
+      "diyActions": [
+        {
+          "id": "diy_airtime_456",
+          "label": "DIY Reversal (456)",
+          "smsId": "sms_rev_456",
+          "adviceText": "Advised to forward airtime purchase SMS to 456 (if bought for self)"
+        }
+      ],
+      "comments": [
+        "Airtime bought for self. Advised customer to forward M-PESA SMS to 456 for DIY reversal.",
+        "Airtime bought for other. Recipient airtime balance confirmed unutilized on IN-Data. Escalated via Airtime Reversal Link (2h SLA).",
+        "Reversal declined: Airtime balance partially/fully utilized on recipient line."
+      ]
     },
     {
       "id": "bar_self",
@@ -372,7 +551,7 @@
         "Phone reported stolen. Line barred, apps wiped, key comment added: \"Phone stolen, Refer to Retail for Unbarring\".",
         "Customer vetted on primary details. Temporary barring placed at customer request."
       ],
-      "copyTitle": "Line Barring (Owner) – Vetting"
+      "copyTitle": "Line Barring (Owner Calling) – Vetting"
     },
     {
       "id": "bar_thirdparty",
@@ -464,7 +643,7 @@
         "Third party reported stolen phone. Line barred, apps wiped, key comment updated: \"Phone stolen, Refer to Retail for Unbarring\".",
         "Third party failed owner verification details. Barring declined; advised owner to call or visit shop."
       ],
-      "copyTitle": "Line Barring (3rd Party) – Vetting"
+      "copyTitle": "Line Barring (3rd Party Calling) – Vetting"
     },
     {
       "id": "unbar",
@@ -606,7 +785,7 @@
         "Siebel key comment reads \"Phone stolen\". Advised customer line can only be unbarred at Retail with original ID.",
         "Customer failed secondary vetting for unbarring. Advised to confirm account details and call back."
       ],
-      "copyTitle": "Line Unbarring – Vetting"
+      "copyTitle": "Line Unbarring (Self Only) – Vetting"
     },
     {
       "id": "pin_unlock",
@@ -914,13 +1093,19 @@
           "label": "DIY PUK (*100# / *456#)",
           "adviceText": "Educated on self-service PUK retrieval (*100# / *456#)",
           "smsId": "sms_puk_100"
+        },
+        {
+          "id": "diy_puk_issuance",
+          "label": "Send PUK SMS",
+          "smsId": "sms_puk_issuance",
+          "adviceText": "PUK sent via SMS to calling number"
         }
       ],
       "copyTitle": "PUK Retrieval – Vetting"
     },
     {
       "id": "sim_upgrade",
-      "name": "SIM Upgrade (Calling from Line)",
+      "name": "SIM Upgrade",
       "article": "VMDA-0001",
       "required": [
         {
@@ -991,41 +1176,34 @@
     },
     {
       "id": "pooled",
-      "name": "Pooled Number Recreation",
+      "name": "Pooled Number",
       "article": "SRFB-0005",
       "required": [
         {
           "id": "pol_callno",
           "label": "Calling Number",
           "len": 10,
-          "info": "[SAKA SRFB-0005]\nCalling number of the previous owner."
+          "info": "[SAKA SRFB-0005]\nCalling number of previous owner. Can perform max 2 recreations per 72h."
         },
         {
           "id": "pol_msisdn",
           "label": "Pooled Line Number",
           "len": 10,
-          "info": "[SAKA SRFB-0005]\nIndividual normal line in pool (not golden lines; golden lines refer to Retail). Only previous owner can recreate."
+          "info": "[SAKA SRFB-0005]\nIndividual normal line in pool. Golden / special lines must be referred to Retail."
         },
         {
           "id": "pol_name",
           "label": "Full Names // View 360",
           "len": 0,
-          "info": "[SAKA SRFB-0005]\nFull names as per View 360. CEE can accept 2 correct names.",
-          "v360": "fullName"
+          "v360": "fullName",
+          "info": "[SAKA SRFB-0005]\nMandatory: Full names as registered on View 360. CEE can accept 2 correct names."
         },
         {
           "id": "pol_idnum",
           "label": "ID Number",
           "len": 8,
-          "info": "[SAKA SRFB-0005]\nID document number of the registered previous owner.",
-          "v360": "idNumber"
-        },
-        {
-          "id": "pol_yob",
-          "label": "Year of Birth",
-          "len": 4,
-          "info": "[SAKA VMDA-0001]\nYear of birth as registered.",
-          "v360": "yob"
+          "v360": "idNumber",
+          "info": "[SAKA SRFB-0005]\nMandatory: ID document number of registered previous owner."
         },
         {
           "id": "pol_old_simex",
@@ -1033,7 +1211,7 @@
           "len": 20,
           "defaultValue": "89254021",
           "omitDefault": true,
-          "info": "[SAKA SRFB-0005]\nMandatory: Customer must provide the old SIM serial that was attached to the line; must match CRM records."
+          "info": "[SAKA SRFB-0005]\nMandatory: Old SIM card serial that was attached to line. Must match CRM. DO NOT recreate with different serial."
         }
       ],
       "optional": [
@@ -1041,41 +1219,60 @@
           "id": "pol_indata_check",
           "label": "IN-Data Status // Pooled",
           "len": 0,
-          "info": "[SAKA SRFB-0005]\nCheck IN-Data on CRM to confirm status is Pooled. If no details on View 360 but on CRM & G3, refer to Retail.",
           "excludeFromCount": true,
-          "itemType": "action"
+          "itemType": "action",
+          "info": "[SAKA SRFB-0005]\nConfirm line is on Pooled status on IN-Data (CRM). For deleted numbers, IN-Data returns error."
         },
         {
-          "id": "pol_new_simex",
-          "label": "New SIMEX Serial",
-          "len": 20,
-          "defaultValue": "89254021",
-          "omitDefault": true,
-          "info": "[SAKA SRFB-0005]\nNew SIM replacement card serial if doing immediate swap."
+          "id": "pol_rule_old_sim",
+          "label": "Old SIM Card Condition",
+          "len": 0,
+          "excludeFromCount": true,
+          "itemType": "policy",
+          "violationAdvice": "If SIM card is lost, damaged, or new SIMEX, do NOT recreate on call. Refer customer to Retail Shop with original ID.",
+          "info": "[SAKA SRFB-0005]\nIf customer has new SIMEX or SIM is lost/damaged, refer to Retail."
+        },
+        {
+          "id": "pol_rule_topup_7d",
+          "label": "Top Up Within 7 Days",
+          "len": 0,
+          "excludeFromCount": true,
+          "itemType": "policy",
+          "violationAdvice": "Advise customer to top up within 7 days. Recreated lines without top-up will be returned to pool status on Day 7.",
+          "info": "[SAKA SRFB-0005]\nCustomer must top up within 7 days to maintain the line."
         },
         {
           "id": "pol_sr_ticket",
-          "label": "SR Number",
+          "label": "SR Number // 72h SLA",
           "len": 0,
-          "info": "[SAKA SRFB-0005]\nService Request number if line recreation requires back-office sync."
+          "info": "[SAKA SRFB-0005]\nSR Cat: SIM Card Issues, Type: Number On Pool, Item: Number On Pool (72h SLA) if sync takes >10m."
         },
         {
           "id": "pol_altno",
           "label": "Alternative Number",
           "len": 10,
-          "info": "[SAKA SRFB-0005]\nAlternative reachable number."
+          "info": "[SAKA SRFB-0005]\nReachable alternative contact number."
         }
       ],
       "comments": [
-        "Pooled line recreation vetted and processed on CRM. Old SIMEX serial matched system records.",
-        "Line status confirmed pooled on IN-Data. Order submitted and escalated via SR for sync.",
-        "Special number recreation requested. Advised customer that special and golden numbers are handled at Retail."
+        "Pooled line recreation vetted and processed on CRM with Old SIMEX serial. Advised customer to top up within 7 days.",
+        "Line status confirmed pooled on IN-Data. Backend sync pending; SR raised to Support (72h SLA).",
+        "Customer SIM card lost / damaged / new SIMEX. Advised to visit Retail Shop with original ID per SRFB-0005.",
+        "Special / Golden number requested. Advised that golden numbers are only recreated at Retail Centers."
       ],
-      "copyTitle": "Pooled Number Recreation – Vetting"
+      "copyTitle": "Pooled Number – Vetting",
+      "diyActions": [
+        {
+          "id": "diy_pooled_reactivation_100",
+          "label": "DIY Reactivation (*100# / *456#)",
+          "smsId": "sms_pooled_reactivation",
+          "adviceText": "Advised on *100# / *456# SIM card reactivation DIY"
+        }
+      ]
     },
     {
       "id": "mpesa_suspend",
-      "name": "M-PESA Account Suspend",
+      "name": "M-PESA Suspend",
       "article": "VMDA-0001",
       "required": [
         {
@@ -1146,11 +1343,11 @@
         "M-PESA account suspended on G3 at customer request following lost device.",
         "Suspected fraud reported. M-PESA account suspended and fraud state tag applied."
       ],
-      "copyTitle": "M-PESA Account Suspend – Vetting"
+      "copyTitle": "M-PESA Suspend – Vetting"
     },
     {
       "id": "mpesa_unsuspend",
-      "name": "M-PESA Account Unsuspend",
+      "name": "M-PESA Unsuspend",
       "article": "VMDA-0001",
       "minSecondary": 2,
       "required": [
@@ -1291,11 +1488,11 @@
         "Vetted on primary and secondary details. Account unsuspended on G3. Advised customer.",
         "Account has active fraud tag from Risk Department. Advised customer to visit Safaricom HQ1 Waiyaki Way."
       ],
-      "copyTitle": "M-PESA Account Unsuspend – Vetting"
+      "copyTitle": "M-PESA Unsuspend – Vetting"
     },
     {
       "id": "general",
-      "name": "General Enquiry / Account Query",
+      "name": "General Enquiry",
       "article": "IDPA-0001",
       "required": [
         {
@@ -1380,17 +1577,32 @@
           "info": "[SAKA IDPA-0001]\nSLA communicated to customer (e.g. 2 hours, 24 hours, 72 hours)."
         }
       ],
-      "comments": [
-        "Customer inquired on account details. Vetted and provided requested information.",
-        "Customer called regarding tariff and bundles. Guided on *544# options. Query resolved.",
-        "Network issue reported. Troubleshooting conducted on line; escalated to Network Team via SR.",
-        "Repeat caller on pending issue. Referenced previous interactions and escalated to team leader."
-      ],
-      "copyTitle": "General Enquiry – Vetting"
+      "comments": [],
+      "copyTitle": "General Enquiry – Vetting",
+      "diyActions": [
+        {
+          "id": "diy_statement_334",
+          "label": "M-PESA Statement (*334#)",
+          "smsId": "sms_statement_334",
+          "adviceText": "Advised on *334# / App M-PESA Statement"
+        },
+        {
+          "id": "diy_stop_promo_456",
+          "label": "Stop Promo SMS (*456*9#)",
+          "smsId": "sms_stop_promo_456",
+          "adviceText": "Advised on *456*9# Stop Promotional SMS"
+        },
+        {
+          "id": "diy_report_fraud_333",
+          "label": "Report Fraud (333)",
+          "smsId": "sms_report_fraud_333",
+          "adviceText": "Advised on Reporting Fraud to 333"
+        }
+      ]
     },
     {
       "id": "agent_personal",
-      "name": "Agent Calling with Personal Number (Call Centre)",
+      "name": "Agent Calling with Personal Number",
       "article": "SSCB-0006 / SCEK-0002 / DSMP-0008",
       "minSecondary": 0,
       "required": [
@@ -1436,7 +1648,7 @@
           "id": "ap_tid",
           "label": "Transaction ID (TID)",
           "len": 10,
-          "info": "[SAKA DSMP-0008]\nM-PESA Transaction ID for deposit reversals (within 24 hours SLA)."
+          "info": "[SAKA DSMP-0008]\nM-PESA Transaction ID for deposit reversals."
         },
         {
           "id": "ap_amount",
@@ -1462,71 +1674,192 @@
         "Call made from personal line; verified active on IN-data >30 days.",
         "Operator failed vetting on National ID. Advised to call via Till MSISDN or visit Retail."
       ],
-      "copyTitle": "Agent Calling (Personal Number) – Call Centre Vetting"
+      "copyTitle": "Agent Calling (Personal Number) – Call Centre Vetting",
+      "diyActions": [
+        {
+          "id": "diy_agent_rev_2530",
+          "label": "DIY Reversal (2530)",
+          "smsId": "sms_agent_rev_2530",
+          "adviceText": "Advised on 2530 Self-Reversal"
+        }
+      ]
     },
     {
       "id": "till_notif_replacement",
-      "name": "Till Notification MSISDN Replacement (Call Centre)",
-      "article": "LNMO-0001 (Art 113)",
+      "name": "Till Notification SIM Swap",
+      "article": "LBCF-0014 / MAIL-0005",
       "minSecondary": 0,
       "required": [
         {
-          "id": "tn_tillno",
-          "label": "Till / Store Number",
-          "len": 7,
-          "info": "[SAKA LNMO-0001 / Art 113]\nBuy Goods Till or Paybill shortcode as captured on M-PESA G2."
+          "id": "tn_nominated",
+          "label": "Calling / Nominated MSISDN",
+          "len": 10,
+          "info": "[SAKA LBCF-0014 / MAIL-0005]\nCall must originate from the registered Nominated Number / Finance Contact."
+        },
+        {
+          "id": "tn_finance_name",
+          "label": "Nominated Contact Name",
+          "len": 0,
+          "info": "[SAKA MAIL-0005 / MMBC-0003]\nFull name of registered finance contact / nominated number holder as on G2."
+        },
+        {
+          "id": "tn_finance_id",
+          "label": "Nominated Contact National ID",
+          "len": 8,
+          "info": "[SAKA MAIL-0005 / MMBC-0003]\nNational ID of registered finance contact / nominated number holder."
         },
         {
           "id": "tn_bizname",
           "label": "Merchant Business Name",
           "len": 0,
-          "info": "[SAKA LNMO-0001 / Art 113]\nOfficial business/proprietor name as registered on M-PESA G2."
+          "info": "[SAKA LBCF-0014 / MMBC-0003]\nOfficial business / store name as registered on M-PESA G2."
         },
         {
-          "id": "tn_nominated",
-          "label": "Calling / Nominated MSISDN",
-          "len": 10,
-          "info": "[SAKA LNMO-0001 / Art 113]\nCaller must call from the registered Nominated Number / Finance Contact."
-        },
-        {
-          "id": "tn_newnotif",
-          "label": "New Notification MSISDN",
-          "len": 10,
-          "info": "[SAKA LNMO-0001 / Art 113]\nProposed MSISDN to receive transaction notifications."
-        },
-        {
-          "id": "tn_reason",
-          "label": "Reason for Replacement",
+          "id": "tn_storeno",
+          "label": "Store / Head Office Number",
           "len": 0,
-          "info": "[SAKA LNMO-0001 / Art 113]\nPooled/Inactive, Phone Stolen, Business Partner Change, or Wrong Notifications."
+          "info": "[SAKA LBCF-0014]\nHead Office / Store number associated with the merchant till."
+        },
+        {
+          "id": "tn_tillno",
+          "label": "Till Number to Swap",
+          "len": 7,
+          "info": "[SAKA LBCF-0014]\nSpecific Till number whose notification SIM is being replaced."
+        },
+        {
+          "id": "tn_till_msisdn",
+          "label": "Till Notification MSISDN",
+          "len": 10,
+          "info": "[SAKA LBCF-0014]\nMobile number currently receiving till notification messages to be replaced."
+        },
+        {
+          "id": "tn_simex_serial",
+          "label": "New SIMEX Serial / IMSI",
+          "len": 20,
+          "defaultValue": "89254021",
+          "omitDefault": true,
+          "info": "[SAKA LBCF-0014]\n20-digit serial / IMSI from new replacement SIM card pack (KSh 100)."
         }
       ],
       "optional": [
         {
-          "id": "tn_type",
-          "label": "Notification Number Type",
+          "id": "tn_opid",
+          "label": "Operator ID",
           "len": 0,
-          "info": "[SAKA LNMO-0001 / Art 113]\nAgent Tariff Line vs Personal MSISDN (LNM Support engages partner for KYC if personal)."
+          "info": "[SAKA LBCF-0014 / MAIL-0005]\nOperator ID for transacting till / store operator."
         },
         {
-          "id": "tn_srno",
-          "label": "SR Number (LNM Support)",
+          "id": "tn_reason",
+          "label": "Reason for Swap",
           "len": 0,
-          "info": "[SAKA LNMO-0001 / Art 113]\nSR Cat: LNM BUY GOODS AND SERVICES, Type: Notifications, Item: Notifications Delay/Failure (24h SLA)."
-        },
-        {
-          "id": "tn_altcontact",
-          "label": "Alternate Contact Number",
-          "len": 10,
-          "info": "[SAKA LNMO-0001 / Art 113]\nSecondary contact number for LNM Support follow-up."
+          "info": "[SAKA LBCF-0014]\nLost/stolen SIM, damaged SIM, inactive sub-agent, or self-swap limit exceeded (max 2/day, 4/mo)."
         }
       ],
       "comments": [
-        "Merchant called from Nominated Number. Verified Till & Business Name. SR raised to LNM Support (24h SLA) to engage partner for KYC.",
-        "Caller is not calling from Nominated Number. Advised caller to place call from registered Nominated/Finance MSISDN.",
-        "Non-merchant received wrong notifications. Shortcode captured & unvetted SR escalated to LNM Support."
+        "Merchant called from Nominated Number. Verified Finance Contact Name & ID, Store & Till. SIM swap completed for Till Notification MSISDN.",
+        "Caller is not calling from registered Nominated Number. Advised to place call from registered Nominated/Finance MSISDN.",
+        "Self-service limit exceeded (max 2/day, 4/month). Assisted swap completed at Contact Centre per LBCF-0014."
       ],
-      "copyTitle": "Till Notification MSISDN Replacement – Call Centre Vetting"
+      "copyTitle": "Till Notification SIM Swap – Call Centre Vetting",
+      "diyActions": [
+        {
+          "id": "diy_till_sim_swap_234",
+          "label": "Till Self Swap (*234#)",
+          "smsId": "sms_till_sim_swap_234",
+          "adviceText": "Advised on *234# Till SIM Swap"
+        }
+      ]
+    },
+    {
+      "id": "agent_reversal",
+      "name": "Agent Reversal",
+      "article": "DSMP-0008 / AMLF-0002",
+      "copyTitle": "Agent Reversal – Call Centre Vetting",
+      "minSecondary": 0,
+      "diyActions": [
+        {
+          "id": "diy_agent_rev_2530",
+          "label": "DIY Reversal (2530)",
+          "smsId": "sms_agent_rev_2530",
+          "adviceText": "Advised on 2530 Self-Reversal"
+        }
+      ],
+      "required": [
+        {
+          "id": "ar_agent_no",
+          "label": "Agent / Store / Till Number",
+          "len": 7,
+          "info": "[SAKA DSMP-0008 / AMLF-0002]\nAgent till number or store number initiating reversal."
+        },
+        {
+          "id": "ar_till_msisdn",
+          "label": "Till Mobile Number",
+          "len": 10,
+          "info": "[SAKA DSMP-0008]\nMSISDN attached to the agent till."
+        },
+        {
+          "id": "ar_op_name",
+          "label": "Operator Full Name",
+          "len": 0,
+          "info": "[SAKA DSMP-0008]\nFull name of operator/agent calling."
+        },
+        {
+          "id": "ar_op_natid",
+          "label": "Operator National ID",
+          "len": 8,
+          "info": "[SAKA DSMP-0008]\nNational ID of operator/agent calling."
+        },
+        {
+          "id": "ar_txnid",
+          "label": "Transaction ID",
+          "len": 10,
+          "info": "[SAKA DSMP-0008 / AMLF-0002]\nOriginal transaction receipt code to be reversed."
+        },
+        {
+          "id": "ar_amount",
+          "label": "Transaction Amount",
+          "len": 0,
+          "info": "[SAKA DSMP-0008]\nAmount of deposit/withdrawal to be reversed."
+        },
+        {
+          "id": "ar_txntype",
+          "label": "Transaction Type",
+          "len": 0,
+          "info": "[SAKA DSMP-0008]\nCustomer Deposit, Customer Withdrawal, or Bamba Airtime."
+        },
+        {
+          "id": "ar_customer_no",
+          "label": "Customer Mobile Number",
+          "len": 10,
+          "info": "[SAKA DSMP-0008]\nCustomer MSISDN who received wrong deposit or did wrong withdrawal."
+        }
+      ],
+      "optional": [
+        {
+          "id": "ar_within_1hr",
+          "label": "Within 1 Hour Window",
+          "len": 0,
+          "info": "[SAKA DSMP-0008]\nWithin 1h: eligible for 2530 DIY reversal. Past 1h: assisted reversal on call."
+        },
+        {
+          "id": "ar_srno",
+          "label": "SR Number // 72h SLA",
+          "len": 0,
+          "info": "[SAKA DSMP-0008]\nSR Cat: MPESA services, Type: Reversal- No funds at Agent, Item: no Funds at MPESA Agent dealer (72h SLA)."
+        },
+        {
+          "id": "ar_reason",
+          "label": "Reason for Reversal",
+          "len": 0,
+          "info": "[SAKA DSMP-0008]\nWrong customer number, excess amount, or customer cancelled."
+        }
+      ],
+      "comments": [
+        "Agent verified with Till, Operator Name, ID and TXN ID. Reversal initiated on call (outside 1-hour self-reversal window).",
+        "Advised agent to use 2530 self-reversal on till (transaction within 1 hour). SMS sent.",
+        "Wrong recipient has insufficient funds. SR raised to Support per DSMP-0008 (72h SLA).",
+        "Till not whitelisted for 2530. Whitelist template initiated per DSMP-0008."
+      ]
     }
   ]
 }

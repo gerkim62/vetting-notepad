@@ -18,19 +18,99 @@ describe('SAKA Vetting Configuration', () => {
     expect(reqIds).toContain('ap_opnatid');
   });
 
-  it('includes Till Notification MSISDN Replacement vetting type', () => {
+  it('includes Till Notification SIM Swap vetting type', () => {
     const type = config.types.find(t => t.id === 'till_notif_replacement');
     expect(type).toBeDefined();
     if (!type) return;
     expect(type.name).toContain('Till Notification');
-    expect(type.copyTitle).toBe('Till Notification MSISDN Replacement – Call Centre Vetting');
-    expect(type.article).toContain('LNMO-0001');
+    expect(type.copyTitle).toBe('Till Notification SIM Swap – Call Centre Vetting');
+    expect(type.article).toContain('LBCF-0014');
 
     const reqIds = type.required.map(f => f.id);
     expect(reqIds).toContain('tn_tillno');
     expect(reqIds).toContain('tn_bizname');
     expect(reqIds).toContain('tn_nominated');
-    expect(reqIds).toContain('tn_newnotif');
+    expect(reqIds).toContain('tn_till_msisdn');
+    expect(reqIds).toContain('tn_simex_serial');
+  });
+
+  it('includes Agent Reversal vetting type per DSMP-0008', () => {
+    const type = config.types.find(t => t.id === 'agent_reversal');
+    expect(type).toBeDefined();
+    if (!type) return;
+    expect(type.name).toBe('Agent Reversal');
+    expect(type.copyTitle).toBe('Agent Reversal – Call Centre Vetting');
+    expect(type.article).toContain('DSMP-0008');
+
+    const reqIds = type.required.map(f => f.id);
+    expect(reqIds).toContain('ar_agent_no');
+    expect(reqIds).toContain('ar_till_msisdn');
+    expect(reqIds).toContain('ar_op_name');
+    expect(reqIds).toContain('ar_op_natid');
+    expect(reqIds).toContain('ar_txnid');
+    expect(reqIds).toContain('ar_amount');
+    expect(reqIds).toContain('ar_txntype');
+    expect(reqIds).toContain('ar_customer_no');
+  });
+
+  it('verifies DIY actions for PUK, Agent, Till Swap, Pooled Number, and General Enquiry', () => {
+    const puk = config.types.find(t => t.id === 'puk');
+    expect(puk?.diyActions?.some(d => d.id === 'diy_puk_issuance')).toBe(true);
+
+    const ap = config.types.find(t => t.id === 'agent_personal');
+    expect(ap?.diyActions?.some(d => d.id === 'diy_agent_rev_2530')).toBe(true);
+
+    const ar = config.types.find(t => t.id === 'agent_reversal');
+    expect(ar?.diyActions?.some(d => d.id === 'diy_agent_rev_2530')).toBe(true);
+
+    const gen = config.types.find(t => t.id === 'general');
+    expect(gen?.diyActions?.some(d => d.id === 'diy_statement_334')).toBe(true);
+    expect(gen?.diyActions?.some(d => d.id === 'diy_stop_promo_456')).toBe(true);
+    expect(gen?.diyActions?.some(d => d.id === 'diy_report_fraud_333')).toBe(true);
+
+    const till = config.types.find(t => t.id === 'till_notif_replacement');
+    expect(till?.diyActions?.some(d => d.id === 'diy_till_sim_swap_234')).toBe(true);
+
+    const pooled = config.types.find(t => t.id === 'pooled');
+    expect(pooled?.diyActions?.some(d => d.id === 'diy_pooled_reactivation_100')).toBe(true);
+  });
+
+  it('includes split reversal types: M-PESA Reversal, Paybill Reversal, and Airtime Reversal', () => {
+    const mpesaRev = config.types.find(t => t.id === 'reversal');
+    expect(mpesaRev).toBeDefined();
+    expect(mpesaRev?.name).toBe('M-PESA Reversal');
+
+    const paybillRev = config.types.find(t => t.id === 'paybill_reversal');
+    expect(paybillRev).toBeDefined();
+    expect(paybillRev?.name).toBe('Paybill Reversal');
+    expect(paybillRev?.article).toContain('LPPP-0014');
+
+    const airtimeRev = config.types.find(t => t.id === 'airtime_reversal');
+    expect(airtimeRev).toBeDefined();
+    expect(airtimeRev?.name).toBe('Airtime Reversal');
+    expect(airtimeRev?.article).toContain('MALP-0001');
+    expect(airtimeRev?.required.some(f => f.id === 'atr_inbalance')).toBe(true);
+  });
+
+  it('verifies updated SRFB-0005 Pooled Lines configuration', () => {
+    const pooled = config.types.find(t => t.id === 'pooled');
+    expect(pooled).toBeDefined();
+    expect(pooled?.article).toBe('SRFB-0005');
+
+    const reqIds = pooled?.required.map(f => f.id);
+    expect(reqIds).toContain('pol_callno');
+    expect(reqIds).toContain('pol_msisdn');
+    expect(reqIds).toContain('pol_name');
+    expect(reqIds).toContain('pol_idnum');
+    expect(reqIds).toContain('pol_old_simex');
+
+    const oldSimPolicy = pooled?.optional.find(f => f.id === 'pol_rule_old_sim');
+    expect(oldSimPolicy?.itemType).toBe('policy');
+    expect(oldSimPolicy?.excludeFromCount).toBe(true);
+
+    const topUpPolicy = pooled?.optional.find(f => f.id === 'pol_rule_topup_7d');
+    expect(topUpPolicy?.itemType).toBe('policy');
+    expect(topUpPolicy?.excludeFromCount).toBe(true);
   });
 
   it('ensures all vetting types have valid required and optional arrays', () => {
