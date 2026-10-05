@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Vetting Notepad",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "Ultra-compact vetting notepad tool for call agents with customizable items, live character guide, and auto-clear.",
   "permissions": [
     "storage",
