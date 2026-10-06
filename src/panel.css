@@ -4489,6 +4489,48 @@ textarea.mat-input.vfield-textarea::-webkit-resizer {
   color: currentColor;
 }
 
+/* ==========================================================================
+   SIM Swap Pre-Check Micro-Chips
+   ========================================================================== */
+.precheck-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 5px;
+  margin-bottom: 2px;
+}
 
+.precheck-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 20px;
+  padding: 0 8px;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1;
+  color: var(--text-muted, #94a3b8);
+  background: var(--bg-hover, rgba(255, 255, 255, 0.04));
+  border: 1px solid var(--border-line, rgba(255, 255, 255, 0.1));
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
 
+.precheck-chip:hover {
+  background: var(--bg-active, rgba(255, 255, 255, 0.08));
+  color: var(--text-main, #f3f4f6);
+  border-color: rgba(255, 255, 255, 0.2);
+}
 
+.precheck-chip.active {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.5);
+  color: #ef4444;
+  font-weight: 600;
+}
+
+.precheck-chip.active svg {
+  color: #ef4444;
+}

@@ -48,35 +48,75 @@ export function breakNotifier({
   host.style.cssText = 'all:initial;position:fixed;inset:0;z-index:2147483647;pointer-events:none';
   const root = host.attachShadow({ mode: 'open' });
   root.innerHTML = `
-    <div class="glow"></div>
-    <div class="bar">
-      <b class="name"></b><span class="time"></span>
-      <i>|</i><span class="lbl">Snooze</span><span class="btns"></span>
-      <button class="x" title="Close break">×</button>
+    <div class="glow pulse"></div>
+    <div class="bar main-bar">
+      <span class="name"></span>
+      <span class="time-badge"><span class="time"></span></span>
+      <div class="snooze-wrap">
+        <button type="button" class="snooze-toggle" title="Snooze options" aria-haspopup="true" aria-expanded="false">
+          <span>Snooze</span>
+          <svg class="chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <div class="snooze-menu" style="display:none;"></div>
+      </div>
+      <button class="x" title="Hide popup">×</button>
+    </div>
+    <div class="bar finish-bar" style="display:none;">
+      <span class="finish-title">☕ Break Finished</span>
+      <button type="button" class="btn-im-back">I'm Back</button>
     </div>`;
 
   const css = `
-    .glow{position:fixed;inset:0;pointer-events:none;animation:p var(--d,2.4s) ease-in-out infinite;
-      box-shadow:inset 0 0 70px 12px rgba(var(--c,30,191,138),.5)}
+    .glow{position:fixed;inset:0;pointer-events:none;transition:box-shadow .4s ease}
+    .glow.pulse{animation:p var(--d,2.4s) ease-in-out infinite;box-shadow:inset 0 0 70px 12px rgba(var(--c,30,191,138),.5)}
+    .glow.static{animation:none;box-shadow:inset 0 0 calc(45px + 20px*var(--p,0)) calc(5px + 8px*var(--p,0)) rgba(var(--c,30,191,138),.42)}
     @keyframes p{
       0%,100%{box-shadow:inset 0 0 calc(50px + 30px*var(--p,0)) calc(6px + 10px*var(--p,0)) rgba(var(--c,30,191,138),calc(.3 + .25*var(--p,0)))}
       50%{box-shadow:inset 0 0 calc(110px + 90px*var(--p,0)) calc(26px + 30px*var(--p,0)) rgba(var(--c,30,191,138),calc(.7 + .3*var(--p,0)))}}
-    @media (prefers-reduced-motion:reduce){.glow{animation:none}}
-    .bar{position:fixed;top:6px;left:50%;transform:translateX(-50%);pointer-events:auto;
-      display:flex;align-items:center;gap:6px;white-space:nowrap;padding:3px 4px 3px 10px;
-      background:#232938;color:#f2f5f8;border-radius:999px;font:13px/1 system-ui,sans-serif;
-      opacity:.92;box-shadow:0 2px 10px rgba(0,0,0,.3),0 0 0 1px rgba(var(--c,30,191,138),.7)}
-    .bar{cursor:grab;user-select:none;touch-action:none}
+    @media (prefers-reduced-motion:reduce){.glow.pulse{animation:none}}
+
+    .bar{position:fixed;top:8px;left:50%;transform:translateX(-50%);pointer-events:auto;
+      display:flex;align-items:center;gap:8px;white-space:nowrap;padding:4px 6px 4px 12px;
+      background:#1f2430;color:#f2f5f8;border-radius:999px;font:13px/1 system-ui,sans-serif;
+      box-shadow:0 4px 16px rgba(0,0,0,.4),0 0 0 1px rgba(var(--c,30,191,138),.7);
+      cursor:grab;user-select:none;touch-action:none;transition:box-shadow .2s ease}
     .bar:active{cursor:grabbing}
-    .bar:hover{opacity:1}
-    .name{font-weight:700}
-    .time{font-variant-numeric:tabular-nums;font-weight:700;color:rgb(var(--c,30,191,138))}
-    i{font-style:normal;opacity:.35}
-    .lbl{opacity:.7}
-    .btns{display:flex;gap:3px}
-    button{all:unset;cursor:pointer;background:rgba(255,255,255,.1);padding:4px 7px;border-radius:999px}
-    .x{font-size:15px;padding:3px 7px;margin-left:2px}
-    button:hover,button:focus-visible{background:rgb(var(--c,30,191,138));color:#05281d}`;
+    .name{font-weight:700;font-size:12.5px;opacity:.92;letter-spacing:.2px}
+    .time-badge{display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;
+      background:rgba(0,0,0,.35);box-shadow:inset 0 0 0 1px rgba(var(--c,30,191,138),.3)}
+    .time{font-variant-numeric:tabular-nums;font-weight:800;font-size:16px;color:rgb(var(--c,30,191,138));letter-spacing:.6px}
+
+    .snooze-wrap{position:relative;display:flex;align-items:center}
+    .snooze-toggle{all:unset;cursor:pointer;display:flex;align-items:center;gap:4px;
+      background:rgba(255,255,255,.08);padding:4px 8px;border-radius:999px;font-size:11.5px;
+      color:#d1d7e0;transition:background .15s ease,color .15s ease}
+    .snooze-toggle:hover{background:rgba(255,255,255,.15);color:#fff}
+    .snooze-toggle.open{background:rgba(var(--c,30,191,138),.25);color:rgb(var(--c,30,191,138))}
+    .chevron{transition:transform .2s ease}
+    .snooze-toggle.open .chevron{transform:rotate(180deg)}
+
+    .snooze-menu{position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);
+      background:#1c212b;border:1px solid rgba(var(--c,30,191,138),.6);border-radius:10px;
+      padding:4px;display:flex;gap:4px;box-shadow:0 8px 24px rgba(0,0,0,.6);z-index:20}
+    .snooze-menu button{all:unset;cursor:pointer;background:rgba(255,255,255,.08);padding:5px 9px;
+      border-radius:7px;font-size:12px;font-weight:600;color:#f2f5f8;text-align:center}
+    .snooze-menu button:hover{background:rgb(var(--c,30,191,138));color:#05281d}
+
+    button.x{all:unset;cursor:pointer;background:rgba(255,255,255,.08);padding:2px 7px;
+      border-radius:999px;font-size:14px;line-height:1;color:#a0abb8;margin-left:2px}
+    button.x:hover{background:rgba(255,70,60,.25);color:#ff7060}
+
+    /* Post-Break Completion State */
+    .finish-bar{background:#1a2520;box-shadow:0 4px 18px rgba(0,0,0,.5),0 0 0 1.5px rgb(var(--c,30,191,138));padding:4px 6px 4px 14px}
+    .finish-title{font-weight:700;font-size:13px;color:#f2f5f8;margin-right:4px}
+    .btn-im-back{all:unset;cursor:pointer;background:rgb(var(--c,30,191,138));color:#042017;
+      font-weight:800;font-size:12.5px;padding:5px 14px;border-radius:999px;
+      box-shadow:0 2px 10px rgba(var(--c,30,191,138),.45);letter-spacing:.3px;
+      animation:pulseBack 1.8s ease-in-out infinite}
+    @keyframes pulseBack{
+      0%,100%{transform:scale(1)}
+      50%{transform:scale(1.05);box-shadow:0 3px 14px rgba(var(--c,30,191,138),.7)}}
+    .btn-im-back:hover{filter:brightness(1.15)}`;
 
   try {
     const sheet = new CSSStyleSheet();
@@ -88,12 +128,16 @@ export function breakNotifier({
     root.append(st);
   }
 
+  const glowEl = root.querySelector('.glow');
+  const mainBar = root.querySelector<HTMLElement>('.main-bar');
+  const finishBar = root.querySelector<HTMLElement>('.finish-bar');
   const nameEl = root.querySelector('.name');
   if (nameEl) nameEl.textContent = name;
   const timeEl = root.querySelector('.time');
-  const btnsEl = root.querySelector('.btns');
+  const snoozeToggle = root.querySelector<HTMLButtonElement>('.snooze-toggle');
+  const snoozeMenu = root.querySelector<HTMLElement>('.snooze-menu');
   const closeBtn = root.querySelector('.x');
-  const bar = root.querySelector('.bar');
+  const btnImBack = root.querySelector<HTMLButtonElement>('.btn-im-back');
 
   let remaining = seconds * 1000;
   let end = Date.now() + remaining;
@@ -110,11 +154,9 @@ export function breakNotifier({
 
   function setIntensity(p: number) {
     p = Math.min(1, Math.max(0, p));
-    // green -> amber (0-60%) -> red (60-100%)
     const c = p < 0.6 ? mix(GREEN, AMBER, p / 0.6) : mix(AMBER, RED, (p - 0.6) / 0.4);
     host.style.setProperty('--p', p.toFixed(3));
     host.style.setProperty('--c', c.join(','));
-    // pulse faster in steps (avoids animation jumps every second)
     const step = Math.floor(p * 5);
     if (step !== lastStep) {
       lastStep = step;
@@ -126,8 +168,30 @@ export function breakNotifier({
     const left = Math.max(0, Math.round((end - Date.now()) / 1000));
     if (timeEl) timeEl.textContent = fmt(left);
     const denom = totalSeconds > 0 ? totalSeconds : seconds;
+    const elapsed = denom - left;
     setIntensity(1 - left / denom);
-    if (left <= 0) stop();
+
+    // Item 2 Phasing: Pulse first 30s, static middle duration, pulse last 30s
+    if (glowEl) {
+      if (elapsed <= 30 || (left <= 30 && left > 0)) {
+        glowEl.classList.add('pulse');
+        glowEl.classList.remove('static');
+      } else {
+        glowEl.classList.remove('pulse');
+        glowEl.classList.add('static');
+      }
+    }
+
+    // Item 7: When timer completes, switch to "I'm Back" state
+    if (left <= 0) {
+      if (tick) clearInterval(tick);
+      if (mainBar) mainBar.style.display = 'none';
+      if (finishBar) finishBar.style.display = 'flex';
+      if (glowEl) {
+        glowEl.classList.add('pulse');
+        glowEl.classList.remove('static');
+      }
+    }
   }
 
   function stop() {
@@ -142,6 +206,8 @@ export function breakNotifier({
     if (tick) clearInterval(tick);
     remaining = end - Date.now();
     host.style.display = 'none';
+    if (snoozeMenu) snoozeMenu.style.display = 'none';
+    if (snoozeToggle) snoozeToggle.classList.remove('open');
     snoozedUntil = Date.now() + mins * 60000;
     wake = setTimeout(() => {
       snoozedUntil = null;
@@ -152,43 +218,74 @@ export function breakNotifier({
     }, mins * 60000);
   }
 
+  // Populate snooze menu items
   snooze.forEach((m) => {
     const b = document.createElement('button');
+    b.type = 'button';
     b.textContent = m + 'm';
     b.title = 'Snooze ' + m + ' minutes';
-    b.onclick = () => doSnooze(m);
-    if (btnsEl) btnsEl.append(b);
+    b.onclick = (e) => {
+      e.stopPropagation();
+      doSnooze(m);
+    };
+    if (snoozeMenu) snoozeMenu.append(b);
   });
 
-  if (closeBtn instanceof HTMLElement) {
-    closeBtn.title = 'Hide popup';
-    closeBtn.onclick = (e: MouseEvent) => {
+  // Toggle snooze dropdown menu on chevron click
+  if (snoozeToggle && snoozeMenu) {
+    snoozeToggle.onclick = (e: MouseEvent) => {
       e.stopPropagation();
-      if (bar instanceof HTMLElement) {
-        bar.style.display = 'none';
-      }
+      const isOpen = snoozeMenu.style.display !== 'none';
+      snoozeMenu.style.display = isOpen ? 'none' : 'flex';
+      snoozeToggle.classList.toggle('open', !isOpen);
+      snoozeToggle.setAttribute('aria-expanded', String(!isOpen));
     };
   }
 
-  // drag the strip anywhere (ignore presses on buttons)
-  if (bar instanceof HTMLElement) {
+  // Close snooze menu when clicking outside
+  host.addEventListener('pointerdown', (e: PointerEvent) => {
+    const target = e.target;
+    if (target instanceof Node && snoozeMenu && snoozeMenu.style.display !== 'none' && !snoozeMenu.contains(target) && !snoozeToggle?.contains(target)) {
+      snoozeMenu.style.display = 'none';
+      snoozeToggle?.classList.remove('open');
+      snoozeToggle?.setAttribute('aria-expanded', 'false');
+    }
+  });
+
+  if (btnImBack) {
+    btnImBack.onclick = (e: MouseEvent) => {
+      e.stopPropagation();
+      stop();
+    };
+  }
+
+  if (closeBtn instanceof HTMLElement) {
+    closeBtn.onclick = (e: MouseEvent) => {
+      e.stopPropagation();
+      if (mainBar) mainBar.style.display = 'none';
+    };
+  }
+
+  // Draggable strip behavior (support both main-bar and finish-bar)
+  [mainBar, finishBar].forEach((barEl) => {
+    if (!barEl) return;
     let drag: { dx: number; dy: number } | null = null;
-    bar.addEventListener('pointerdown', (e: PointerEvent) => {
+    barEl.addEventListener('pointerdown', (e: PointerEvent) => {
       if (e.target instanceof Element && e.target.closest('button')) return;
-      const r = bar.getBoundingClientRect();
-      Object.assign(bar.style, { left: r.left + 'px', top: r.top + 'px', transform: 'none' });
+      const r = barEl.getBoundingClientRect();
+      Object.assign(barEl.style, { left: r.left + 'px', top: r.top + 'px', transform: 'none' });
       drag = { dx: e.clientX - r.left, dy: e.clientY - r.top };
-      bar.setPointerCapture(e.pointerId);
+      barEl.setPointerCapture(e.pointerId);
     });
-    bar.addEventListener('pointermove', (e: PointerEvent) => {
+    barEl.addEventListener('pointermove', (e: PointerEvent) => {
       if (!drag) return;
-      bar.style.left = Math.max(0, Math.min(innerWidth - bar.offsetWidth, e.clientX - drag.dx)) + 'px';
-      bar.style.top = Math.max(0, Math.min(innerHeight - bar.offsetHeight, e.clientY - drag.dy)) + 'px';
+      barEl.style.left = Math.max(0, Math.min(innerWidth - barEl.offsetWidth, e.clientX - drag.dx)) + 'px';
+      barEl.style.top = Math.max(0, Math.min(innerHeight - barEl.offsetHeight, e.clientY - drag.dy)) + 'px';
     });
-    bar.addEventListener('pointerup', () => {
+    barEl.addEventListener('pointerup', () => {
       drag = null;
     });
-  }
+  });
 
   document.documentElement.append(host);
   tick = setInterval(render, 1000);

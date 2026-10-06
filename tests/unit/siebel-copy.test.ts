@@ -71,4 +71,47 @@ Recipient Number: 0722000000`;
     const parsed = parseVettingText(rawZeroText, types, 'reversal');
     expect(parsed.values['rev_amount']).toBe('0');
   });
+
+  it('preserves typed value on failed fields such as Year of Birth: 1996 (Failed)', () => {
+    const rawSwapFailed = `SIM Swap: Failed vetting. Advised customer to confirm FDN 1 and FDN 2 and call back.
+Vetting: Failed (Year of Birth)
+Calling Number: 0722123456
+Line to Swap: 0722999999
+Full Names: John Doe (Passed)
+ID Number: 12345678 (Passed)
+Year of Birth: 1996 (Failed)`;
+
+    const parsed = parseVettingText(rawSwapFailed, types, 'swap');
+    expect(parsed.typeId).toBe('swap');
+    expect(parsed.values['sw_yob']).toBe('1996');
+    expect(parsed.status['sw_yob']).toBe('failed');
+    expect(parsed.values['sw_callno']).toBe('0722123456');
+    expect(parsed.values['sw_msisdn']).toBe('0722999999');
+  });
+
+  it('parses neutral text when primary vetting line is omitted due to incomplete vetting', () => {
+    const rawNeutral = `M-PESA Reversal
+Calling Number: 0712345678
+Transaction ID: TGI7XYZ123
+Amount: 5000`;
+
+    const parsed = parseVettingText(rawNeutral, types, 'reversal');
+    expect(parsed.typeId).toBe('reversal');
+    expect(parsed.values['rev_callno']).toBe('0712345678');
+    expect(parsed.values['rev_tid']).toBe('TGI7XYZ123');
+    expect(parsed.values['rev_amount']).toBe('5000');
+  });
+
+  it('parses dynamically grouped fields via configured groupLabel and values with /', () => {
+    const rawFdnText = `SIM Swap – Vetting
+Calling Number: 0722123456
+Line to Swap: 0722999999
+FDN 1 & 2: 0711111111 / 0722222222 (Passed)`;
+
+    const parsed = parseVettingText(rawFdnText, types, 'swap');
+    expect(parsed.values['sw_fdn1']).toBe('0711111111');
+    expect(parsed.values['sw_fdn2']).toBe('0722222222');
+    expect(parsed.status['sw_fdn1']).toBeNull();
+    expect(parsed.status['sw_fdn2']).toBeNull();
+  });
 });

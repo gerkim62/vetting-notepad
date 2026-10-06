@@ -28,14 +28,25 @@ export interface VarSuggestionItem {
 
 /**
  * Checks whether a variable is marked to be remembered.
- * Explicit user preference takes priority. Unconfigured fields default to true
- * (no blind guessing by name). Frequently changing fields are handled dynamically.
+ * Explicit user preference takes priority. If unpinnedVars is provided from config,
+ * matching variables default to unpinned (false). Otherwise, fields default to true
+ * with zero hardcoded keyword heuristics.
  */
-export function isVarRemembered(varName: string, prefs?: VarPreferences | null): boolean {
+export function isVarRemembered(
+  varName: string,
+  prefs?: VarPreferences | null,
+  unpinnedVars?: string[]
+): boolean {
   if (!varName) return false;
   const key = varName.trim();
   if (prefs?.remember && typeof prefs.remember[key] === 'boolean') {
     return prefs.remember[key];
+  }
+  if (unpinnedVars && Array.isArray(unpinnedVars)) {
+    const keyUpper = key.toUpperCase();
+    if (unpinnedVars.some(u => typeof u === 'string' && u.trim().toUpperCase() === keyUpper)) {
+      return false;
+    }
   }
   return true;
 }
@@ -56,7 +67,8 @@ export function getVarSuggestions(
   history: VarRecord[],
   varName: string,
   query: string,
-  prefs?: VarPreferences | null
+  prefs?: VarPreferences | null,
+  unpinnedVars?: string[]
 ): VarSuggestionItem[] {
   if (!varName || !Array.isArray(history)) return [];
   const key = varName.trim();
@@ -76,15 +88,20 @@ export function getVarSuggestions(
     const lowerPrimary = trimmedPrimary.toLowerCase();
     if (q && !lowerPrimary.includes(q)) continue;
 
-    // Filter accompanying values to only those that are remembered
+    // Accompanying values from the record (all preserved for autofill)
     const accompanying: Record<string, string> = {};
+    const subtextVars: Record<string, string> = {};
     for (const [k, v] of Object.entries(record.values)) {
-      if (k.trim() !== key && v && typeof v === 'string' && isVarRemembered(k, prefs)) {
-        accompanying[k.trim()] = v.trim();
+      if (k.trim() !== key && v && typeof v === 'string') {
+        const trimmedVal = v.trim();
+        accompanying[k.trim()] = trimmedVal;
+        if (isVarRemembered(k, prefs, unpinnedVars)) {
+          subtextVars[k.trim()] = trimmedVal;
+        }
       }
     }
 
-    const subtext = formatAccompanyingSubtext(accompanying);
+    const subtext = formatAccompanyingSubtext(subtextVars);
     const comboKey = `${trimmedPrimary}:::${subtext}`;
     if (seenCombos.has(comboKey)) continue;
     seenCombos.add(comboKey);
@@ -126,9 +143,10 @@ export function getVarSuggestions(
 export function isVarHighChurn(
   history: VarRecord[],
   varName: string,
-  prefs?: VarPreferences | null
+  prefs?: VarPreferences | null,
+  unpinnedVars?: string[]
 ): boolean {
-  if (!varName || !isVarRemembered(varName, prefs)) return false;
+  if (!varName || !isVarRemembered(varName, prefs, unpinnedVars)) return false;
   const key = varName.trim();
   if (prefs?.ignoredWarnings && prefs.ignoredWarnings[key]) return false;
   if (!Array.isArray(history) || history.length === 0) return false;
@@ -210,7 +228,8 @@ export function saveVarRecord(
   history: VarRecord[],
   currentValues: Record<string, string>,
   prefs: VarPreferences = { remember: {}, usageValues: {} },
-  maxEntries = 100
+  maxEntries = 100,
+  unpinnedVars?: string[]
 ): { updatedHistory: VarRecord[]; updatedPrefs: VarPreferences; autoMutedVars: string[] } {
   const updatedPrefs: VarPreferences = {
     remember: { ...(prefs.remember || {}) },
@@ -244,7 +263,7 @@ export function saveVarRecord(
       }
     }
 
-    if (isVarRemembered(k, updatedPrefs)) {
+    if (isVarRemembered(k, updatedPrefs, unpinnedVars)) {
       rememberedValues[k] = v;
     }
   }
@@ -263,7 +282,7 @@ export function saveVarRecord(
   // Look for existing record with the exact same remembered key-values
   const existingIdx = updatedHistory.findIndex(rec => {
     if (!rec || !rec.values) return false;
-    const keysA = Object.keys(rec.values).filter(k => isVarRemembered(k, updatedPrefs));
+    const keysA = Object.keys(rec.values).filter(k => isVarRemembered(k, updatedPrefs, unpinnedVars));
     const keysB = Object.keys(rememberedValues);
     if (keysA.length !== keysB.length) return false;
     return keysB.every(k => rec.values[k] === rememberedValues[k]);

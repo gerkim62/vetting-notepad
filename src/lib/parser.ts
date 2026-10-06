@@ -246,6 +246,42 @@ export function parseVettingText(rawText: string | null | undefined, types: Vett
         let rawVal = (match[2] ?? '').trim();
         const rawStatus = match[3] ? match[3].toLowerCase() : null;
 
+        // Dynamically match any grouped fields via configured groupLabel or composite label
+        const matchedGroupItem = allItems.find(it => {
+          if (!it.group) return false;
+          const kLower = rawKey.toLowerCase();
+          if (it.groupLabel && it.groupLabel.toLowerCase() === kLower) return true;
+          if (it.groupLabel && it.groupLabel.toLowerCase().replace(/\s*&\s*/g, ' and ') === kLower.replace(/\s*&\s*/g, ' and ')) return true;
+          return false;
+        });
+
+        if (matchedGroupItem && matchedGroupItem.group) {
+          const groupMembers = allItems.filter(it => it.group === matchedGroupItem.group);
+          if (groupMembers.length > 0) {
+            const isFailedVal = rawVal.toLowerCase() === 'failed' || rawStatus === 'failed';
+            const isPassedVal = rawVal.toLowerCase() === 'passed' || rawStatus === 'passed';
+
+            if (rawVal.includes('/')) {
+              const parts = rawVal.split('/').map(s => s.trim());
+              groupMembers.forEach((member, idx) => {
+                const part = parts[idx];
+                result.values[member.id] = (part && part.toLowerCase() !== 'none' && part.toLowerCase() !== 'failed') ? part : '';
+              });
+            } else {
+              if (rawVal.toLowerCase() !== 'failed' && rawVal.toLowerCase() !== 'passed') {
+                result.values[groupMembers[0].id] = rawVal;
+              }
+            }
+
+            if (isFailedVal) {
+              groupMembers.forEach(m => { result.status[m.id] = 'failed'; });
+            } else if (isPassedVal) {
+              groupMembers.forEach(m => { result.status[m.id] = null; });
+            }
+            continue;
+          }
+        }
+
         const field = findField(rawKey);
         if (field) {
           if (rawVal.toLowerCase() === 'failed') {
@@ -290,16 +326,21 @@ export interface ParsedMpesaResult {
   txn1?: string;
   txn2?: string;
   tid?: string;
+  receiptNumber?: string;
   amount?: string;
   dateTime?: string;
+  completionTime?: string;
   recipient?: string;
   recipientNumber?: string;
   recipientName?: string;
+  orgName?: string;
+  otherParty?: string;
   type?: string;
 }
 
 /**
  * Parses raw copied M-PESA transaction extracts into structured details.
+ * Supports both multiline extracts and single-line/tabular statement rows.
  */
 export function parseMpesaTxnText(rawText: string | null | undefined): ParsedMpesaResult | null {
   if (!rawText || typeof rawText !== 'string') return null;
@@ -309,6 +350,73 @@ export function parseMpesaTxnText(rawText: string | null | undefined): ParsedMpe
   const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
   if (lines.length === 0) return null;
 
+  // 1. Check for single-line / tabular transaction statement rows
+  // Example: UJ60396QNL 06/10/2026 07:30:00 Pay Bill 400200 - Co-operative Bank Money Transfer Completed KES -3,000.00
+  const tabularRowRegex = /^([A-Z0-9]{10})\s+(\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}(?::\d{2})?)\s+(Pay\s*Bill|Buy\s*Goods(?:\s*and\s*Services)?|Send\s*Money|Customer\s*Transfer|Deposit|Withdrawal|[A-Za-z\s]+?)\s+(?:(\d{4,8})\s*-\s*)?(.+?)\s+(Completed|Failed|Reversed|Cancelled|Pending)\s+(?:(?:KES|KSH)\s*)?(-?[\d,]+(?:\.\d{1,2})?)(?:\s*(?:KES|KSH))?$/i;
+
+  const tabularTransactions: MpesaTxnItem[] = [];
+  for (const line of lines) {
+    const m = line.match(tabularRowRegex);
+    if (m) {
+      const tid = (m[1] ?? '').toUpperCase();
+      const dateTime = m[2] ?? '';
+      const type = (m[3] ?? '').trim();
+      const shortcode = (m[4] ?? '').trim();
+      let orgOrParty = (m[5] ?? '').trim();
+      const status = m[6] ?? 'Completed';
+      const rawAmt = m[7] ?? '';
+
+      // Normalize amount to positive formatted string (e.g. 3,000.00)
+      const cleanAmt = rawAmt.replace(/^-/, '').trim();
+
+      let recipientNumber = shortcode;
+      let recipientName = orgOrParty;
+      let otherParty = shortcode ? `${shortcode} - ${orgOrParty}` : orgOrParty;
+
+      if (!recipientNumber && orgOrParty.includes('-')) {
+        const parts = orgOrParty.split('-');
+        recipientNumber = parts[0]?.trim().replace(/^\+?254([17]\d)/, '0$1') ?? '';
+        recipientName = parts.slice(1).join('-').trim();
+      }
+
+      const formattedCompact = `${tid} | ${dateTime} | ${recipientName || otherParty} | ${cleanAmt}`;
+
+      tabularTransactions.push({
+        tid,
+        dateTime,
+        type,
+        otherParty,
+        recipientNumber,
+        recipientName,
+        status,
+        currency: 'KES',
+        amount: cleanAmt,
+        formattedCompact
+      });
+    }
+  }
+
+  if (tabularTransactions.length > 0) {
+    const firstTxn = tabularTransactions[0];
+    return {
+      transactions: tabularTransactions,
+      txn1: tabularTransactions[0]?.formattedCompact || '',
+      txn2: tabularTransactions[1]?.formattedCompact || '',
+      tid: firstTxn?.tid,
+      receiptNumber: firstTxn?.tid,
+      amount: firstTxn?.amount,
+      dateTime: firstTxn?.dateTime,
+      completionTime: firstTxn?.dateTime,
+      recipient: firstTxn?.otherParty,
+      recipientNumber: firstTxn?.recipientNumber,
+      recipientName: firstTxn?.recipientName,
+      orgName: firstTxn?.recipientName,
+      otherParty: firstTxn?.otherParty,
+      type: firstTxn?.type
+    };
+  }
+
+  // 2. Multiline statement extract parsing
   const tidRegex = /^(?:(?:receipt\s*(?:no\.?|id)?|txn\s*(?:id|no\.?)?|transaction\s*id)[:\s-]*)?([A-Z0-9]{10})$/i;
   const dateTimeRegex = /^\d{2}\/\d{2}\/\d{4}\s+\d{2}:\d{2}(?::\d{2})?$/;
   const amountRegex = /^-?\d+(?:,\d{3})*(?:\.\d{1,2})?$/;
@@ -425,11 +533,15 @@ export function parseMpesaTxnText(rawText: string | null | undefined): ParsedMpe
     txn1,
     txn2,
     tid: firstTxn?.tid,
+    receiptNumber: firstTxn?.tid,
     amount: firstTxn?.amount,
     dateTime: firstTxn?.dateTime,
+    completionTime: firstTxn?.dateTime,
     recipient: firstTxn?.otherParty,
     recipientNumber: firstTxn?.recipientNumber,
     recipientName: firstTxn?.recipientName,
+    orgName: firstTxn?.recipientName,
+    otherParty: firstTxn?.otherParty,
     type: firstTxn?.type
   };
 }
@@ -437,6 +549,7 @@ export function parseMpesaTxnText(rawText: string | null | undefined): ParsedMpe
 /**
  * Resolves the appropriate value from a parsed M-PESA statement for a given vetting field.
  * Strictly config-driven via item.mpesaTxn (identical to item.v360) — zero guessing.
+ * Supports standard aliases (receiptNumber -> tid, completionTime -> dateTime, otherParty -> recipientNumber).
  * Returns null if no explicit mpesaTxn mapping exists on the field.
  */
 export function resolveMpesaPastedFieldValue(
@@ -444,7 +557,20 @@ export function resolveMpesaPastedFieldValue(
   parsedMpesa: ParsedMpesaResult | null | undefined
 ): string | null {
   if (!item || !parsedMpesa || !item.mpesaTxn) return null;
-  const val = parsedMpesa[item.mpesaTxn];
+  const key = item.mpesaTxn;
+  if (key === 'receiptNumber' || key === 'tid') {
+    return parsedMpesa.tid || parsedMpesa.receiptNumber || null;
+  }
+  if (key === 'completionTime' || key === 'dateTime') {
+    return parsedMpesa.dateTime || parsedMpesa.completionTime || null;
+  }
+  if (key === 'otherParty' || key === 'recipientNumber') {
+    return parsedMpesa.recipientNumber || parsedMpesa.recipient || parsedMpesa.otherParty || null;
+  }
+  if (key === 'recipientName' || key === 'orgName') {
+    return parsedMpesa.recipientName || parsedMpesa.orgName || null;
+  }
+  const val = parsedMpesa[key];
   return typeof val === 'string' && val.length > 0 ? val : null;
 }
 

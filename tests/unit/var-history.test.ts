@@ -14,24 +14,30 @@ import {
 
 describe('Variable History & Autocomplete Engine', () => {
   describe('Transient & Remembered Fields', () => {
-    it('defaults all unconfigured fields to remembered (no blind keyword guessing)', () => {
+    it('defaults directory fields to remembered and one-time fields to unpinned according to config schema', () => {
+      const unpinnedConfig = ['TXN CODE', 'AMOUNT', 'PUK', 'MSISDN'];
+      expect(isVarRemembered('TXN CODE', null, unpinnedConfig)).toBe(false);
+      expect(isVarRemembered('AMOUNT', null, unpinnedConfig)).toBe(false);
+      expect(isVarRemembered('PUK', null, unpinnedConfig)).toBe(false);
+      expect(isVarRemembered('MSISDN', null, unpinnedConfig)).toBe(false);
+      expect(isVarRemembered('ORGANIZATION', null, unpinnedConfig)).toBe(true);
+      expect(isVarRemembered('Phone Number', null, unpinnedConfig)).toBe(true);
+      expect(isVarRemembered('Any Random Var', null, unpinnedConfig)).toBe(true);
+      // When unconfigured without template unpinnedVars, defaults to true with zero hardcoded heuristics
       expect(isVarRemembered('TXN CODE')).toBe(true);
-      expect(isVarRemembered('ORGANIZATION')).toBe(true);
-      expect(isVarRemembered('Phone Number')).toBe(true);
-      expect(isVarRemembered('Any Random Var')).toBe(true);
     });
 
     it('prioritizes explicit user preferences and muted states', () => {
       const prefs: VarPreferences = {
         remember: {
-          'TXN CODE': false, // muted dynamically or toggled by user
-          'ORGANIZATION': true
+          'TXN CODE': true, // explicitly pinned by user
+          'ORGANIZATION': false
         },
         usageValues: {}
       };
 
-      expect(isVarRemembered('TXN CODE', prefs)).toBe(false);
-      expect(isVarRemembered('ORGANIZATION', prefs)).toBe(true);
+      expect(isVarRemembered('TXN CODE', prefs)).toBe(true);
+      expect(isVarRemembered('ORGANIZATION', prefs)).toBe(false);
       expect(isVarRemembered('Phone Number', prefs)).toBe(true); // unconfigured defaults to true
     });
   });
@@ -86,7 +92,7 @@ describe('Variable History & Autocomplete Engine', () => {
       expect(results.map(r => r.primaryValue)).toContain('Safaricom Home');
     });
 
-    it('excludes transient fields from accompanying subtext', () => {
+    it('preserves all record fields in accompanying for autofill while subtext formats remembered fields', () => {
       const prefs: VarPreferences = {
         remember: { 'TXN CODE': false },
         usageValues: {}
@@ -94,8 +100,9 @@ describe('Variable History & Autocomplete Engine', () => {
       const results = getVarSuggestions(history, 'ORGANIZATION', 'Care', prefs);
       expect(results.length).toBe(1);
       expect(results[0].primaryValue).toBe('Safaricom Care');
-      // TXN CODE is muted, so accompanying only has Phone Number
-      expect(results[0].accompanying).toEqual({ 'Phone Number': '100' });
+      // Accompanying has all values for companion autofill
+      expect(results[0].accompanying).toEqual({ 'Phone Number': '100', 'TXN CODE': 'TXN111' });
+      // Subtext only includes remembered/pinned fields to keep dropdown clean
       expect(results[0].subtext).toBe('100');
     });
 
@@ -236,7 +243,7 @@ describe('Variable History & Autocomplete Engine', () => {
         { id: '4', values: { 'TXN CODE': '1', ORG: 'kcb' }, lastUsed: 4, useCount: 1 }
       ];
 
-      expect(isVarHighChurn(history, 'TXN CODE')).toBe(true);
+      expect(isVarHighChurn(history, 'TXN CODE', { remember: { 'TXN CODE': true }, usageValues: {} })).toBe(true);
       // ORG has only 1 distinct value across 4 uses, so it is NOT high churn
       expect(isVarHighChurn(history, 'ORG')).toBe(false);
     });

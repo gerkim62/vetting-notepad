@@ -200,6 +200,65 @@ KES
     expect(configAirtimeBal?.mpesaTxn).toBeUndefined();
     expect(resolveMpesaPastedFieldValue(configAirtimeBal, parsed)).toBeNull();
   });
+
+  it('parses single-line tabular transaction row from M-PESA statement', () => {
+    const raw = 'UJ60396QNL 06/10/2026 07:30:00 Pay Bill 400200 - Co-operative Bank Money Transfer Completed KES -3,000.00';
+    const res = parseMpesaTxnText(raw);
+    expect(res).not.toBeNull();
+    if (!res) return;
+
+    expect(res.tid).toBe('UJ60396QNL');
+    expect(res.dateTime).toBe('06/10/2026 07:30:00');
+    expect(res.type).toBe('Pay Bill');
+    expect(res.recipientNumber).toBe('400200');
+    expect(res.recipientName).toBe('Co-operative Bank Money Transfer');
+    expect(res.amount).toBe('3,000.00');
+
+    // Test alias resolution for paybill reversal
+    const paybillType = types.find(t => t.id === 'paybill_reversal');
+    expect(paybillType).toBeDefined();
+
+    const tidField = paybillType?.required.find(f => f.id === 'pbr_txnid');
+    expect(resolveMpesaPastedFieldValue(tidField, res)).toBe('UJ60396QNL');
+
+    const dtField = paybillType?.required.find(f => f.id === 'pbr_datetime');
+    expect(resolveMpesaPastedFieldValue(dtField, res)).toBe('06/10/2026 07:30:00');
+
+    const amountField = paybillType?.required.find(f => f.id === 'pbr_amount');
+    expect(resolveMpesaPastedFieldValue(amountField, res)).toBe('3,000.00');
+
+    const paybillNoField = paybillType?.required.find(f => f.id === 'pbr_paybillno');
+    expect(resolveMpesaPastedFieldValue(paybillNoField, res)).toBe('400200');
+
+    const orgField = paybillType?.required.find(f => f.id === 'pbr_orgname');
+    expect(resolveMpesaPastedFieldValue(orgField, res)).toBe('Co-operative Bank Money Transfer');
+  });
+
+  it('parses consolidated FDN 1 & 2 line with failed status', () => {
+    const raw = `SIM Swap – Vetting
+Calling Number: 0722123456
+Full Names: John Doe (Passed)
+FDN 1 & 2: Failed`;
+
+    const res = parseVettingText(raw, types);
+    expect(res.typeId).toBe('swap');
+    expect(res.status['sw_fdn1']).toBe('failed');
+    expect(res.status['sw_fdn2']).toBe('failed');
+  });
+
+  it('parses consolidated FDN 1 & 2 line with values', () => {
+    const raw = `SIM Swap – Vetting
+Calling Number: 0722123456
+Full Names: John Doe (Passed)
+FDN 1 & 2: 0722111111 / 0722222222 (Passed)`;
+
+    const res = parseVettingText(raw, types);
+    expect(res.typeId).toBe('swap');
+    expect(res.values['sw_fdn1']).toBe('0722111111');
+    expect(res.values['sw_fdn2']).toBe('0722222222');
+    expect(res.status['sw_fdn1']).toBeFalsy();
+    expect(res.status['sw_fdn2']).toBeFalsy();
+  });
 });
 
 

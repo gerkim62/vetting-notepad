@@ -282,6 +282,9 @@ export function formatActiveBreakDisplay(state: BreakCalculationResult): string 
     return state.tickerText ? `${state.eventName} (${state.tickerText})` : state.eventName;
   }
   const cleanEvent = state.eventName.replace(/^On\s+/i, '');
+  if (state.diffSec <= 0) {
+    return `${cleanEvent} Ended • I'm Back`;
+  }
   return `${cleanEvent} (${formatCountdown(state.diffSec)})`;
 }
 

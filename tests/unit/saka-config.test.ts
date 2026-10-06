@@ -196,5 +196,27 @@ describe('SAKA Vetting Configuration', () => {
     });
     expect(count).toBeGreaterThanOrEqual(200);
   });
+
+  it('verifies that compact chips declare attachTo pointing to an existing field in the type', () => {
+    config.types.forEach(t => {
+      const allFieldIds = new Set([...t.required, ...t.optional].map(f => f.id));
+      [...t.required, ...t.optional].forEach(f => {
+        if (f.compactChip) {
+          expect(f.attachTo, `Chip ${t.id}.${f.id} must declare attachTo`).toBeDefined();
+          expect(allFieldIds.has(f.attachTo!), `Chip ${t.id}.${f.id} attachTo must point to a valid field`).toBe(true);
+        }
+      });
+    });
+  });
+
+  it('verifies that grouped fields declare groupLabel', () => {
+    config.types.forEach(t => {
+      [...t.required, ...t.optional].forEach(f => {
+        if (f.group) {
+          expect(f.groupLabel, `Grouped field ${t.id}.${f.id} must declare groupLabel`).toBeDefined();
+        }
+      });
+    });
+  });
 });
 

@@ -19,6 +19,9 @@ export interface VettingField {
   itemType?: 'input' | 'policy' | 'action';
   role?: VettingFieldRole;
   isVetting?: boolean;
+  compactChip?: boolean;
+  attachTo?: string;
+  groupLabel?: string;
 }
 
 export interface VettingDiyAction {
@@ -110,6 +113,8 @@ export interface QuickSmsTemplate {
   id: string;
   title: string;
   text: string;
+  unpinnedVars?: string[];
+  version?: number;
 }
 
 export interface QuickInteractionTemplate {

@@ -739,9 +739,28 @@ function getCallbackInfo(t, st, v) {
   return { show: true, primary: false, labels };
 }
 
+function syncFormValuesFromDom() {
+  if (!mainForm) return;
+  const v = curValues();
+  mainForm.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('.mat-input').forEach(input => {
+    const id = input.dataset.id;
+    if (id) {
+      v[id] = input.value;
+      if (input.value.trim().length > 0) {
+        recordFillingOrder(id);
+      }
+    }
+  });
+  const commentEl = document.getElementById('commentInput');
+  if (commentEl instanceof HTMLInputElement) {
+    v._comment = commentEl.value;
+  }
+}
+
 function buildCopyText(t) {
   if (!t) return '';
 
+  syncFormValuesFromDom();
   const v = curValues();
   const st = curStatus();
   const lines = [];
@@ -749,6 +768,14 @@ function buildCopyText(t) {
   const cb = getCallbackInfo(t, st, v);
   const failedItems = [...t.required, ...t.optional].filter(it => st[it.id] === 'failed');
   const isFailed = Boolean(cb.show);
+
+  const allItems = [...t.required, ...t.optional];
+  const primaryItems = allItems.filter(it => isPrimaryItem(it));
+  const hasIncompletePrimary = primaryItems.length > 0 && primaryItems.some(p => {
+    const val = String(v[p.id] ?? '').trim();
+    const stVal = st[p.id];
+    return !stVal && val.length === 0;
+  });
 
   // 1. Line 1: Top Advice / Action Taken (CEE Priority)
   const manualComment = (v._comment || '').trim();
@@ -766,32 +793,42 @@ function buildCopyText(t) {
       topAdvice = `${typeName}: Processed. ${diyText}.`;
     } else if (cb.policy && cb.policyDirective) {
       topAdvice = `${typeName}: Policy restriction triggered. ${cb.policyDirective}`;
-    } else if (!isFailed) {
-      topAdvice = `${typeName}: Passed vetting.`;
-    } else {
+    } else if (isFailed) {
       if (cb.primary) {
         topAdvice = `${typeName}: Failed vetting. Referred to Retail Centre / Care Desk with original ID.`;
       } else if (callAttempt === 2) {
         topAdvice = `${typeName}: Failed vetting again. Referred to Retail Centre / Care Desk with original ID.`;
       } else if (cb.labels && cb.labels.length > 0) {
-        topAdvice = `${typeName}: Failed vetting. Advised customer to confirm ${cb.labels.join(', ')} and call back.`;
+        const targetLabels = cb.labels.slice(0, 2);
+        const labelText = targetLabels.length === 2 ? `${targetLabels[0]} and ${targetLabels[1]}` : targetLabels[0];
+        topAdvice = `${typeName}: Failed vetting. Advised customer to confirm ${labelText} and call back.`;
       } else {
-        topAdvice = `${typeName}: Failed vetting. Advised customer to confirm registration details and call back.`;
+        const fallbackSec = (t.optional || [])
+          .filter(it => it.role === 'secondary' && !it.excludeFromCount && it.itemType !== 'policy' && it.itemType !== 'action')
+          .slice(0, 2)
+          .map(it => parseLabel(it.label).copy);
+        const fallbackText = fallbackSec.length === 2
+          ? `${fallbackSec[0]} and ${fallbackSec[1]}`
+          : (fallbackSec[0] || '2 account details');
+        topAdvice = `${typeName}: Failed vetting. Advised customer to confirm ${fallbackText} and call back.`;
       }
+    } else if (!hasIncompletePrimary) {
+      topAdvice = `${typeName}: Passed vetting.`;
+    } else {
+      topAdvice = typeName;
     }
   }
   lines.push(topAdvice);
 
   // 2. Line 2: Vetting Outcome
   if (isFailed) {
-    const failedNames = (cb.labels && cb.labels.length > 0) ? cb.labels : failedItems.map(it => parseLabel(it.label).copy);
+    const failedNames = (cb.labels && cb.labels.length > 0) ? cb.labels.slice(0, 2) : failedItems.map(it => parseLabel(it.label).copy);
     lines.push(`Vetting: Failed${failedNames.length > 0 ? ` (${failedNames.join(', ')})` : ''}`);
-  } else {
+  } else if (!hasIncompletePrimary) {
     lines.push('Vetting: Passed');
   }
 
   // 3. Vetted Fields (Emitted in filling order, each on its own line)
-  const allItems = [...t.required, ...t.optional];
   const orderList = curFillingOrder();
 
   const renderItemLine = (it: VettingField) => {
@@ -853,7 +890,43 @@ function buildCopyText(t) {
     return questionItems.indexOf(a) - questionItems.indexOf(b);
   });
 
+  const handledIds = new Set<string>();
+
   for (const it of sortedQuestionItems) {
+    if (handledIds.has(it.id)) continue;
+
+    if (it.group) {
+      const groupMembers = sortedQuestionItems.filter(x => x.group === it.group);
+      if (groupMembers.length > 1) {
+        const effStatuses = groupMembers.map(m => st[m.id] || (String(v[m.id] ?? '').trim().length > 0 ? 'passed' : null));
+        const firstEff = effStatuses[0];
+        const allSameEff = firstEff && effStatuses.every(s => s === firstEff);
+
+        if (allSameEff) {
+          groupMembers.forEach(m => handledIds.add(m.id));
+          const vals = groupMembers.map(m => String(v[m.id] ?? '').trim());
+          const groupTitle = it.groupLabel || groupMembers.map(m => m.label.split('//')[0].trim()).join(' & ');
+          const hasAnyVal = vals.some(val => val.length > 0);
+
+          if (firstEff === 'failed') {
+            if (!hasAnyVal) {
+              lines.push(`${groupTitle}: Failed`);
+            } else {
+              lines.push(`${groupTitle}: ${vals.map(val => val || 'None').join(' / ')} (Failed)`);
+            }
+          } else {
+            if (!hasAnyVal) {
+              lines.push(`${groupTitle}: Passed`);
+            } else {
+              lines.push(`${groupTitle}: ${vals.map(val => val || 'None').join(' / ')} (Passed)`);
+            }
+          }
+          continue;
+        }
+      }
+    }
+
+    handledIds.add(it.id);
     const l = renderItemLine(it);
     if (l) lines.push(l);
   }
@@ -1253,7 +1326,11 @@ function renderItemList(items, kind, st) {
 function renderCallbackPanelHtml(t, st) {
   const cb = getCallbackInfo(t, st, curValues());
   if (!cb.show) return '';
-  const failedLabels = (cb.labels || []).join(', ');
+  const rawLabels = cb.labels || [];
+  const targetLabels = rawLabels.slice(0, 2);
+  const failedLabels = targetLabels.length === 2
+    ? `${targetLabels[0]} and ${targetLabels[1]}`
+    : (targetLabels[0] || '2 account details');
 
   if (cb.policy && cb.policyDirective) {
     return `<div class="saka-callback-panel primary-failed policy-violation-panel" title="Policy Rule Violation"><span class="saka-callback-body"><b class="saka-hl">[POLICY VIOLATION]</b> ${escapeHtml(cb.policyDirective)}</span></div>`;
@@ -1602,6 +1679,10 @@ function renderDiyChips(t) {
 }
 
 function createRowHtml(it, kind, _idx) {
+  if (it.compactChip) {
+    return '';
+  }
+
   let val = curValues()[it.id];
   const hasStatus = !!curStatus()[it.id];
   if (val === undefined || (val === '' && it.defaultValue && !hasStatus)) {
@@ -1682,6 +1763,26 @@ function createRowHtml(it, kind, _idx) {
     `;
   }
 
+  let precheckChipsHtml = '';
+  const t = curType();
+  const compactChips = (t?.optional || []).filter(x => x.compactChip && x.attachTo === it.id);
+  if (compactChips.length > 0) {
+    precheckChipsHtml = `
+      <div class="precheck-chips">
+        ${compactChips.map(chip => {
+          const isViolated = curStatus()[chip.id] === 'failed';
+          const shortLabel = chip.label.split('//')[0].trim();
+          return `
+            <button type="button" class="precheck-chip ${isViolated ? 'active' : ''}" data-precheck-chip="${chip.id}" title="${escapeHtml(chip.violationAdvice || chip.label)}">
+              ${isViolated ? renderIcon('AlertTriangle', { size: 10, strokeWidth: 2.2 }) : ''}
+              <span>${escapeHtml(shortLabel)}</span>
+            </button>
+          `;
+        }).join('')}
+      </div>
+    `;
+  }
+
   return `
     <div class="item-row ${kind}" data-id="${it.id}">
       <div class="field-container">
@@ -1696,6 +1797,7 @@ function createRowHtml(it, kind, _idx) {
             : `<input type="text" class="mat-input ${it.len > 0 ? 'has-len' : ''}" id="inp_${it.id}" data-id="${it.id}" value="${escapeHtml(val)}" autocomplete="off" spellcheck="false">`}
           ${underlineHtml}
         </div>
+        ${precheckChipsHtml}
       </div>
 
       ${statusActionsHtml}
@@ -1815,15 +1917,6 @@ function bindFormEvents() {
       if (input.value.trim().length > 0) {
         recordFillingOrder(id);
       }
-      if (curStatus()[id] === 'failed' && input.value.trim().length > 0) {
-        curStatus()[id] = null;
-        box.classList.remove('status-failed');
-        const track = input.closest('.item-row')?.querySelector('.mat-underline-track');
-        if (track) track.classList.remove('status-failed');
-        const failBtn = input.closest('.item-row')?.querySelector('[data-status-btn="failed"]');
-        if (failBtn) failBtn.classList.remove('active');
-        renderCallbackPanelOnly();
-      }
       updateRowGuide(id);
       updateSecondaryCounter();
       renderCallbackPanelOnly();
@@ -1880,6 +1973,29 @@ function bindFormEvents() {
           ? `${renderIcon('AlertTriangle', { size: 10, strokeWidth: 2.2 })} <span>Violated</span>`
           : `${renderIcon('Ban', { size: 10 })} <span>Flag Rule</span>`;
       }
+
+      renderCallbackPanelOnly();
+      syncPreview();
+    };
+  });
+
+  mainForm.querySelectorAll<HTMLElement>('[data-precheck-chip]').forEach(btn => {
+    btn.onclick = () => {
+      stopAutoClear();
+      const id = btn.dataset.precheckChip;
+      if (!id) return;
+      const cur = curStatus()[id];
+      const newStatus = cur === 'failed' ? null : 'failed';
+      curStatus()[id] = newStatus;
+      if (newStatus) recordFillingOrder(id);
+
+      btn.classList.toggle('active', newStatus === 'failed');
+      const t = curType();
+      const chipItem = (t?.optional || []).find(x => x.id === id);
+      const shortLabel = chipItem ? chipItem.label.split('//')[0].trim() : 'Flag';
+      btn.innerHTML = newStatus === 'failed'
+        ? `${renderIcon('AlertTriangle', { size: 10, strokeWidth: 2.2 })} <span>${escapeHtml(shortLabel)}</span>`
+        : `<span>${escapeHtml(shortLabel)}</span>`;
 
       renderCallbackPanelOnly();
       syncPreview();
@@ -3530,82 +3646,100 @@ function initMenu() {
 /* ==========================================================================
    Quick SMS & Quick Interaction Templates
    ========================================================================== */
-const DEFAULT_QUICK_SMS = [
+const CURRENT_SMS_VERSION = 2;
+
+const DEFAULT_QUICK_SMS: QuickSmsTemplate[] = [
   {
     id: 'sms_paybill_rev',
     title: 'Paybill Merchant Contact Details',
-    text: 'Jambo, kindly contact {ORGANIZATION} on {PHONE} for reversal request of transaction {TXN CODE}. Safaricom.'
+    text: 'Jambo, kindly contact {ORGANIZATION} on {PHONE} for reversal request of transaction {TXN CODE}. Safaricom.',
+    unpinnedVars: ['TXN CODE'],
+    version: 2
   },
   {
     id: 'sms_rev_456',
     title: 'M-PESA Self-Service Reversal (456)',
-    text: 'Jambo, you can reverse a wrong M-PESA transaction by forwarding the M-PESA transaction message to 456. Safaricom.'
+    text: 'Jambo, you can reverse a wrong M-PESA transaction by forwarding the M-PESA transaction message to 456. Safaricom.',
+    version: 2
   },
   {
     id: 'sms_pin_334',
     title: 'M-PESA Self PIN Unlock (*334#)',
-    text: 'Jambo, to unlock your M-PESA PIN, dial *334# > My Account > Unlock M-PESA PIN > Enter your ID Number. Safaricom.'
+    text: 'Jambo, to unlock your M-PESA PIN, dial *334# > My Account > Unlock M-PESA PIN > Enter your ID Number. Safaricom.',
+    version: 2
   },
   {
     id: 'sms_puk_100',
     title: 'Self-Service PUK Retrieval (*100# / *456#)',
-    text: 'Jambo, to get PUK for a blocked line, dial *100# or *456# from another line > Get PUK > Enter mobile number > Enter ID number. Safaricom.'
+    text: 'Jambo, to get PUK for a blocked line, dial *100# or *456# from another line > Get PUK > Enter mobile number > Enter ID number. Safaricom.',
+    version: 2
   },
   {
     id: 'sms_puk_issuance',
     title: 'PUK Number Issuance to Caller',
-    text: 'Jambo, your PUK number for {MSISDN} is {PUK}. Do not share your PIN or PUK with anyone. Safaricom.'
+    text: 'Jambo, your PUK number for {MSISDN} is {PUK}. Do not share your PIN or PUK with anyone. Safaricom.',
+    unpinnedVars: ['MSISDN', 'PUK'],
+    version: 2
   },
   {
     id: 'sms_pin_manager_334',
     title: 'M-PESA PIN Manager (*334#)',
-    text: 'Jambo, to set security questions or reset your forgotten M-PESA PIN, dial *334# > My Account > M-PESA PIN Manager and follow the prompts. Safaricom.'
+    text: 'Jambo, to set security questions or reset your forgotten M-PESA PIN, dial *334# > My Account > M-PESA PIN Manager and follow the prompts. Safaricom.',
+    version: 2
   },
   {
     id: 'sms_till_rev_100',
     title: 'Buy Goods / Till Reversal (*100#)',
-    text: 'Jambo, to reverse a wrong Buy Goods transaction, dial *100# > Mpesa/Reversal > Reverse Buy Goods Transaction and follow the prompts. Safaricom.'
+    text: 'Jambo, to reverse a wrong Buy Goods transaction, dial *100# > Mpesa/Reversal > Reverse Buy Goods Transaction and follow the prompts. Safaricom.',
+    version: 2
   },
   {
     id: 'sms_agent_rev_2530',
     title: 'Agent Self-Reversal (2530)',
-    text: 'Jambo, M-PESA agents can reverse wrong customer deposits and withdrawals within 1 hour by forwarding the transaction SMS to 2530. Safaricom.'
+    text: 'Jambo, M-PESA agents can reverse wrong customer deposits and withdrawals within 1 hour by forwarding the transaction SMS to 2530. Safaricom.',
+    version: 2
   },
   {
     id: 'sms_till_sim_swap_234',
     title: 'Till Self SIM Swap (*234#)',
-    text: 'Jambo, to swap your Till notification SIM, dial *234# from the Nominated Number > M-PESA Business Till > Account Services > SIM Swap, or use the M-PESA Business App. Safaricom.'
+    text: 'Jambo, to swap your Till notification SIM, dial *234# from the Nominated Number > M-PESA Business Till > Account Services > SIM Swap, or use the M-PESA Business App. Safaricom.',
+    version: 2
   },
   {
     id: 'sms_statement_334',
     title: 'M-PESA Statement DIY (*334# / App)',
-    text: 'Jambo, to get your M-PESA statement, dial *334# > My Account > M-PESA Statement or download it via the M-PESA App / MySafaricom App. Safaricom.'
+    text: 'Jambo, to get your M-PESA statement, dial *334# > My Account > M-PESA Statement or download it via the M-PESA App / MySafaricom App. Safaricom.',
+    version: 2
   },
   {
     id: 'sms_stop_promo_456',
     title: 'Stop Promotional SMS (*456*9# / 40044)',
-    text: 'Jambo, to stop unwanted marketing SMS or manage subscriptions, dial *456*9# > Stop Promotional Messages or send STOP to 40044. Safaricom.'
+    text: 'Jambo, to stop unwanted marketing SMS or manage subscriptions, dial *456*9# > Stop Promotional Messages or send STOP to 40044. Safaricom.',
+    version: 2
   },
   {
     id: 'sms_report_fraud_333',
     title: 'Report Fraud or Scam (333)',
-    text: 'Dear Customer, to report fraud or con messages, forward the message or caller number via SMS to 333 for investigation. Safaricom.'
+    text: 'Dear Customer, to report fraud or con messages, forward the message or caller number via SMS to 333 for investigation. Safaricom.',
+    version: 2
   },
   {
     id: 'sms_pooled_reactivation',
     title: 'Pooled Line Reactivation (*100# / *456#)',
-    text: 'Jambo, to recreate your pooled line, dial *100# > SIM Card Queries > SIM Card Reactivation or *456# from another line and enter your ID and Old SIM serial. Top up within 7 days. Safaricom.'
+    text: 'Jambo, to recreate your pooled line, dial *100# > SIM Card Queries > SIM Card Reactivation or *456# from another line and enter your ID and Old SIM serial. Top up within 7 days. Safaricom.',
+    version: 2
   },
   {
     id: 'sms_inaudible_call',
     title: 'Inaudible Call / Voice Break Reversal',
-    text: 'Jambo, sorry we cannot hear you on call. Dial 100, 200 or 234 for assistance or call us from a different phone. To reverse M-PESA forward the message to 456. Thank you.'
+    text: 'Jambo, sorry we cannot hear you on call. Dial 100, 200 or 234 for assistance or call us from a different phone. To reverse M-PESA forward the message to 456. Thank you.',
+    version: 2
   }
 ];
 
 const _DEFAULT_QUICK_INTERACTION = [];
 
-let quickSmsTemplates = [];
+let quickSmsTemplates: QuickSmsTemplate[] = [];
 let quickInteractionTemplates = [];
 let varHistory = [];
 let varPreferences = { remember: {}, usageValues: {}, ignoredWarnings: {} };
@@ -3617,6 +3751,7 @@ const btnNewInteractionTemplate = document.getElementById('btnNewInteractionTemp
 
 async function loadQuickTemplates() {
   const savedSms = await Storage.get('vpad.quick_sms', null);
+  const savedSmsVer = await Storage.get('vpad.quick_sms_version', 0);
   if (Array.isArray(savedSms) && savedSms.length > 0) {
     quickSmsTemplates = savedSms;
     let modified = false;
@@ -3629,32 +3764,40 @@ async function loadQuickTemplates() {
       modified = true;
     }
 
-    // Seed missing default templates or update legacy default texts
-    for (const defSms of DEFAULT_QUICK_SMS) {
-      const existing = quickSmsTemplates.find(s => s.id === defSms.id);
-      if (!existing) {
-        quickSmsTemplates.push({ ...defSms });
-        modified = true;
-      } else if (defSms.id === 'sms_paybill_rev' && (existing.text.includes('during working hours') || existing.text.includes('{Phone Number}'))) {
-        existing.title = defSms.title;
-        existing.text = defSms.text;
-        modified = true;
-      } else if (defSms.id === 'sms_pin_334' && existing.text.includes('> Unlock PIN')) {
-        existing.title = defSms.title;
-        existing.text = defSms.text;
-        modified = true;
-      } else if (defSms.id === 'sms_puk_100' && existing.text.includes('safaricomapp.page.link')) {
-        existing.title = defSms.title;
-        existing.text = defSms.text;
-        modified = true;
+    // Version-based migration: refresh default templates if schema version is outdated
+    if (savedSmsVer < CURRENT_SMS_VERSION) {
+      for (const defSms of DEFAULT_QUICK_SMS) {
+        const existing = quickSmsTemplates.find(s => s.id === defSms.id);
+        if (existing) {
+          existing.title = defSms.title;
+          existing.text = defSms.text;
+          existing.unpinnedVars = defSms.unpinnedVars;
+          existing.version = defSms.version;
+          modified = true;
+        } else {
+          quickSmsTemplates.push({ ...defSms });
+          modified = true;
+        }
+      }
+      Storage.set('vpad.quick_sms_version', CURRENT_SMS_VERSION);
+    } else {
+      // Seed missing default templates
+      for (const defSms of DEFAULT_QUICK_SMS) {
+        const existing = quickSmsTemplates.find(s => s.id === defSms.id);
+        if (!existing) {
+          quickSmsTemplates.push({ ...defSms });
+          modified = true;
+        }
       }
     }
+
     if (modified) {
       Storage.set('vpad.quick_sms', quickSmsTemplates);
     }
   } else {
     quickSmsTemplates = JSON.parse(JSON.stringify(DEFAULT_QUICK_SMS));
     Storage.set('vpad.quick_sms', quickSmsTemplates);
+    Storage.set('vpad.quick_sms_version', CURRENT_SMS_VERSION);
   }
 
   const savedInteraction = await Storage.get('vpad.quick_interaction', null);
@@ -4246,8 +4389,8 @@ function openVarFillModal(tpl, _type) {
 
   if (varInputsList) {
     varInputsList.innerHTML = vars.map(v => {
-      const isRem = isVarRemembered(v, varPreferences);
-      const isChurn = isVarHighChurn(varHistory, v, varPreferences);
+      const isRem = isVarRemembered(v, varPreferences, tpl?.unpinnedVars);
+      const isChurn = isVarHighChurn(varHistory, v, varPreferences, tpl?.unpinnedVars);
       return `
         <div class="var-input-row ${isRem ? '' : 'transient'}" data-var-name="${escapeHtml(v)}">
           <div class="var-input-header">
@@ -4330,14 +4473,18 @@ function openVarFillModal(tpl, _type) {
           inp.value = sug.primaryValue;
         }
 
-        // Fill accompanying variables (only if not manually edited by user in this session)
+        // Fill accompanying variables into all empty or whitespace companion inputs
         vars.forEach(otherVar => {
           if (otherVar !== v && sug.accompanying && sug.accompanying[otherVar] !== undefined) {
-            if (!manualEdits.has(otherVar)) {
+            const siblingRow = Array.from(varInputsList.querySelectorAll<HTMLElement>('.var-input-row')).find(
+              r => r.dataset.varName === otherVar
+            );
+            const siblingInp = siblingRow ? siblingRow.querySelector<HTMLInputElement>('.var-input') : null;
+            const currentVal = siblingInp ? siblingInp.value.trim() : '';
+
+            if (!currentVal || !isCommit) {
               currentValues[otherVar] = sug.accompanying[otherVar];
-              const siblingRow = varInputsList.querySelector(`.var-input-row[data-var-name="${escapeHtml(otherVar)}"]`);
-              const siblingInp = siblingRow ? siblingRow.querySelector('.var-input') : null;
-              if (siblingInp) {
+              if (siblingInp && isCommit) {
                 siblingInp.value = sug.accompanying[otherVar];
               }
             }
@@ -4353,11 +4500,11 @@ function openVarFillModal(tpl, _type) {
       };
 
       const renderSuggestions = () => {
-        if (!isVarRemembered(v, varPreferences)) {
+        if (!isVarRemembered(v, varPreferences, tpl?.unpinnedVars)) {
           hideDropdown();
           return;
         }
-        currentSuggestions = getVarSuggestions(varHistory, v, inp.value, varPreferences);
+        currentSuggestions = getVarSuggestions(varHistory, v, inp.value, varPreferences, tpl?.unpinnedVars);
         if (currentSuggestions.length === 0) {
           hideDropdown();
           return;
@@ -4435,7 +4582,7 @@ function openVarFillModal(tpl, _type) {
 
         btnPin.onclick = (e) => {
           e.stopPropagation();
-          const nowPinned = !isVarRemembered(v, varPreferences);
+          const nowPinned = !isVarRemembered(v, varPreferences, tpl?.unpinnedVars);
           varPreferences.remember[v] = nowPinned;
           persistVarHistory();
 
@@ -4698,13 +4845,13 @@ function openVarFillModal(tpl, _type) {
       await writeToClipboard(resolved);
 
       // Auto-save all pinned fields to history (no checkbox needed)
-      const saveRes = saveVarRecord(varHistory, currentValues, varPreferences);
+      const saveRes = saveVarRecord(varHistory, currentValues, varPreferences, 100, tpl?.unpinnedVars);
       varHistory = saveRes.updatedHistory;
       varPreferences = saveRes.updatedPrefs;
       persistVarHistory();
 
       vars.forEach(v => {
-        if (isVarRemembered(v, varPreferences)) {
+        if (isVarRemembered(v, varPreferences, tpl?.unpinnedVars)) {
           varPreferences.usageValues[v] = currentValues[v] || '';
         } else {
           delete varPreferences.usageValues[v];

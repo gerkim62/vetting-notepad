@@ -64,6 +64,21 @@ describe('Break Timer & Notifier Engine', () => {
     expect(formatActiveBreakDisplay(state)).toBe('Break 1 (08m 00s)');
   });
 
+  it('formats active break display with Im Back button text when timer expires', () => {
+    const expiredState = {
+      isActive: true,
+      eventName: 'On Break 1',
+      diffSec: 0,
+      totalSeconds: 600,
+      tickerText: 'Ended',
+      notifKey: null,
+      isPreBreak: false,
+      preBreakMins: 0,
+      isBreakOverdue: true
+    };
+    expect(formatActiveBreakDisplay(expiredState)).toBe("Break 1 Ended • I'm Back");
+  });
+
   it('transitions to lunch after break 1 finishes', () => {
     const schedule = {
       break1: '10:00',

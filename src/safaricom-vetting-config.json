@@ -70,6 +70,7 @@
           "label": "FDN 1 // 2x in 3 mos",
           "len": 10,
           "group": "fdn",
+          "groupLabel": "FDN 1 & 2",
           "info": "[SAKA VMDA-0001]\nFrequently Dialled Number: Must be Mobile Originated (MO) call or SMS at least twice in the last 3 months. FDN 1 & 2 together count as 1 pass.",
           "role": "secondary"
         },
@@ -78,6 +79,7 @@
           "label": "FDN 2 // 2x in 3 mos",
           "len": 10,
           "group": "fdn",
+          "groupLabel": "FDN 1 & 2",
           "info": "[SAKA VMDA-0001]\nSecond Frequently Dialled Number. Together with FDN 1 counts as 1 secondary pass.",
           "role": "secondary"
         },
@@ -100,6 +102,7 @@
           "label": "Self-Txn 1 // Last 30d",
           "len": 0,
           "group": "self_txn",
+          "groupLabel": "Self-Txn 1 & 2",
           "mpesaTxn": "txn1",
           "info": "[SAKA VMDA-0001]\nSelf-initiated M-PESA transaction from customer account in last 30 days. Must provide Amount, Date/Time, and Recipient name. (2 txns count as 1 pass).",
           "role": "secondary"
@@ -109,6 +112,7 @@
           "label": "Self-Txn 2 // Last 30d",
           "len": 0,
           "group": "self_txn",
+          "groupLabel": "Self-Txn 1 & 2",
           "mpesaTxn": "txn2",
           "info": "[SAKA VMDA-0001]\nSecond self-initiated M-PESA transaction in last 30 days.",
           "role": "secondary"
@@ -177,13 +181,35 @@
           "excludeFromCount": true,
           "itemType": "action",
           "role": "action"
+        },
+        {
+          "id": "swap_whitelist",
+          "label": "Whitelisted // *100*100#",
+          "len": 0,
+          "info": "[SAKA SSCB-0006]\nIf line is self-whitelisted (*100*100#), Contact Center cannot swap. Refer customer to Retail Center with original ID.",
+          "excludeFromCount": true,
+          "itemType": "policy",
+          "compactChip": true,
+          "attachTo": "sw_msisdn",
+          "violationAdvice": "Line is self-whitelisted (*100*100#). Refer customer to Retail Center with original ID.",
+          "role": "policy"
+        },
+        {
+          "id": "swap_72h",
+          "label": "Swapped <72h // Policy",
+          "len": 0,
+          "info": "[SAKA SSCB-0006]\nIf line was swapped in last 72 hours, Contact Center cannot swap. Refer customer to Retail Center with original ID as per fraud policy.",
+          "excludeFromCount": true,
+          "itemType": "policy",
+          "compactChip": true,
+          "attachTo": "sw_msisdn",
+          "violationAdvice": "Line swapped within last 72 hours. Declined and referred to Retail Center with original ID as per policy.",
+          "role": "policy"
         }
       ],
       "comments": [
         "Customer vetted on primary and secondary details. Line swapped successfully. Educated on M-PESA activation.",
-        "Customer failed secondary vetting. Advised to verify account details and call back.",
-        "Line self-whitelisted (*100*100#). Advised customer to visit Retail Center with original ID.",
-        "Line swapped in last 72 hours. Declined and referred to Retail as per policy."
+        "Customer failed secondary vetting. Advised to confirm FDN 1 and FDN 2 and call back."
       ],
       "copyTitle": "SIM Swap – Vetting"
     },
@@ -351,6 +377,7 @@
           "id": "pbr_orgname",
           "label": "Organization Name",
           "len": 0,
+          "mpesaTxn": "orgName",
           "info": "[SAKA LPPP-0014]\nOfficial business/utility/institution name on G2.",
           "role": "identifier"
         },
@@ -781,6 +808,7 @@
           "label": "FDN 1 // 2x in 3 mos",
           "len": 10,
           "group": "fdn",
+          "groupLabel": "FDN 1 & 2",
           "info": "[SAKA VMDA-0001]\nFrequently Dialled Number: MO call/SMS 2x in last 3 months.",
           "role": "secondary"
         },
@@ -789,6 +817,7 @@
           "label": "FDN 2 // 2x in 3 mos",
           "len": 10,
           "group": "fdn",
+          "groupLabel": "FDN 1 & 2",
           "info": "[SAKA VMDA-0001]\nSecond FDN. FDN 1 & 2 together count as 1 pass.",
           "role": "secondary"
         },
@@ -811,6 +840,7 @@
           "label": "Self-Txn 1 // Last 30d",
           "len": 0,
           "group": "self_txn",
+          "groupLabel": "Self-Txn 1 & 2",
           "info": "[SAKA BADD-0003 / VMDA-0001]\nSelf-initiated M-PESA transaction from customer account in last 30 days. Must provide Amount, Date/Time, and Recipient name. (2 txns count as 1 pass).",
           "role": "secondary"
         },
@@ -819,6 +849,7 @@
           "label": "Self-Txn 2 // Last 30d",
           "len": 0,
           "group": "self_txn",
+          "groupLabel": "Self-Txn 1 & 2",
           "info": "[SAKA BADD-0003 / VMDA-0001]\nSecond self-initiated M-PESA transaction in last 30 days.",
           "role": "secondary"
         },
@@ -877,7 +908,7 @@
       "comments": [
         "Vetted for line unbarring. Siebel checked (no fraud tag), line resumed and HLR cleared. Advised on PIN 0000.",
         "Siebel key comment reads \"Phone stolen\". Advised customer line can only be unbarred at Retail with original ID.",
-        "Customer failed secondary vetting for unbarring. Advised to confirm account details and call back."
+        "Customer failed secondary vetting for unbarring. Advised to confirm 2 account details and call back."
       ],
       "copyTitle": "Line Unbarring (Self Only) – Vetting"
     },
@@ -946,7 +977,7 @@
       "comments": [
         "Customer vetted on primary details. M-PESA PIN unlocked on G3. Guided on DIY *334# for self-service.",
         "Account unlocked on G3. Advised customer to wait for SMS and use correct PIN to transact.",
-        "Customer failed primary vetting. Advised to confirm registration details and call back or visit shop."
+        "Customer failed primary vetting (Name/ID/YoB). Referred to Retail Centre / Care Desk with original ID."
       ],
       "diyActions": [
         {
@@ -1031,6 +1062,7 @@
           "label": "FDN 1 // 2x in 3 mos",
           "len": 10,
           "group": "fdn",
+          "groupLabel": "FDN 1 & 2",
           "info": "[SAKA VMDA-0001]\nFrequently Dialled Number: MO call/SMS 2x in last 3 months.",
           "role": "secondary"
         },
@@ -1039,6 +1071,7 @@
           "label": "FDN 2 // 2x in 3 mos",
           "len": 10,
           "group": "fdn",
+          "groupLabel": "FDN 1 & 2",
           "info": "[SAKA VMDA-0001]\nSecond FDN.",
           "role": "secondary"
         },
@@ -1062,6 +1095,7 @@
           "len": 0,
           "mpesaTxn": "txn1",
           "group": "self_txn",
+          "groupLabel": "Self-Txn 1 & 2",
           "info": "[SAKA SKKI-0001 / VMDA-0001]\nSelf-initiated M-PESA transaction from customer account in last 30 days. Must provide Amount, Date/Time, and Recipient name. (2 txns count as 1 pass).",
           "role": "secondary"
         },
@@ -1071,6 +1105,7 @@
           "len": 0,
           "mpesaTxn": "txn2",
           "group": "self_txn",
+          "groupLabel": "Self-Txn 1 & 2",
           "info": "[SAKA SKKI-0001 / VMDA-0001]\nSecond self-initiated M-PESA transaction in last 30 days.",
           "role": "secondary"
         },
@@ -1564,6 +1599,7 @@
           "label": "FDN 1 // 2x in 3 mos",
           "len": 10,
           "group": "fdn",
+          "groupLabel": "FDN 1 & 2",
           "info": "[SAKA VMDA-0001]\nFrequently Dialled Number: MO call/SMS 2x in last 3 months.",
           "role": "secondary"
         },
@@ -1572,6 +1608,7 @@
           "label": "FDN 2 // 2x in 3 mos",
           "len": 10,
           "group": "fdn",
+          "groupLabel": "FDN 1 & 2",
           "info": "[SAKA VMDA-0001]\nSecond FDN.",
           "role": "secondary"
         },
@@ -1595,6 +1632,7 @@
           "len": 0,
           "mpesaTxn": "txn1",
           "group": "self_txn",
+          "groupLabel": "Self-Txn 1 & 2",
           "info": "[SAKA VMDA-0001]\nSelf-initiated M-PESA transaction from customer account in last 30 days. Must provide Amount, Date/Time, and Recipient name. (2 txns count as 1 pass).",
           "role": "secondary"
         },
@@ -1604,6 +1642,7 @@
           "len": 0,
           "mpesaTxn": "txn2",
           "group": "self_txn",
+          "groupLabel": "Self-Txn 1 & 2",
           "info": "[SAKA VMDA-0001]\nSecond self-initiated M-PESA transaction in last 30 days.",
           "role": "secondary"
         },
