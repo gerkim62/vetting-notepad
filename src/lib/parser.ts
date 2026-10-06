@@ -248,15 +248,15 @@ export function parseVettingText(rawText: string | null | undefined, types: Vett
 
         const field = findField(rawKey);
         if (field) {
-          if (rawVal.toLowerCase() === 'failed' && rawStatus === 'failed') {
+          if (rawVal.toLowerCase() === 'failed') {
             rawVal = '';
-          }
-          result.values[field.id] = rawVal;
-          if (rawStatus === 'failed') {
+            result.status[field.id] = 'failed';
+          } else if (rawStatus === 'failed') {
             result.status[field.id] = 'failed';
           } else if (rawStatus === 'passed') {
             result.status[field.id] = null;
           }
+          result.values[field.id] = rawVal;
         }
       }
     }

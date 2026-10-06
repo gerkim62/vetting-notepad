@@ -19,13 +19,15 @@
           "label": "Calling Number",
           "len": 10,
           "mpesaTxn": "msisdn",
-          "info": "[SAKA SCEK-0002 / SSCB-0006]\nCalling number must be active on IN-Data. Maximum 2 swap requests per 24 hours."
+          "info": "[SAKA SCEK-0002 / SSCB-0006]\nCalling number must be active on IN-Data. Maximum 2 swap requests per 24 hours.",
+          "role": "identifier"
         },
         {
           "id": "sw_msisdn",
           "label": "Line to Swap",
           "len": 10,
-          "info": "[SAKA SSCB-0006]\nMust be active on CBS, not pooled/deleted, not self-whitelisted (*100*100#). Line must be off or verified."
+          "info": "[SAKA SSCB-0006]\nMust be active on CBS, not pooled/deleted, not self-whitelisted (*100*100#). Line must be off or verified.",
+          "role": "identifier"
         },
         {
           "id": "sw_name",
@@ -33,21 +35,24 @@
           "len": 0,
           "info": "[SAKA VMDA-0001]\nFull names as registered on View 360. Must completely match registration.",
           "v360": "fullName",
-          "mpesaTxn": "customerName"
+          "mpesaTxn": "customerName",
+          "role": "primary"
         },
         {
           "id": "sw_idnum",
           "label": "ID Number",
           "len": 8,
           "info": "[SAKA VMDA-0001]\nOriginal registered document number. Leading zeros do not invalidate ID.",
-          "v360": "idNumber"
+          "v360": "idNumber",
+          "role": "primary"
         },
         {
           "id": "sw_yob",
           "label": "Year of Birth",
           "len": 4,
           "info": "[SAKA VMDA-0001]\nYear of birth as per View 360 & Siebel records.",
-          "v360": "yob"
+          "v360": "yob",
+          "role": "primary"
         },
         {
           "id": "sw_simex",
@@ -55,7 +60,8 @@
           "len": 20,
           "defaultValue": "89254021",
           "omitDefault": true,
-          "info": "[SAKA SSCB-0006]\n20-digit serial number from replacement SIM card retailing at KES 100."
+          "info": "[SAKA SSCB-0006]\n20-digit serial number from replacement SIM card retailing at KES 100.",
+          "role": "identifier"
         }
       ],
       "optional": [
@@ -64,26 +70,30 @@
           "label": "FDN 1 // 2x in 3 mos",
           "len": 10,
           "group": "fdn",
-          "info": "[SAKA VMDA-0001]\nFrequently Dialled Number: Must be Mobile Originated (MO) call or SMS at least twice in the last 3 months. FDN 1 & 2 together count as 1 pass."
+          "info": "[SAKA VMDA-0001]\nFrequently Dialled Number: Must be Mobile Originated (MO) call or SMS at least twice in the last 3 months. FDN 1 & 2 together count as 1 pass.",
+          "role": "secondary"
         },
         {
           "id": "sw_fdn2",
           "label": "FDN 2 // 2x in 3 mos",
           "len": 10,
           "group": "fdn",
-          "info": "[SAKA VMDA-0001]\nSecond Frequently Dialled Number. Together with FDN 1 counts as 1 secondary pass."
+          "info": "[SAKA VMDA-0001]\nSecond Frequently Dialled Number. Together with FDN 1 counts as 1 secondary pass.",
+          "role": "secondary"
         },
         {
           "id": "sw_mpesa_bal",
           "label": "M-PESA Balance // SAKA Margins",
           "len": 0,
-          "info": "[SAKA VMDA-0001]\nAllowed margins:\n• 1 – 100: ±10\n• 101 – 1,000: ±50\n• 1,001 – 10,000: ±100\n• > 10,001: ±10%"
+          "info": "[SAKA VMDA-0001]\nAllowed margins:\n• 1 – 100: ±10\n• 101 – 1,000: ±50\n• 1,001 – 10,000: ±100\n• > 10,001: ±10%",
+          "role": "secondary"
         },
         {
           "id": "sw_airtime_bal",
           "label": "Airtime Balance",
           "len": 0,
-          "info": "[SAKA VMDA-0001]\nCurrent airtime balance on CBS IN-Data."
+          "info": "[SAKA VMDA-0001]\nCurrent airtime balance on CBS IN-Data.",
+          "role": "secondary"
         },
         {
           "id": "sw_mpesa_txn1",
@@ -91,7 +101,8 @@
           "len": 0,
           "group": "self_txn",
           "mpesaTxn": "txn1",
-          "info": "[SAKA VMDA-0001]\nSelf-initiated M-PESA transaction from customer account in last 30 days. Must provide Amount, Date/Time, and Recipient name. (2 txns count as 1 pass)."
+          "info": "[SAKA VMDA-0001]\nSelf-initiated M-PESA transaction from customer account in last 30 days. Must provide Amount, Date/Time, and Recipient name. (2 txns count as 1 pass).",
+          "role": "secondary"
         },
         {
           "id": "sw_mpesa_txn2",
@@ -99,55 +110,64 @@
           "len": 0,
           "group": "self_txn",
           "mpesaTxn": "txn2",
-          "info": "[SAKA VMDA-0001]\nSecond self-initiated M-PESA transaction in last 30 days."
+          "info": "[SAKA VMDA-0001]\nSecond self-initiated M-PESA transaction in last 30 days.",
+          "role": "secondary"
         },
         {
           "id": "sw_fuliza_limit",
           "label": "Fuliza Limit // SAKA CBS",
           "len": 0,
-          "info": "[SAKA VMDA-0001]\nAccurate Fuliza overdraft limit required. Do NOT use if customer has not opted in."
+          "info": "[SAKA VMDA-0001]\nAccurate Fuliza overdraft limit required. Do NOT use if customer has not opted in.",
+          "role": "secondary"
         },
         {
           "id": "sw_mshwari_limit",
           "label": "M-Shwari Limit // SAKA CBS",
           "len": 0,
-          "info": "[SAKA VMDA-0001]\nAccurate M-Shwari loan limit required. Do NOT use if customer has not opted in."
+          "info": "[SAKA VMDA-0001]\nAccurate M-Shwari loan limit required. Do NOT use if customer has not opted in.",
+          "role": "secondary"
         },
         {
           "id": "sw_kcb_limit",
           "label": "KCB M-PESA Limit // SAKA CBS",
           "len": 0,
-          "info": "[SAKA VMDA-0001]\nAccurate KCB M-PESA loan limit required. Do NOT use if customer has not opted in."
+          "info": "[SAKA VMDA-0001]\nAccurate KCB M-PESA loan limit required. Do NOT use if customer has not opted in.",
+          "role": "secondary"
         },
         {
           "id": "sw_storo",
           "label": "Storo Target // Prepay CBS",
           "len": 0,
-          "info": "[SAKA VMDA-0001]\nDaily Storo Bonus target amount for prepay subscribers."
+          "info": "[SAKA VMDA-0001]\nDaily Storo Bonus target amount for prepay subscribers.",
+          "role": "secondary"
         },
         {
           "id": "sw_bundle_plan",
           "label": "Active Bundle Plan // Data / Voice",
           "len": 0,
-          "info": "[SAKA VMDA-0001]\nCustomer active recurring or purchased bundle plan name / price."
+          "info": "[SAKA VMDA-0001]\nCustomer active recurring or purchased bundle plan name / price.",
+          "role": "secondary"
         },
         {
           "id": "sw_regdate",
           "label": "Registration Date // Month & Year",
           "len": 0,
-          "info": "[SAKA VMDA-0001]\nMonth and Year of Line registration or M-PESA registration."
+          "info": "[SAKA VMDA-0001]\nMonth and Year of Line registration or M-PESA registration.",
+          "role": "secondary"
         },
         {
           "id": "sw_bundle",
           "label": "Last Bundle Purchase",
           "len": 0,
-          "info": "[SAKA VMDA-0001]\nCustomer to provide bundle name or price purchased."
+          "info": "[SAKA VMDA-0001]\nCustomer to provide bundle name or price purchased.",
+          "role": "secondary"
         },
         {
           "id": "sw_altno",
           "label": "Alternative Number",
           "len": 10,
-          "info": "[SAKA SSCB-0006]\n10-digit alternative contact number."
+          "info": "[SAKA SSCB-0006]\n10-digit alternative contact number.",
+          "role": "identifier"
         },
         {
           "id": "swap_apps_wiped",
@@ -155,7 +175,8 @@
           "len": 0,
           "info": "[SAKA SKKI-0001 / VMDA-0001]\nPost-swap mandatory security: CEE must wipe out mySafaricom App, MyOne App, and M-PESA Apps on CRM.",
           "excludeFromCount": true,
-          "itemType": "action"
+          "itemType": "action",
+          "role": "action"
         }
       ],
       "comments": [
@@ -176,49 +197,56 @@
           "label": "Calling Number",
           "len": 10,
           "mpesaTxn": "msisdn",
-          "info": "[SAKA MRMM-0003]\nMandatory calling number. If calling on behalf, capture caller number on interaction."
+          "info": "[SAKA MRMM-0003]\nMandatory calling number. If calling on behalf, capture caller number on interaction.",
+          "role": "identifier"
         },
         {
           "id": "rev_tid",
           "label": "Transaction ID",
           "len": 10,
           "mpesaTxn": "tid",
-          "info": "[SAKA MRMM-0003]\n10-character alphanumeric transaction reference (e.g. TGI7...)."
+          "info": "[SAKA MRMM-0003]\n10-character alphanumeric transaction reference (e.g. TGI7...).",
+          "role": "identifier"
         },
         {
           "id": "rev_sender_msisdn",
           "label": "Sender Number",
           "len": 10,
           "mpesaTxn": "msisdn",
-          "info": "[SAKA MRMM-0003]\nMSISDN of the person who initiated the transaction."
+          "info": "[SAKA MRMM-0003]\nMSISDN of the person who initiated the transaction.",
+          "role": "identifier"
         },
         {
           "id": "rev_sender_name",
           "label": "Sender Name // 2 Names",
           "len": 0,
           "mpesaTxn": "customerName",
-          "info": "[SAKA MRMM-0003]\nConfirm ownership using Customer Name as per M-PESA G3. Accept if customer gives 2 correct names."
+          "info": "[SAKA MRMM-0003]\nConfirm ownership using Customer Name as per M-PESA G3. Accept if customer gives 2 correct names.",
+          "role": "primary"
         },
         {
           "id": "rev_amount",
           "label": "Amount",
           "len": 0,
           "mpesaTxn": "amount",
-          "info": "[SAKA MRMM-0003]\nExact amount sent in the transaction."
+          "info": "[SAKA MRMM-0003]\nExact amount sent in the transaction.",
+          "role": "identifier"
         },
         {
           "id": "rev_recipient",
           "label": "Recipient Number / Till",
           "len": 0,
           "mpesaTxn": "recipient",
-          "info": "[SAKA MRMM-0003 / LBCF-0003]\nParty B phone number, Buy Goods Till number, or Pochi wallet."
+          "info": "[SAKA MRMM-0003 / LBCF-0003]\nParty B phone number, Buy Goods Till number, or Pochi wallet.",
+          "role": "identifier"
         },
         {
           "id": "rev_date_time",
           "label": "Date & Time // <30 days",
           "len": 0,
           "mpesaTxn": "dateTime",
-          "info": "[SAKA MRMM-0003 / MALP-0001]\nTransaction must be within last 30 days for M-PESA P2P."
+          "info": "[SAKA MRMM-0003 / MALP-0001]\nTransaction must be within last 30 days for M-PESA P2P.",
+          "role": "identifier"
         }
       ],
       "optional": [
@@ -227,13 +255,15 @@
           "label": "Reversal Type",
           "len": 0,
           "mpesaTxn": "type",
-          "info": "[SAKA MRMM-0003]\nSpecify transaction type: P2P, LNM Till, or Pochi la Biashara."
+          "info": "[SAKA MRMM-0003]\nSpecify transaction type: P2P, LNM Till, or Pochi la Biashara.",
+          "role": "identifier"
         },
         {
           "id": "rev_sr_num",
           "label": "SR Number // 72h SLA",
           "len": 0,
-          "info": "[SAKA LBCF-0003 / LPPP-0014]\nService Request number if escalated to LNM/Admin team (72h SLA). Normal P2P SLA is 2 hours."
+          "info": "[SAKA LBCF-0003 / LPPP-0014]\nService Request number if escalated to LNM/Admin team (72h SLA). Normal P2P SLA is 2 hours.",
+          "role": "identifier"
         }
       ],
       "comments": [
@@ -275,66 +305,76 @@
           "label": "Calling Number",
           "len": 10,
           "mpesaTxn": "msisdn",
-          "info": "[SAKA LPPP-0014]\nCustomer calling number."
+          "info": "[SAKA LPPP-0014]\nCustomer calling number.",
+          "role": "identifier"
         },
         {
           "id": "pbr_txnid",
           "label": "Transaction ID",
           "len": 10,
           "mpesaTxn": "receiptNumber",
-          "info": "[SAKA LPPP-0014]\nOriginal 10-digit M-PESA receipt code."
+          "info": "[SAKA LPPP-0014]\nOriginal 10-digit M-PESA receipt code.",
+          "role": "identifier"
         },
         {
           "id": "pbr_senderno",
           "label": "Sender Number",
           "len": 10,
-          "info": "[SAKA LPPP-0014]\nNumber that paid the Paybill."
+          "info": "[SAKA LPPP-0014]\nNumber that paid the Paybill.",
+          "role": "identifier"
         },
         {
           "id": "pbr_sendername",
           "label": "Sender Name // 2 Names",
           "len": 0,
           "mpesaTxn": "customerName",
-          "info": "[SAKA LPPP-0014]\nCustomer registered names."
+          "info": "[SAKA LPPP-0014]\nCustomer registered names.",
+          "role": "primary"
         },
         {
           "id": "pbr_amount",
           "label": "Amount Paid",
           "len": 0,
           "mpesaTxn": "amount",
-          "info": "[SAKA LPPP-0014]\nAmount paid to Paybill."
+          "info": "[SAKA LPPP-0014]\nAmount paid to Paybill.",
+          "role": "identifier"
         },
         {
           "id": "pbr_paybillno",
           "label": "Paybill / Business Number",
           "len": 0,
           "mpesaTxn": "otherParty",
-          "info": "[SAKA LPPP-0014]\nShortcode paid to."
+          "info": "[SAKA LPPP-0014]\nShortcode paid to.",
+          "role": "identifier"
         },
         {
           "id": "pbr_orgname",
           "label": "Organization Name",
           "len": 0,
-          "info": "[SAKA LPPP-0014]\nOfficial business/utility/institution name on G2."
+          "info": "[SAKA LPPP-0014]\nOfficial business/utility/institution name on G2.",
+          "role": "identifier"
         },
         {
           "id": "pbr_wrongacc",
           "label": "Wrong Account Number",
           "len": 0,
-          "info": "[SAKA LPPP-0014]\nAccount number entered erroneously by customer."
+          "info": "[SAKA LPPP-0014]\nAccount number entered erroneously by customer.",
+          "role": "identifier"
         },
         {
           "id": "pbr_correctacc",
           "label": "Correct Account Number",
           "len": 0,
-          "info": "[SAKA LPPP-0014]\nCustomer intended account number."
+          "info": "[SAKA LPPP-0014]\nCustomer intended account number.",
+          "role": "identifier"
         },
         {
           "id": "pbr_datetime",
           "label": "Date & Time // <30 days",
           "len": 0,
           "mpesaTxn": "completionTime",
-          "info": "[SAKA LPPP-0014]\nDate and time of payment."
+          "info": "[SAKA LPPP-0014]\nDate and time of payment.",
+          "role": "identifier"
         }
       ],
       "optional": [
@@ -342,13 +382,15 @@
           "id": "pbr_merchantphone",
           "label": "Merchant Contact Number",
           "len": 10,
-          "info": "[SAKA LPPP-0014]\nMerchant official customer service phone."
+          "info": "[SAKA LPPP-0014]\nMerchant official customer service phone.",
+          "role": "identifier"
         },
         {
           "id": "pbr_srno",
           "label": "SR Number // 72h SLA",
           "len": 0,
-          "info": "[SAKA LPPP-0014]\nSR Cat: LNM PAYBILL, Type: Reversal (72h SLA). Raised if merchant unreachable or repeat caller."
+          "info": "[SAKA LPPP-0014]\nSR Cat: LNM PAYBILL, Type: Reversal (72h SLA). Raised if merchant unreachable or repeat caller.",
+          "role": "identifier"
         }
       ],
       "diyActions": [
@@ -377,60 +419,69 @@
           "label": "Calling Number",
           "len": 10,
           "mpesaTxn": "msisdn",
-          "info": "[SAKA MALP-0001]\nNumber calling customer service."
+          "info": "[SAKA MALP-0001]\nNumber calling customer service.",
+          "role": "identifier"
         },
         {
           "id": "atr_txnid",
           "label": "Transaction ID",
           "len": 10,
           "mpesaTxn": "receiptNumber",
-          "info": "[SAKA MALP-0001]\nM-PESA airtime purchase receipt code."
+          "info": "[SAKA MALP-0001]\nM-PESA airtime purchase receipt code.",
+          "role": "identifier"
         },
         {
           "id": "atr_buyerno",
           "label": "Buyer / Sender Number",
           "len": 10,
-          "info": "[SAKA MALP-0001]\nNumber that bought the airtime from M-PESA."
+          "info": "[SAKA MALP-0001]\nNumber that bought the airtime from M-PESA.",
+          "role": "identifier"
         },
         {
           "id": "atr_buyername",
           "label": "Buyer Full Name",
           "len": 0,
           "mpesaTxn": "customerName",
-          "info": "[SAKA MALP-0001]\nRegistered customer names on View 360."
+          "info": "[SAKA MALP-0001]\nRegistered customer names on View 360.",
+          "role": "primary"
         },
         {
           "id": "atr_amount",
           "label": "Airtime Amount",
           "len": 0,
           "mpesaTxn": "amount",
-          "info": "[SAKA MALP-0001]\nAirtime value bought."
+          "info": "[SAKA MALP-0001]\nAirtime value bought.",
+          "role": "identifier"
         },
         {
           "id": "atr_recipientno",
           "label": "Recipient Mobile Number",
           "len": 10,
           "mpesaTxn": "otherParty",
-          "info": "[SAKA MALP-0001]\nNumber that received the airtime."
+          "info": "[SAKA MALP-0001]\nNumber that received the airtime.",
+          "role": "identifier"
         },
         {
           "id": "atr_inbalance",
           "label": "Recipient Airtime Bal // IN-Data",
           "len": 0,
-          "info": "[SAKA MALP-0001 / VTJN-0003]\nMandatory check on IN-Data: Recipient airtime balance must be equal or greater than amount to reverse."
+          "info": "[SAKA MALP-0001 / VTJN-0003]\nMandatory check on IN-Data: Recipient airtime balance must be equal or greater than amount to reverse.",
+          "role": "identifier"
         },
         {
           "id": "atr_type",
           "label": "Purchase Type",
           "len": 0,
-          "info": "[SAKA MALP-0001]\nBought for Self (DIY 456) vs Bought for Other (Airtime Reversal Link)."
+          "info": "[SAKA MALP-0001]\nBought for Self (DIY 456) vs Bought for Other (Airtime Reversal Link).",
+          "role": "identifier"
         },
         {
           "id": "atr_datetime",
           "label": "Date & Time // <48 Hours",
           "len": 0,
           "mpesaTxn": "completionTime",
-          "info": "[SAKA MALP-0001]\nReversal claim must be made within 48 hours of purchase. Recipient must have unutilized balance >= purchase amount."
+          "info": "[SAKA MALP-0001]\nReversal claim must be made within 48 hours of purchase. Recipient must have unutilized balance >= purchase amount.",
+          "role": "identifier"
         }
       ],
       "optional": [
@@ -438,13 +489,15 @@
           "id": "atr_link_escalation",
           "label": "Reversal Link Escalation",
           "len": 0,
-          "info": "[SAKA MALP-0001]\nAirtime Reversal Link OM Public ID / Link submission status."
+          "info": "[SAKA MALP-0001]\nAirtime Reversal Link OM Public ID / Link submission status.",
+          "role": "secondary"
         },
         {
           "id": "atr_srno",
           "label": "Escalation / Link / SR // 2h SLA",
           "len": 0,
-          "info": "[SAKA MALP-0001]\nEscalated via Airtime Reversal Link or SR with 2h SLA (from 8am next day if after 8pm)."
+          "info": "[SAKA MALP-0001]\nEscalated via Airtime Reversal Link or SR with 2h SLA (from 8am next day if after 8pm).",
+          "role": "identifier"
         }
       ],
       "diyActions": [
@@ -470,40 +523,46 @@
           "id": "bar_callno",
           "label": "Calling Number",
           "len": 10,
-          "info": "[SAKA BADD-0003]\nCalling number must be captured on interactions."
+          "info": "[SAKA BADD-0003]\nCalling number must be captured on interactions.",
+          "role": "identifier"
         },
         {
           "id": "bar_msisdn",
           "label": "Line to Bar",
           "len": 10,
-          "info": "[SAKA BADD-0003]\nMobile number to be suspended/barred."
+          "info": "[SAKA BADD-0003]\nMobile number to be suspended/barred.",
+          "role": "identifier"
         },
         {
           "id": "bar_reason",
           "label": "Reason // Misplaced/Stolen",
           "len": 0,
-          "info": "[SAKA BADD-0003]\nClarify if phone is misplaced or stolen. If stolen, categorized as fraud: Siebel Key Comment MUST be updated: \"Phone stolen, Refer to Retail for Unbarring\"."
+          "info": "[SAKA BADD-0003]\nClarify if phone is misplaced or stolen. If stolen, categorized as fraud: Siebel Key Comment MUST be updated: \"Phone stolen, Refer to Retail for Unbarring\".",
+          "role": "identifier"
         },
         {
           "id": "bar_name",
           "label": "Full Names // View 360",
           "len": 0,
           "info": "[SAKA VMDA-0001]\nFull names as registered on View 360.",
-          "v360": "fullName"
+          "v360": "fullName",
+          "role": "primary"
         },
         {
           "id": "bar_idnum",
           "label": "ID Number",
           "len": 8,
           "info": "[SAKA VMDA-0001]\nOriginal registered document number.",
-          "v360": "idNumber"
+          "v360": "idNumber",
+          "role": "primary"
         },
         {
           "id": "bar_yob",
           "label": "Year of Birth",
           "len": 4,
           "info": "[SAKA VMDA-0001]\nYear of birth of the registered owner.",
-          "v360": "yob"
+          "v360": "yob",
+          "role": "primary"
         }
       ],
       "optional": [
@@ -513,7 +572,8 @@
           "len": 0,
           "info": "[SAKA BADD-0003]\nSet Siebel status to \"Suspended\" > Action reason \"Suspend – Handset Lost/Stolen\" or \"Suspend All Customer request\".",
           "excludeFromCount": true,
-          "itemType": "action"
+          "itemType": "action",
+          "role": "action"
         },
         {
           "id": "bar_hlr_sawa",
@@ -521,7 +581,8 @@
           "len": 0,
           "info": "[SAKA BADD-0003]\nConfirm BAOC reads OC and BAIC reads IC. If not successful, suspend on HLR under supplementary services > BAR Lost line.",
           "excludeFromCount": true,
-          "itemType": "action"
+          "itemType": "action",
+          "role": "action"
         },
         {
           "id": "bar_g3_status",
@@ -529,7 +590,8 @@
           "len": 0,
           "info": "[SAKA BADD-0003]\nBar on M-PESA G3 to secure money in customer wallet.",
           "excludeFromCount": true,
-          "itemType": "action"
+          "itemType": "action",
+          "role": "action"
         },
         {
           "id": "bar_apps_wiped",
@@ -537,13 +599,15 @@
           "len": 0,
           "info": "[SAKA BADD-0003]\nCEE must wipe out mySafaricom App, MyOne App, and M-PESA Apps on CRM.",
           "excludeFromCount": true,
-          "itemType": "action"
+          "itemType": "action",
+          "role": "action"
         },
         {
           "id": "bar_altno",
           "label": "Alternative Number",
           "len": 10,
-          "info": "[SAKA BADD-0003]\nAlternative reachable number."
+          "info": "[SAKA BADD-0003]\nAlternative reachable number.",
+          "role": "identifier"
         }
       ],
       "comments": [
@@ -562,46 +626,53 @@
           "id": "bar3_callno",
           "label": "Calling Number",
           "len": 10,
-          "info": "[SAKA IDPA-0001 / BADD-0003]\nCapture interaction on third-party number with action \"Calling on Customer Behalf\", and log second interaction on affected line."
+          "info": "[SAKA IDPA-0001 / BADD-0003]\nCapture interaction on third-party number with action \"Calling on Customer Behalf\", and log second interaction on affected line.",
+          "role": "identifier"
         },
         {
           "id": "bar3_caller_name",
           "label": "Caller Name",
           "len": 0,
-          "info": "[SAKA VMDA-0001]\nFull names of the person calling on behalf of the owner."
+          "info": "[SAKA VMDA-0001]\nFull names of the person calling on behalf of the owner.",
+          "role": "primary"
         },
         {
           "id": "bar3_caller_id",
           "label": "Caller ID",
           "len": 8,
           "info": "[SAKA VMDA-0001]\nNational ID or passport number of the third party.",
-          "v360": "idNumber"
+          "v360": "idNumber",
+          "role": "primary"
         },
         {
           "id": "bar3_msisdn",
           "label": "Line to Bar",
           "len": 10,
-          "info": "[SAKA BADD-0003]\nMobile number of the lost/stolen line to be barred."
+          "info": "[SAKA BADD-0003]\nMobile number of the lost/stolen line to be barred.",
+          "role": "identifier"
         },
         {
           "id": "bar3_reason",
           "label": "Reason // Misplaced/Stolen",
           "len": 0,
-          "info": "[SAKA BADD-0003]\nReason line is being barred. If stolen, must add key comment \"Phone stolen, Refer to Retail for Unbarring\"."
+          "info": "[SAKA BADD-0003]\nReason line is being barred. If stolen, must add key comment \"Phone stolen, Refer to Retail for Unbarring\".",
+          "role": "identifier"
         },
         {
           "id": "bar3_owner_names",
           "label": "Owner Name // 2 Names",
           "len": 0,
           "info": "[SAKA VMDA-0001]\nRequest registered customer's 2 names (e.g. first and last name).",
-          "v360": "fullName"
+          "v360": "fullName",
+          "role": "primary"
         },
         {
           "id": "bar3_owner_id",
           "label": "Owner ID",
           "len": 8,
           "info": "[SAKA VMDA-0001]\nRegistered customer's ID number. (Note: Owner Year of Birth is NOT requested from 3rd party).",
-          "v360": "idNumber"
+          "v360": "idNumber",
+          "role": "primary"
         }
       ],
       "optional": [
@@ -611,7 +682,8 @@
           "len": 0,
           "info": "[SAKA BADD-0003]\nSuspend on Siebel & CRM.",
           "excludeFromCount": true,
-          "itemType": "action"
+          "itemType": "action",
+          "role": "action"
         },
         {
           "id": "bar3_hlr_sawa",
@@ -619,7 +691,8 @@
           "len": 0,
           "info": "[SAKA BADD-0003]\nConfirm outgoing & incoming calls barred on HLR.",
           "excludeFromCount": true,
-          "itemType": "action"
+          "itemType": "action",
+          "role": "action"
         },
         {
           "id": "bar3_g3_status",
@@ -627,7 +700,8 @@
           "len": 0,
           "info": "[SAKA BADD-0003]\nBar M-PESA wallet on G3.",
           "excludeFromCount": true,
-          "itemType": "action"
+          "itemType": "action",
+          "role": "action"
         },
         {
           "id": "bar3_apps_wiped",
@@ -635,7 +709,8 @@
           "len": 0,
           "info": "[SAKA BADD-0003]\nWipe all linked apps on CRM.",
           "excludeFromCount": true,
-          "itemType": "action"
+          "itemType": "action",
+          "role": "action"
         }
       ],
       "comments": [
@@ -655,34 +730,39 @@
           "id": "unb_callno",
           "label": "Calling Number",
           "len": 10,
-          "info": "[SAKA BADD-0003]\nCalling number must be active on IN-Data."
+          "info": "[SAKA BADD-0003]\nCalling number must be active on IN-Data.",
+          "role": "identifier"
         },
         {
           "id": "unb_msisdn",
           "label": "Line to Unbar",
           "len": 10,
-          "info": "[SAKA BADD-0003]\nLine to be resumed/unbarred. Self only! Third parties cannot unbar a line."
+          "info": "[SAKA BADD-0003]\nLine to be resumed/unbarred. Self only! Third parties cannot unbar a line.",
+          "role": "identifier"
         },
         {
           "id": "unb_name",
           "label": "Full Names // View 360",
           "len": 0,
           "info": "[SAKA VMDA-0001]\nFull names as registered on View 360.",
-          "v360": "fullName"
+          "v360": "fullName",
+          "role": "primary"
         },
         {
           "id": "unb_idnum",
           "label": "ID Number",
           "len": 8,
           "info": "[SAKA VMDA-0001]\nOriginal registered document number.",
-          "v360": "idNumber"
+          "v360": "idNumber",
+          "role": "primary"
         },
         {
           "id": "unb_yob",
           "label": "Year of Birth",
           "len": 4,
           "info": "[SAKA VMDA-0001]\nYear of birth of line owner.",
-          "v360": "yob"
+          "v360": "yob",
+          "role": "primary"
         }
       ],
       "optional": [
@@ -693,83 +773,96 @@
           "info": "[SAKA BADD-0003]\nCRITICAL PRE-CHECK: Check Siebel key comments. If comment reads \"Phone stolen, Refer to Retail for Unbarring\", line can ONLY be unbarred at Retail. Do NOT unbar at Call Center!",
           "excludeFromCount": true,
           "itemType": "policy",
-          "violationAdvice": "Siebel key comments indicate phone stolen. Line can ONLY be unbarred at Retail as per policy."
+          "violationAdvice": "Siebel key comments indicate phone stolen. Line can ONLY be unbarred at Retail as per policy.",
+          "role": "policy"
         },
         {
           "id": "unb_fdn1",
           "label": "FDN 1 // 2x in 3 mos",
           "len": 10,
           "group": "fdn",
-          "info": "[SAKA VMDA-0001]\nFrequently Dialled Number: MO call/SMS 2x in last 3 months."
+          "info": "[SAKA VMDA-0001]\nFrequently Dialled Number: MO call/SMS 2x in last 3 months.",
+          "role": "secondary"
         },
         {
           "id": "unb_fdn2",
           "label": "FDN 2 // 2x in 3 mos",
           "len": 10,
           "group": "fdn",
-          "info": "[SAKA VMDA-0001]\nSecond FDN. FDN 1 & 2 together count as 1 pass."
+          "info": "[SAKA VMDA-0001]\nSecond FDN. FDN 1 & 2 together count as 1 pass.",
+          "role": "secondary"
         },
         {
           "id": "unb_mpesa_bal",
           "label": "M-PESA Balance // SAKA Margins",
           "len": 0,
-          "info": "[SAKA VMDA-0001]\nAllowed margins:\n• 1 – 100: ±10\n• 101 – 1,000: ±50\n• 1,001 – 10,000: ±100\n• > 10,001: ±10%"
+          "info": "[SAKA VMDA-0001]\nAllowed margins:\n• 1 – 100: ±10\n• 101 – 1,000: ±50\n• 1,001 – 10,000: ±100\n• > 10,001: ±10%",
+          "role": "secondary"
         },
         {
           "id": "unb_airtime_bal",
           "label": "Airtime Balance",
           "len": 0,
-          "info": "[SAKA VMDA-0001]\nAirtime balance on CBS IN-Data."
+          "info": "[SAKA VMDA-0001]\nAirtime balance on CBS IN-Data.",
+          "role": "secondary"
         },
         {
           "id": "unb_mpesa_txn1",
           "label": "Self-Txn 1 // Last 30d",
           "len": 0,
           "group": "self_txn",
-          "info": "[SAKA BADD-0003 / VMDA-0001]\nSelf-initiated M-PESA transaction from customer account in last 30 days. Must provide Amount, Date/Time, and Recipient name. (2 txns count as 1 pass)."
+          "info": "[SAKA BADD-0003 / VMDA-0001]\nSelf-initiated M-PESA transaction from customer account in last 30 days. Must provide Amount, Date/Time, and Recipient name. (2 txns count as 1 pass).",
+          "role": "secondary"
         },
         {
           "id": "unb_mpesa_txn2",
           "label": "Self-Txn 2 // Last 30d",
           "len": 0,
           "group": "self_txn",
-          "info": "[SAKA BADD-0003 / VMDA-0001]\nSecond self-initiated M-PESA transaction in last 30 days."
+          "info": "[SAKA BADD-0003 / VMDA-0001]\nSecond self-initiated M-PESA transaction in last 30 days.",
+          "role": "secondary"
         },
         {
           "id": "unb_fuliza_limit",
           "label": "Fuliza Limit // SAKA CBS",
           "len": 0,
-          "info": "[SAKA VMDA-0001]\nAccurate Fuliza overdraft limit required. Do NOT use if customer has not opted in."
+          "info": "[SAKA VMDA-0001]\nAccurate Fuliza overdraft limit required. Do NOT use if customer has not opted in.",
+          "role": "secondary"
         },
         {
           "id": "unb_mshwari_limit",
           "label": "M-Shwari Limit // SAKA CBS",
           "len": 0,
-          "info": "[SAKA VMDA-0001]\nAccurate M-Shwari loan limit required. Do NOT use if customer has not opted in."
+          "info": "[SAKA VMDA-0001]\nAccurate M-Shwari loan limit required. Do NOT use if customer has not opted in.",
+          "role": "secondary"
         },
         {
           "id": "unb_kcb_limit",
           "label": "KCB M-PESA Limit // SAKA CBS",
           "len": 0,
-          "info": "[SAKA VMDA-0001]\nAccurate KCB M-PESA loan limit required. Do NOT use if customer has not opted in."
+          "info": "[SAKA VMDA-0001]\nAccurate KCB M-PESA loan limit required. Do NOT use if customer has not opted in.",
+          "role": "secondary"
         },
         {
           "id": "unb_storo",
           "label": "Storo Target // Prepay CBS",
           "len": 0,
-          "info": "[SAKA VMDA-0001]\nDaily Storo Bonus target amount for prepay subscribers."
+          "info": "[SAKA VMDA-0001]\nDaily Storo Bonus target amount for prepay subscribers.",
+          "role": "secondary"
         },
         {
           "id": "unb_bundle_plan",
           "label": "Active Bundle Plan // Data / Voice",
           "len": 0,
-          "info": "[SAKA VMDA-0001]\nCustomer active recurring or purchased bundle plan name / price."
+          "info": "[SAKA VMDA-0001]\nCustomer active recurring or purchased bundle plan name / price.",
+          "role": "secondary"
         },
         {
           "id": "unb_regdate",
           "label": "Registration Date // Month & Year",
           "len": 0,
-          "info": "[SAKA VMDA-0001]\nMonth and Year of registration."
+          "info": "[SAKA VMDA-0001]\nMonth and Year of registration.",
+          "role": "secondary"
         },
         {
           "id": "unb_hlr_resume",
@@ -777,7 +870,8 @@
           "len": 0,
           "info": "[SAKA BADD-0003]\nLine resumed on Siebel & HLR operator barring cleared. Advise customer on default barring PIN 0000.",
           "excludeFromCount": true,
-          "itemType": "action"
+          "itemType": "action",
+          "role": "action"
         }
       ],
       "comments": [
@@ -796,34 +890,39 @@
           "id": "pinu_callno",
           "label": "Calling Number // Active IN",
           "len": 10,
-          "info": "[SAKA SKKI-0001]\nProceed only if calling number is a Safaricom number in Active or Expiry state on IN-Data."
+          "info": "[SAKA SKKI-0001]\nProceed only if calling number is a Safaricom number in Active or Expiry state on IN-Data.",
+          "role": "identifier"
         },
         {
           "id": "pinu_msisdn",
           "label": "Affected M-PESA Line",
           "len": 10,
-          "info": "[SAKA SKKI-0001]\nM-PESA account locked due to wrong PIN attempts."
+          "info": "[SAKA SKKI-0001]\nM-PESA account locked due to wrong PIN attempts.",
+          "role": "identifier"
         },
         {
           "id": "pinu_name",
           "label": "Full Names // View 360",
           "len": 0,
           "info": "[SAKA SKKI-0001]\nFull names must tally on View 360 and M-PESA G3. If mismatch, refer to Retail.",
-          "v360": "fullName"
+          "v360": "fullName",
+          "role": "primary"
         },
         {
           "id": "pinu_idnum",
           "label": "ID Number",
           "len": 8,
           "info": "[SAKA SKKI-0001]\nDocument ID used to register M-PESA. If 7-digit ID, assist and advise how ID appears on G3.",
-          "v360": "idNumber"
+          "v360": "idNumber",
+          "role": "primary"
         },
         {
           "id": "pinu_yob",
           "label": "Year of Birth",
           "len": 4,
           "info": "[SAKA VMDA-0001]\nYear of birth.",
-          "v360": "yob"
+          "v360": "yob",
+          "role": "primary"
         }
       ],
       "optional": [
@@ -833,13 +932,15 @@
           "len": 0,
           "info": "[SAKA SKKI-0001]\nGo to Customer Info page on G3 > click \"Unlock PIN\" icon > enter reason & vetting details > submit & confirm. Advise customer to use correct PIN.",
           "excludeFromCount": true,
-          "itemType": "action"
+          "itemType": "action",
+          "role": "action"
         },
         {
           "id": "pinu_altno",
           "label": "Alternative Number",
           "len": 10,
-          "info": "[SAKA SKKI-0001]\nAlternative reachable number."
+          "info": "[SAKA SKKI-0001]\nAlternative reachable number.",
+          "role": "identifier"
         }
       ],
       "comments": [
@@ -868,13 +969,15 @@
           "label": "Calling Number // Active IN",
           "len": 10,
           "mpesaTxn": "msisdn",
-          "info": "[SAKA SKKI-0001]\nMust be a Safaricom number active on IN-Data. Calling on behalf: CEE can only give Start Key DIY."
+          "info": "[SAKA SKKI-0001]\nMust be a Safaricom number active on IN-Data. Calling on behalf: CEE can only give Start Key DIY.",
+          "role": "identifier"
         },
         {
           "id": "sk_msisdn",
           "label": "Affected M-PESA Line",
           "len": 10,
-          "info": "[SAKA SKKI-0001]\nCustomer forgot M-PESA PIN and needs Start Key to reset."
+          "info": "[SAKA SKKI-0001]\nCustomer forgot M-PESA PIN and needs Start Key to reset.",
+          "role": "identifier"
         },
         {
           "id": "sk_name",
@@ -882,21 +985,24 @@
           "len": 0,
           "mpesaTxn": "customerName",
           "info": "[SAKA SKKI-0001]\nFull names as registered on View 360 & G3.",
-          "v360": "fullName"
+          "v360": "fullName",
+          "role": "primary"
         },
         {
           "id": "sk_idnum",
           "label": "ID Number",
           "len": 8,
           "info": "[SAKA SKKI-0001]\nDocument number of registration.",
-          "v360": "idNumber"
+          "v360": "idNumber",
+          "role": "primary"
         },
         {
           "id": "sk_yob",
           "label": "Year of Birth",
           "len": 4,
           "info": "[SAKA VMDA-0001]\nYear of birth.",
-          "v360": "yob"
+          "v360": "yob",
+          "role": "primary"
         }
       ],
       "optional": [
@@ -907,7 +1013,8 @@
           "info": "[SAKA SKKI-0001]\nCRITICAL FRAUD CHECK: Check if customer had a positive PIN-authenticated transaction in last 24h (Send Money, Paybill, Airtime, Bal Check). If YES, REFER CUSTOMER TO RETAIL! Do not issue Start Key at Contact Center.",
           "excludeFromCount": true,
           "itemType": "policy",
-          "violationAdvice": "Positive PIN txn in last 24h. Declined and referred to Retail Center for PIN reset as per fraud policy."
+          "violationAdvice": "Positive PIN txn in last 24h. Declined and referred to Retail Center for PIN reset as per fraud policy.",
+          "role": "policy"
         },
         {
           "id": "sk_rule_24h_swap",
@@ -916,33 +1023,38 @@
           "info": "[SAKA SKKI-0001]\nIf SIM replacement was done within 24h, customer must wait until 24h elapses or visit shop. (Note: DIY PIN reset after SIM swap is available after 7 days, not 24h).",
           "excludeFromCount": true,
           "itemType": "policy",
-          "violationAdvice": "SIM replacement within 24h. Customer advised to wait 24h or visit Retail (DIY PIN reset available after 7 days)."
+          "violationAdvice": "SIM replacement within 24h. Customer advised to wait 24h or visit Retail (DIY PIN reset available after 7 days).",
+          "role": "policy"
         },
         {
           "id": "sk_fdn1",
           "label": "FDN 1 // 2x in 3 mos",
           "len": 10,
           "group": "fdn",
-          "info": "[SAKA VMDA-0001]\nFrequently Dialled Number: MO call/SMS 2x in last 3 months."
+          "info": "[SAKA VMDA-0001]\nFrequently Dialled Number: MO call/SMS 2x in last 3 months.",
+          "role": "secondary"
         },
         {
           "id": "sk_fdn2",
           "label": "FDN 2 // 2x in 3 mos",
           "len": 10,
           "group": "fdn",
-          "info": "[SAKA VMDA-0001]\nSecond FDN."
+          "info": "[SAKA VMDA-0001]\nSecond FDN.",
+          "role": "secondary"
         },
         {
           "id": "sk_mpesa_bal",
           "label": "M-PESA Balance // SAKA Margins",
           "len": 0,
-          "info": "[SAKA VMDA-0001]\nAllowed margins:\n• 1 – 100: ±10\n• 101 – 1,000: ±50\n• 1,001 – 10,000: ±100\n• > 10,001: ±10%"
+          "info": "[SAKA VMDA-0001]\nAllowed margins:\n• 1 – 100: ±10\n• 101 – 1,000: ±50\n• 1,001 – 10,000: ±100\n• > 10,001: ±10%",
+          "role": "secondary"
         },
         {
           "id": "sk_airtime_bal",
           "label": "Airtime Balance",
           "len": 0,
-          "info": "[SAKA VMDA-0001]\nCurrent airtime balance."
+          "info": "[SAKA VMDA-0001]\nCurrent airtime balance.",
+          "role": "secondary"
         },
         {
           "id": "sk_mpesa_txn1",
@@ -950,7 +1062,8 @@
           "len": 0,
           "mpesaTxn": "txn1",
           "group": "self_txn",
-          "info": "[SAKA SKKI-0001 / VMDA-0001]\nSelf-initiated M-PESA transaction from customer account in last 30 days. Must provide Amount, Date/Time, and Recipient name. (2 txns count as 1 pass)."
+          "info": "[SAKA SKKI-0001 / VMDA-0001]\nSelf-initiated M-PESA transaction from customer account in last 30 days. Must provide Amount, Date/Time, and Recipient name. (2 txns count as 1 pass).",
+          "role": "secondary"
         },
         {
           "id": "sk_mpesa_txn2",
@@ -958,49 +1071,57 @@
           "len": 0,
           "mpesaTxn": "txn2",
           "group": "self_txn",
-          "info": "[SAKA SKKI-0001 / VMDA-0001]\nSecond self-initiated M-PESA transaction in last 30 days."
+          "info": "[SAKA SKKI-0001 / VMDA-0001]\nSecond self-initiated M-PESA transaction in last 30 days.",
+          "role": "secondary"
         },
         {
           "id": "sk_fuliza_limit",
           "label": "Fuliza Limit // SAKA CBS",
           "len": 0,
-          "info": "[SAKA VMDA-0001]\nAccurate Fuliza overdraft limit required. Do NOT use if customer has not opted in."
+          "info": "[SAKA VMDA-0001]\nAccurate Fuliza overdraft limit required. Do NOT use if customer has not opted in.",
+          "role": "secondary"
         },
         {
           "id": "sk_mshwari_limit",
           "label": "M-Shwari Limit // SAKA CBS",
           "len": 0,
-          "info": "[SAKA VMDA-0001]\nAccurate M-Shwari loan limit required. Do NOT use if customer has not opted in."
+          "info": "[SAKA VMDA-0001]\nAccurate M-Shwari loan limit required. Do NOT use if customer has not opted in.",
+          "role": "secondary"
         },
         {
           "id": "sk_kcb_limit",
           "label": "KCB M-PESA Limit // SAKA CBS",
           "len": 0,
-          "info": "[SAKA VMDA-0001]\nAccurate KCB M-PESA loan limit required. Do NOT use if customer has not opted in."
+          "info": "[SAKA VMDA-0001]\nAccurate KCB M-PESA loan limit required. Do NOT use if customer has not opted in.",
+          "role": "secondary"
         },
         {
           "id": "sk_storo",
           "label": "Storo Target // Prepay CBS",
           "len": 0,
-          "info": "[SAKA VMDA-0001]\nDaily Storo Bonus target amount for prepay subscribers."
+          "info": "[SAKA VMDA-0001]\nDaily Storo Bonus target amount for prepay subscribers.",
+          "role": "secondary"
         },
         {
           "id": "sk_bundle_plan",
           "label": "Active Bundle Plan // Data / Voice",
           "len": 0,
-          "info": "[SAKA VMDA-0001]\nCustomer active recurring or purchased bundle plan name / price."
+          "info": "[SAKA VMDA-0001]\nCustomer active recurring or purchased bundle plan name / price.",
+          "role": "secondary"
         },
         {
           "id": "sk_regdate",
           "label": "Registration Date // Month & Year",
           "len": 0,
-          "info": "[SAKA VMDA-0001]\nMonth and Year of M-PESA or line registration."
+          "info": "[SAKA VMDA-0001]\nMonth and Year of M-PESA or line registration.",
+          "role": "secondary"
         },
         {
           "id": "sk_sec_questions",
           "label": "Security Questions Guided",
           "len": 0,
-          "info": "[SAKA SKKI-0001]\nEducate customer to set security questions: *334# > My Account > M-PESA PIN Manager > Set Security Questions."
+          "info": "[SAKA SKKI-0001]\nEducate customer to set security questions: *334# > My Account > M-PESA PIN Manager > Set Security Questions.",
+          "role": "secondary"
         }
       ],
       "comments": [
@@ -1028,34 +1149,39 @@
           "id": "puk_callno",
           "label": "Calling Number",
           "len": 10,
-          "info": "[SAKA PUDA-0004]\nCalling number querying PUK."
+          "info": "[SAKA PUDA-0004]\nCalling number querying PUK.",
+          "role": "identifier"
         },
         {
           "id": "puk_msisdn",
           "label": "Line Needing PUK",
           "len": 10,
-          "info": "[SAKA PUDA-0004]\nBlocked MSISDN requiring PUK1 or PUK2."
+          "info": "[SAKA PUDA-0004]\nBlocked MSISDN requiring PUK1 or PUK2.",
+          "role": "identifier"
         },
         {
           "id": "puk_name",
           "label": "Full Names // View 360",
           "len": 0,
           "info": "[SAKA VMDA-0001]\nFull names as registered on View 360.",
-          "v360": "fullName"
+          "v360": "fullName",
+          "role": "primary"
         },
         {
           "id": "puk_idnum",
           "label": "ID Number",
           "len": 8,
           "info": "[SAKA VMDA-0001]\nOriginal registered document ID number.",
-          "v360": "idNumber"
+          "v360": "idNumber",
+          "role": "primary"
         },
         {
           "id": "puk_yob",
           "label": "Year of Birth",
           "len": 4,
           "info": "[SAKA VMDA-0001]\nYear of birth.",
-          "v360": "yob"
+          "v360": "yob",
+          "role": "primary"
         }
       ],
       "optional": [
@@ -1065,7 +1191,8 @@
           "len": 0,
           "info": "[SAKA PUDA-0004]\nCEE must send SMS with PUK to the calling number via CRM SMS tool at end of call after obtaining customer consent.",
           "excludeFromCount": true,
-          "itemType": "action"
+          "itemType": "action",
+          "role": "action"
         },
         {
           "id": "puk_sim_serial",
@@ -1073,13 +1200,15 @@
           "len": 0,
           "info": "[SAKA PUDA-0004]\nRepeat caller check: If customer says PUK is not working, verify physical SIM serial against CRM. If mismatch, advise on SIM replacement.",
           "excludeFromCount": true,
-          "itemType": "action"
+          "itemType": "action",
+          "role": "action"
         },
         {
           "id": "puk_altno",
           "label": "Alternative Number",
           "len": 10,
-          "info": "[SAKA PUDA-0004]\nAlternative contact number."
+          "info": "[SAKA PUDA-0004]\nAlternative contact number.",
+          "role": "identifier"
         }
       ],
       "comments": [
@@ -1112,28 +1241,32 @@
           "id": "upg_callno",
           "label": "Calling Number",
           "len": 10,
-          "info": "[SAKA VMDA-0001 / SCEK-0002]\nCustomer is calling directly from the active line being upgraded to 4G/5G. SAKA VMDA-0001: Basic Vetting only!"
+          "info": "[SAKA VMDA-0001 / SCEK-0002]\nCustomer is calling directly from the active line being upgraded to 4G/5G. SAKA VMDA-0001: Basic Vetting only!",
+          "role": "identifier"
         },
         {
           "id": "upg_name",
           "label": "Full Names // View 360",
           "len": 0,
           "info": "[SAKA VMDA-0001]\nFull names as registered on View 360.",
-          "v360": "fullName"
+          "v360": "fullName",
+          "role": "primary"
         },
         {
           "id": "upg_idnum",
           "label": "ID Number",
           "len": 8,
           "info": "[SAKA VMDA-0001]\nRegistered document number.",
-          "v360": "idNumber"
+          "v360": "idNumber",
+          "role": "primary"
         },
         {
           "id": "upg_yob",
           "label": "Year of Birth",
           "len": 4,
           "info": "[SAKA VMDA-0001]\nYear of birth.",
-          "v360": "yob"
+          "v360": "yob",
+          "role": "primary"
         },
         {
           "id": "upg_simex",
@@ -1141,7 +1274,8 @@
           "len": 20,
           "defaultValue": "89254021",
           "omitDefault": true,
-          "info": "[SAKA SSCB-0006]\n20-digit serial number from the new 4G/5G upgrade SIM card."
+          "info": "[SAKA SSCB-0006]\n20-digit serial number from the new 4G/5G upgrade SIM card.",
+          "role": "identifier"
         }
       ],
       "optional": [
@@ -1151,7 +1285,8 @@
           "len": 0,
           "info": "[SAKA SSCB-0006]\nAdvise customer that the active call will drop immediately once the SIM upgrade order is submitted on View 360.",
           "excludeFromCount": true,
-          "itemType": "action"
+          "itemType": "action",
+          "role": "action"
         },
         {
           "id": "upg_mpesa_reactivate",
@@ -1159,13 +1294,15 @@
           "len": 0,
           "info": "[SAKA MABN-0001]\nAdvise customer on M-PESA activation process after inserting new SIM.",
           "excludeFromCount": true,
-          "itemType": "action"
+          "itemType": "action",
+          "role": "action"
         },
         {
           "id": "upg_altno",
           "label": "Alternative Number",
           "len": 10,
-          "info": "[SAKA SSCB-0006]\nAlternative number in case follow-up is needed."
+          "info": "[SAKA SSCB-0006]\nAlternative number in case follow-up is needed.",
+          "role": "identifier"
         }
       ],
       "comments": [
@@ -1183,27 +1320,31 @@
           "id": "pol_callno",
           "label": "Calling Number",
           "len": 10,
-          "info": "[SAKA SRFB-0005]\nCalling number of previous owner. Can perform max 2 recreations per 72h."
+          "info": "[SAKA SRFB-0005]\nCalling number of previous owner. Can perform max 2 recreations per 72h.",
+          "role": "identifier"
         },
         {
           "id": "pol_msisdn",
           "label": "Pooled Line Number",
           "len": 10,
-          "info": "[SAKA SRFB-0005]\nIndividual normal line in pool. Golden / special lines must be referred to Retail."
+          "info": "[SAKA SRFB-0005]\nIndividual normal line in pool. Golden / special lines must be referred to Retail.",
+          "role": "identifier"
         },
         {
           "id": "pol_name",
           "label": "Full Names // View 360",
           "len": 0,
           "v360": "fullName",
-          "info": "[SAKA SRFB-0005]\nMandatory: Full names as registered on View 360. CEE can accept 2 correct names."
+          "info": "[SAKA SRFB-0005]\nMandatory: Full names as registered on View 360. CEE can accept 2 correct names.",
+          "role": "primary"
         },
         {
           "id": "pol_idnum",
           "label": "ID Number",
           "len": 8,
           "v360": "idNumber",
-          "info": "[SAKA SRFB-0005]\nMandatory: ID document number of registered previous owner."
+          "info": "[SAKA SRFB-0005]\nMandatory: ID document number of registered previous owner.",
+          "role": "primary"
         },
         {
           "id": "pol_old_simex",
@@ -1211,7 +1352,8 @@
           "len": 20,
           "defaultValue": "89254021",
           "omitDefault": true,
-          "info": "[SAKA SRFB-0005]\nMandatory: Old SIM card serial that was attached to line. Must match CRM. DO NOT recreate with different serial."
+          "info": "[SAKA SRFB-0005]\nMandatory: Old SIM card serial that was attached to line. Must match CRM. DO NOT recreate with different serial.",
+          "role": "identifier"
         }
       ],
       "optional": [
@@ -1221,7 +1363,8 @@
           "len": 0,
           "excludeFromCount": true,
           "itemType": "action",
-          "info": "[SAKA SRFB-0005]\nConfirm line is on Pooled status on IN-Data (CRM). For deleted numbers, IN-Data returns error."
+          "info": "[SAKA SRFB-0005]\nConfirm line is on Pooled status on IN-Data (CRM). For deleted numbers, IN-Data returns error.",
+          "role": "action"
         },
         {
           "id": "pol_rule_old_sim",
@@ -1230,7 +1373,8 @@
           "excludeFromCount": true,
           "itemType": "policy",
           "violationAdvice": "If SIM card is lost, damaged, or new SIMEX, do NOT recreate on call. Refer customer to Retail Shop with original ID.",
-          "info": "[SAKA SRFB-0005]\nIf customer has new SIMEX or SIM is lost/damaged, refer to Retail."
+          "info": "[SAKA SRFB-0005]\nIf customer has new SIMEX or SIM is lost/damaged, refer to Retail.",
+          "role": "policy"
         },
         {
           "id": "pol_rule_topup_7d",
@@ -1239,19 +1383,22 @@
           "excludeFromCount": true,
           "itemType": "policy",
           "violationAdvice": "Advise customer to top up within 7 days. Recreated lines without top-up will be returned to pool status on Day 7.",
-          "info": "[SAKA SRFB-0005]\nCustomer must top up within 7 days to maintain the line."
+          "info": "[SAKA SRFB-0005]\nCustomer must top up within 7 days to maintain the line.",
+          "role": "policy"
         },
         {
           "id": "pol_sr_ticket",
           "label": "SR Number // 72h SLA",
           "len": 0,
-          "info": "[SAKA SRFB-0005]\nSR Cat: SIM Card Issues, Type: Number On Pool, Item: Number On Pool (72h SLA) if sync takes >10m."
+          "info": "[SAKA SRFB-0005]\nSR Cat: SIM Card Issues, Type: Number On Pool, Item: Number On Pool (72h SLA) if sync takes >10m.",
+          "role": "identifier"
         },
         {
           "id": "pol_altno",
           "label": "Alternative Number",
           "len": 10,
-          "info": "[SAKA SRFB-0005]\nReachable alternative contact number."
+          "info": "[SAKA SRFB-0005]\nReachable alternative contact number.",
+          "role": "identifier"
         }
       ],
       "comments": [
@@ -1279,40 +1426,46 @@
           "id": "mps_callno",
           "label": "Calling Number",
           "len": 10,
-          "info": "[SAKA VMDA-0001]\nCalling number requesting suspension."
+          "info": "[SAKA VMDA-0001]\nCalling number requesting suspension.",
+          "role": "identifier"
         },
         {
           "id": "mps_msisdn",
           "label": "M-PESA Line to Suspend",
           "len": 10,
-          "info": "[SAKA VMDA-0001]\nM-PESA account to be suspended."
+          "info": "[SAKA VMDA-0001]\nM-PESA account to be suspended.",
+          "role": "identifier"
         },
         {
           "id": "mps_reason",
           "label": "Reason for Suspension",
           "len": 0,
-          "info": "[SAKA VMDA-0001]\nLost phone, suspected fraud, customer request, or dispute."
+          "info": "[SAKA VMDA-0001]\nLost phone, suspected fraud, customer request, or dispute.",
+          "role": "identifier"
         },
         {
           "id": "mps_name",
           "label": "Full Names // View 360",
           "len": 0,
           "info": "[SAKA VMDA-0001]\nFull names as registered.",
-          "v360": "fullName"
+          "v360": "fullName",
+          "role": "primary"
         },
         {
           "id": "mps_idnum",
           "label": "ID Number",
           "len": 8,
           "info": "[SAKA VMDA-0001]\nRegistered ID document number.",
-          "v360": "idNumber"
+          "v360": "idNumber",
+          "role": "primary"
         },
         {
           "id": "mps_yob",
           "label": "Year of Birth",
           "len": 4,
           "info": "[SAKA VMDA-0001]\nYear of birth.",
-          "v360": "yob"
+          "v360": "yob",
+          "role": "primary"
         }
       ],
       "optional": [
@@ -1322,7 +1475,8 @@
           "len": 0,
           "info": "[SAKA VMDA-0001]\nSuspend account on M-PESA G3.",
           "excludeFromCount": true,
-          "itemType": "action"
+          "itemType": "action",
+          "role": "action"
         },
         {
           "id": "mps_state_tag",
@@ -1330,13 +1484,15 @@
           "len": 0,
           "info": "[SAKA VMDA-0001]\nApply state tag if required by fraud guidelines.",
           "excludeFromCount": true,
-          "itemType": "action"
+          "itemType": "action",
+          "role": "action"
         },
         {
           "id": "mps_altno",
           "label": "Alternative Number",
           "len": 10,
-          "info": "[SAKA VMDA-0001]\nAlternative contact number."
+          "info": "[SAKA VMDA-0001]\nAlternative contact number.",
+          "role": "identifier"
         }
       ],
       "comments": [
@@ -1356,13 +1512,15 @@
           "label": "Calling Number",
           "len": 10,
           "mpesaTxn": "msisdn",
-          "info": "[SAKA VMDA-0001]\nCalling number requesting unsuspension."
+          "info": "[SAKA VMDA-0001]\nCalling number requesting unsuspension.",
+          "role": "identifier"
         },
         {
           "id": "mpu_msisdn",
           "label": "M-PESA Line to Unsuspend",
           "len": 10,
-          "info": "[SAKA VMDA-0001]\nCustomer had requested suspension and now wants it lifted."
+          "info": "[SAKA VMDA-0001]\nCustomer had requested suspension and now wants it lifted.",
+          "role": "identifier"
         },
         {
           "id": "mpu_name",
@@ -1370,21 +1528,24 @@
           "len": 0,
           "mpesaTxn": "customerName",
           "info": "[SAKA VMDA-0001]\nFull names as registered on View 360 & G3.",
-          "v360": "fullName"
+          "v360": "fullName",
+          "role": "primary"
         },
         {
           "id": "mpu_idnum",
           "label": "ID Number",
           "len": 8,
           "info": "[SAKA VMDA-0001]\nDocument ID used to register M-PESA.",
-          "v360": "idNumber"
+          "v360": "idNumber",
+          "role": "primary"
         },
         {
           "id": "mpu_yob",
           "label": "Year of Birth",
           "len": 4,
           "info": "[SAKA VMDA-0001]\nYear of birth.",
-          "v360": "yob"
+          "v360": "yob",
+          "role": "primary"
         }
       ],
       "optional": [
@@ -1395,33 +1556,38 @@
           "info": "[SAKA VMDA-0001]\nLines suspended due to fraud tag or civil court cases CANNOT be unsuspended at Call Center. Refer to Safaricom Risk HQ1.",
           "excludeFromCount": true,
           "itemType": "policy",
-          "violationAdvice": "Line suspended due to fraud tag / civil court case. Cannot unbar at Contact Center. Referred to Safaricom Risk HQ1."
+          "violationAdvice": "Line suspended due to fraud tag / civil court case. Cannot unbar at Contact Center. Referred to Safaricom Risk HQ1.",
+          "role": "policy"
         },
         {
           "id": "mpu_fdn1",
           "label": "FDN 1 // 2x in 3 mos",
           "len": 10,
           "group": "fdn",
-          "info": "[SAKA VMDA-0001]\nFrequently Dialled Number: MO call/SMS 2x in last 3 months."
+          "info": "[SAKA VMDA-0001]\nFrequently Dialled Number: MO call/SMS 2x in last 3 months.",
+          "role": "secondary"
         },
         {
           "id": "mpu_fdn2",
           "label": "FDN 2 // 2x in 3 mos",
           "len": 10,
           "group": "fdn",
-          "info": "[SAKA VMDA-0001]\nSecond FDN."
+          "info": "[SAKA VMDA-0001]\nSecond FDN.",
+          "role": "secondary"
         },
         {
           "id": "mpu_mpesa_bal",
           "label": "M-PESA Balance // SAKA Margins",
           "len": 0,
-          "info": "[SAKA VMDA-0001]\nAllowed margins:\n• 1 – 100: ±10\n• 101 – 1,000: ±50\n• 1,001 – 10,000: ±100\n• > 10,001: ±10%"
+          "info": "[SAKA VMDA-0001]\nAllowed margins:\n• 1 – 100: ±10\n• 101 – 1,000: ±50\n• 1,001 – 10,000: ±100\n• > 10,001: ±10%",
+          "role": "secondary"
         },
         {
           "id": "mpu_airtime_bal",
           "label": "Airtime Balance",
           "len": 0,
-          "info": "[SAKA VMDA-0001]\nCurrent airtime balance."
+          "info": "[SAKA VMDA-0001]\nCurrent airtime balance.",
+          "role": "secondary"
         },
         {
           "id": "mpu_self_txn1",
@@ -1429,7 +1595,8 @@
           "len": 0,
           "mpesaTxn": "txn1",
           "group": "self_txn",
-          "info": "[SAKA VMDA-0001]\nSelf-initiated M-PESA transaction from customer account in last 30 days. Must provide Amount, Date/Time, and Recipient name. (2 txns count as 1 pass)."
+          "info": "[SAKA VMDA-0001]\nSelf-initiated M-PESA transaction from customer account in last 30 days. Must provide Amount, Date/Time, and Recipient name. (2 txns count as 1 pass).",
+          "role": "secondary"
         },
         {
           "id": "mpu_self_txn2",
@@ -1437,43 +1604,50 @@
           "len": 0,
           "mpesaTxn": "txn2",
           "group": "self_txn",
-          "info": "[SAKA VMDA-0001]\nSecond self-initiated M-PESA transaction in last 30 days."
+          "info": "[SAKA VMDA-0001]\nSecond self-initiated M-PESA transaction in last 30 days.",
+          "role": "secondary"
         },
         {
           "id": "mpu_fuliza_limit",
           "label": "Fuliza Limit // SAKA CBS",
           "len": 0,
-          "info": "[SAKA VMDA-0001]\nAccurate Fuliza overdraft limit required. Do NOT use if customer has not opted in."
+          "info": "[SAKA VMDA-0001]\nAccurate Fuliza overdraft limit required. Do NOT use if customer has not opted in.",
+          "role": "secondary"
         },
         {
           "id": "mpu_mshwari_limit",
           "label": "M-Shwari Limit // SAKA CBS",
           "len": 0,
-          "info": "[SAKA VMDA-0001]\nAccurate M-Shwari loan limit required. Do NOT use if customer has not opted in."
+          "info": "[SAKA VMDA-0001]\nAccurate M-Shwari loan limit required. Do NOT use if customer has not opted in.",
+          "role": "secondary"
         },
         {
           "id": "mpu_kcb_limit",
           "label": "KCB M-PESA Limit // SAKA CBS",
           "len": 0,
-          "info": "[SAKA VMDA-0001]\nAccurate KCB M-PESA loan limit required. Do NOT use if customer has not opted in."
+          "info": "[SAKA VMDA-0001]\nAccurate KCB M-PESA loan limit required. Do NOT use if customer has not opted in.",
+          "role": "secondary"
         },
         {
           "id": "mpu_storo",
           "label": "Storo Target // Prepay CBS",
           "len": 0,
-          "info": "[SAKA VMDA-0001]\nDaily Storo Bonus target amount for prepay subscribers."
+          "info": "[SAKA VMDA-0001]\nDaily Storo Bonus target amount for prepay subscribers.",
+          "role": "secondary"
         },
         {
           "id": "mpu_bundle_plan",
           "label": "Active Bundle Plan // Data / Voice",
           "len": 0,
-          "info": "[SAKA VMDA-0001]\nCustomer active recurring or purchased bundle plan name / price."
+          "info": "[SAKA VMDA-0001]\nCustomer active recurring or purchased bundle plan name / price.",
+          "role": "secondary"
         },
         {
           "id": "mpu_regdate",
           "label": "Registration Date // Month & Year",
           "len": 0,
-          "info": "[SAKA VMDA-0001]\nMonth and Year of registration."
+          "info": "[SAKA VMDA-0001]\nMonth and Year of registration.",
+          "role": "secondary"
         },
         {
           "id": "mpu_g3_resumed",
@@ -1481,7 +1655,8 @@
           "len": 0,
           "info": "[SAKA VMDA-0001]\nAccount unsuspended on G3.",
           "excludeFromCount": true,
-          "itemType": "action"
+          "itemType": "action",
+          "role": "action"
         }
       ],
       "comments": [
@@ -1499,13 +1674,15 @@
           "id": "gen_callno",
           "label": "Calling Number",
           "len": 10,
-          "info": "[SAKA IDPA-0001]\nMandatory calling number as per SAKA IDPA-0001."
+          "info": "[SAKA IDPA-0001]\nMandatory calling number as per SAKA IDPA-0001.",
+          "role": "identifier"
         },
         {
           "id": "gen_msisdn",
           "label": "Customer Line Number",
           "len": 10,
-          "info": "[SAKA IDPA-0001]\nThe subject MSISDN the customer is calling about."
+          "info": "[SAKA IDPA-0001]\nThe subject MSISDN the customer is calling about.",
+          "role": "identifier"
         },
         {
           "id": "gen_query",
@@ -1513,7 +1690,8 @@
           "len": 0,
           "info": "[SAKA IDPA-0001]\nMain issue or enquiry (Tariff, Network, Bundles, Statement, Roaming, Billing, etc.).",
           "multiline": true,
-          "maxLines": 4
+          "maxLines": 4,
+          "role": "identifier"
         },
         {
           "id": "gen_resolution",
@@ -1521,7 +1699,8 @@
           "len": 0,
           "info": "[SAKA IDPA-0001]\nResolution, guidance, troubleshooting steps, or advice provided.",
           "multiline": true,
-          "maxLines": 4
+          "maxLines": 4,
+          "role": "identifier"
         }
       ],
       "optional": [
@@ -1530,51 +1709,59 @@
           "label": "Full Names // View 360",
           "len": 0,
           "info": "[SAKA IDPA-0001]\nIf inquiry touches account details, confirm registered names.",
-          "v360": "fullName"
+          "v360": "fullName",
+          "role": "primary"
         },
         {
           "id": "gen_idnum",
           "label": "ID Number",
           "len": 8,
           "info": "[SAKA VMDA-0001]\nID document number if account data requested.",
-          "v360": "idNumber"
+          "v360": "idNumber",
+          "role": "primary"
         },
         {
           "id": "gen_yob",
           "label": "Year of Birth",
           "len": 4,
           "info": "[SAKA VMDA-0001]\nYear of birth if primary vetting needed.",
-          "v360": "yob"
+          "v360": "yob",
+          "role": "primary"
         },
         {
           "id": "gen_acct_check",
           "label": "Account Checked",
           "len": 0,
-          "info": "[SAKA IDPA-0001]\nDetails of account check performed (Airtime, Data, M-PESA statement)."
+          "info": "[SAKA IDPA-0001]\nDetails of account check performed (Airtime, Data, M-PESA statement).",
+          "role": "identifier"
         },
         {
           "id": "gen_on_behalf",
           "label": "Calling on Behalf",
           "len": 10,
-          "info": "[SAKA IDPA-0001]\nIf customer is calling on behalf of another person, capture 3rd party line here."
+          "info": "[SAKA IDPA-0001]\nIf customer is calling on behalf of another person, capture 3rd party line here.",
+          "role": "identifier"
         },
         {
           "id": "gen_repeat",
           "label": "Repeat Caller",
           "len": 0,
-          "info": "[SAKA IDPA-0001]\nSelect \"Repeat Caller\" if customer called previously on same unresolved issue."
+          "info": "[SAKA IDPA-0001]\nSelect \"Repeat Caller\" if customer called previously on same unresolved issue.",
+          "role": "identifier"
         },
         {
           "id": "gen_sr_ticket",
           "label": "SR Number",
           "len": 0,
-          "info": "[SAKA IDPA-0001]\nCRM Service Request ticket number if escalated."
+          "info": "[SAKA IDPA-0001]\nCRM Service Request ticket number if escalated.",
+          "role": "identifier"
         },
         {
           "id": "gen_sla",
           "label": "SLA Given",
           "len": 0,
-          "info": "[SAKA IDPA-0001]\nSLA communicated to customer (e.g. 2 hours, 24 hours, 72 hours)."
+          "info": "[SAKA IDPA-0001]\nSLA communicated to customer (e.g. 2 hours, 24 hours, 72 hours).",
+          "role": "identifier"
         }
       ],
       "comments": [],
@@ -1610,31 +1797,36 @@
           "id": "ap_callingno",
           "label": "Calling Personal Number",
           "len": 10,
-          "info": "[SAKA SCEK-0002 / SSCB-0006]\nCalling line is Agent's personal line. Must be active on IN-data >30 days. Max 2 swap requests per 24 hours."
+          "info": "[SAKA SCEK-0002 / SSCB-0006]\nCalling line is Agent's personal line. Must be active on IN-data >30 days. Max 2 swap requests per 24 hours.",
+          "role": "identifier"
         },
         {
           "id": "ap_tillno",
           "label": "Till / Store Number",
           "len": 7,
-          "info": "[SAKA DSMP-0008 / Art 410]\nStore Number or Head Office Shortcode of the M-PESA Agency."
+          "info": "[SAKA DSMP-0008 / Art 410]\nStore Number or Head Office Shortcode of the M-PESA Agency.",
+          "role": "identifier"
         },
         {
           "id": "ap_opname",
           "label": "Operator Full Names",
           "len": 0,
-          "info": "[SAKA DSMP-0008 / Art 410]\nFull names of the Till Operator as registered on M-PESA G2/G3."
+          "info": "[SAKA DSMP-0008 / Art 410]\nFull names of the Till Operator as registered on M-PESA G2/G3.",
+          "role": "primary"
         },
         {
           "id": "ap_opid",
           "label": "Operator ID",
           "len": 0,
-          "info": "[SAKA DSMP-0008 / Art 410]\nOperator ID / Assistant Number (e.g. 1, 2, 3...) of the Till Operator."
+          "info": "[SAKA DSMP-0008 / Art 410]\nOperator ID / Assistant Number (e.g. 1, 2, 3...) of the Till Operator.",
+          "role": "primary"
         },
         {
           "id": "ap_opnatid",
           "label": "Operator National ID",
           "len": 8,
-          "info": "[SAKA DSMP-0008 / Art 410]\nOfficial National ID Document number of the Till Operator."
+          "info": "[SAKA DSMP-0008 / Art 410]\nOfficial National ID Document number of the Till Operator.",
+          "role": "primary"
         }
       ],
       "optional": [
@@ -1642,31 +1834,36 @@
           "id": "ap_targetno",
           "label": "Target Number / MSISDN",
           "len": 10,
-          "info": "[SAKA SSCB-0006]\nTarget customer number being assisted, swapped, or unlocked."
+          "info": "[SAKA SSCB-0006]\nTarget customer number being assisted, swapped, or unlocked.",
+          "role": "identifier"
         },
         {
           "id": "ap_tid",
           "label": "Transaction ID (TID)",
           "len": 10,
-          "info": "[SAKA DSMP-0008]\nM-PESA Transaction ID for deposit reversals."
+          "info": "[SAKA DSMP-0008]\nM-PESA Transaction ID for deposit reversals.",
+          "role": "identifier"
         },
         {
           "id": "ap_amount",
           "label": "Transaction Amount (KES)",
           "len": 0,
-          "info": "[SAKA DSMP-0008]\nExact transaction amount in KES."
+          "info": "[SAKA DSMP-0008]\nExact transaction amount in KES.",
+          "role": "identifier"
         },
         {
           "id": "ap_reason",
           "label": "Reason for Call",
           "len": 0,
-          "info": "[SAKA DSMP-0008]\nDeposit Reversal, SIM Swap Request, Till PIN Unlock, or Float Query."
+          "info": "[SAKA DSMP-0008]\nDeposit Reversal, SIM Swap Request, Till PIN Unlock, or Float Query.",
+          "role": "identifier"
         },
         {
           "id": "ap_sr_ticket",
           "label": "SR Number",
           "len": 0,
-          "info": "CRM Service Request ticket number if escalated."
+          "info": "CRM Service Request ticket number if escalated.",
+          "role": "identifier"
         }
       ],
       "comments": [
@@ -1694,43 +1891,50 @@
           "id": "tn_nominated",
           "label": "Calling / Nominated MSISDN",
           "len": 10,
-          "info": "[SAKA LBCF-0014 / MAIL-0005]\nCall must originate from the registered Nominated Number / Finance Contact."
+          "info": "[SAKA LBCF-0014 / MAIL-0005]\nCall must originate from the registered Nominated Number / Finance Contact.",
+          "role": "identifier"
         },
         {
           "id": "tn_finance_name",
           "label": "Nominated Contact Name",
           "len": 0,
-          "info": "[SAKA MAIL-0005 / MMBC-0003]\nFull name of registered finance contact / nominated number holder as on G2."
+          "info": "[SAKA MAIL-0005 / MMBC-0003]\nFull name of registered finance contact / nominated number holder as on G2.",
+          "role": "primary"
         },
         {
           "id": "tn_finance_id",
           "label": "Nominated Contact National ID",
           "len": 8,
-          "info": "[SAKA MAIL-0005 / MMBC-0003]\nNational ID of registered finance contact / nominated number holder."
+          "info": "[SAKA MAIL-0005 / MMBC-0003]\nNational ID of registered finance contact / nominated number holder.",
+          "role": "primary"
         },
         {
           "id": "tn_bizname",
           "label": "Merchant Business Name",
           "len": 0,
-          "info": "[SAKA LBCF-0014 / MMBC-0003]\nOfficial business / store name as registered on M-PESA G2."
+          "info": "[SAKA LBCF-0014 / MMBC-0003]\nOfficial business / store name as registered on M-PESA G2.",
+          "role": "identifier"
         },
         {
           "id": "tn_storeno",
           "label": "Store / Head Office Number",
           "len": 0,
-          "info": "[SAKA LBCF-0014]\nHead Office / Store number associated with the merchant till."
+          "info": "[SAKA LBCF-0014]\nHead Office / Store number associated with the merchant till.",
+          "role": "identifier"
         },
         {
           "id": "tn_tillno",
           "label": "Till Number to Swap",
           "len": 7,
-          "info": "[SAKA LBCF-0014]\nSpecific Till number whose notification SIM is being replaced."
+          "info": "[SAKA LBCF-0014]\nSpecific Till number whose notification SIM is being replaced.",
+          "role": "identifier"
         },
         {
           "id": "tn_till_msisdn",
           "label": "Till Notification MSISDN",
           "len": 10,
-          "info": "[SAKA LBCF-0014]\nMobile number currently receiving till notification messages to be replaced."
+          "info": "[SAKA LBCF-0014]\nMobile number currently receiving till notification messages to be replaced.",
+          "role": "identifier"
         },
         {
           "id": "tn_simex_serial",
@@ -1738,7 +1942,8 @@
           "len": 20,
           "defaultValue": "89254021",
           "omitDefault": true,
-          "info": "[SAKA LBCF-0014]\n20-digit serial / IMSI from new replacement SIM card pack (KSh 100)."
+          "info": "[SAKA LBCF-0014]\n20-digit serial / IMSI from new replacement SIM card pack (KSh 100).",
+          "role": "identifier"
         }
       ],
       "optional": [
@@ -1746,13 +1951,15 @@
           "id": "tn_opid",
           "label": "Operator ID",
           "len": 0,
-          "info": "[SAKA LBCF-0014 / MAIL-0005]\nOperator ID for transacting till / store operator."
+          "info": "[SAKA LBCF-0014 / MAIL-0005]\nOperator ID for transacting till / store operator.",
+          "role": "primary"
         },
         {
           "id": "tn_reason",
           "label": "Reason for Swap",
           "len": 0,
-          "info": "[SAKA LBCF-0014]\nLost/stolen SIM, damaged SIM, inactive sub-agent, or self-swap limit exceeded (max 2/day, 4/mo)."
+          "info": "[SAKA LBCF-0014]\nLost/stolen SIM, damaged SIM, inactive sub-agent, or self-swap limit exceeded (max 2/day, 4/mo).",
+          "role": "identifier"
         }
       ],
       "comments": [
@@ -1789,49 +1996,57 @@
           "id": "ar_agent_no",
           "label": "Agent / Store / Till Number",
           "len": 7,
-          "info": "[SAKA DSMP-0008 / AMLF-0002]\nAgent till number or store number initiating reversal."
+          "info": "[SAKA DSMP-0008 / AMLF-0002]\nAgent till number or store number initiating reversal.",
+          "role": "identifier"
         },
         {
           "id": "ar_till_msisdn",
           "label": "Till Mobile Number",
           "len": 10,
-          "info": "[SAKA DSMP-0008]\nMSISDN attached to the agent till."
+          "info": "[SAKA DSMP-0008]\nMSISDN attached to the agent till.",
+          "role": "identifier"
         },
         {
           "id": "ar_op_name",
           "label": "Operator Full Name",
           "len": 0,
-          "info": "[SAKA DSMP-0008]\nFull name of operator/agent calling."
+          "info": "[SAKA DSMP-0008]\nFull name of operator/agent calling.",
+          "role": "primary"
         },
         {
           "id": "ar_op_natid",
           "label": "Operator National ID",
           "len": 8,
-          "info": "[SAKA DSMP-0008]\nNational ID of operator/agent calling."
+          "info": "[SAKA DSMP-0008]\nNational ID of operator/agent calling.",
+          "role": "primary"
         },
         {
           "id": "ar_txnid",
           "label": "Transaction ID",
           "len": 10,
-          "info": "[SAKA DSMP-0008 / AMLF-0002]\nOriginal transaction receipt code to be reversed."
+          "info": "[SAKA DSMP-0008 / AMLF-0002]\nOriginal transaction receipt code to be reversed.",
+          "role": "identifier"
         },
         {
           "id": "ar_amount",
           "label": "Transaction Amount",
           "len": 0,
-          "info": "[SAKA DSMP-0008]\nAmount of deposit/withdrawal to be reversed."
+          "info": "[SAKA DSMP-0008]\nAmount of deposit/withdrawal to be reversed.",
+          "role": "identifier"
         },
         {
           "id": "ar_txntype",
           "label": "Transaction Type",
           "len": 0,
-          "info": "[SAKA DSMP-0008]\nCustomer Deposit, Customer Withdrawal, or Bamba Airtime."
+          "info": "[SAKA DSMP-0008]\nCustomer Deposit, Customer Withdrawal, or Bamba Airtime.",
+          "role": "identifier"
         },
         {
           "id": "ar_customer_no",
           "label": "Customer Mobile Number",
           "len": 10,
-          "info": "[SAKA DSMP-0008]\nCustomer MSISDN who received wrong deposit or did wrong withdrawal."
+          "info": "[SAKA DSMP-0008]\nCustomer MSISDN who received wrong deposit or did wrong withdrawal.",
+          "role": "identifier"
         }
       ],
       "optional": [
@@ -1839,19 +2054,22 @@
           "id": "ar_within_1hr",
           "label": "Within 1 Hour Window",
           "len": 0,
-          "info": "[SAKA DSMP-0008]\nWithin 1h: eligible for 2530 DIY reversal. Past 1h: assisted reversal on call."
+          "info": "[SAKA DSMP-0008]\nWithin 1h: eligible for 2530 DIY reversal. Past 1h: assisted reversal on call.",
+          "role": "secondary"
         },
         {
           "id": "ar_srno",
           "label": "SR Number // 72h SLA",
           "len": 0,
-          "info": "[SAKA DSMP-0008]\nSR Cat: MPESA services, Type: Reversal- No funds at Agent, Item: no Funds at MPESA Agent dealer (72h SLA)."
+          "info": "[SAKA DSMP-0008]\nSR Cat: MPESA services, Type: Reversal- No funds at Agent, Item: no Funds at MPESA Agent dealer (72h SLA).",
+          "role": "identifier"
         },
         {
           "id": "ar_reason",
           "label": "Reason for Reversal",
           "len": 0,
-          "info": "[SAKA DSMP-0008]\nWrong customer number, excess amount, or customer cancelled."
+          "info": "[SAKA DSMP-0008]\nWrong customer number, excess amount, or customer cancelled.",
+          "role": "identifier"
         }
       ],
       "comments": [

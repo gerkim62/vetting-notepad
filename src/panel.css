@@ -3537,6 +3537,33 @@ textarea.mat-input.vfield-textarea::-webkit-resizer {
   font-size: 9px;
   color: var(--text-muted);
 }
+.break-time-calc {
+  font-size: 9px;
+  color: var(--color-primary);
+  font-weight: 500;
+  display: block;
+}
+.pre-chip {
+  padding: 3px 8px;
+  font-size: 10px;
+  font-weight: 500;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-line);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.pre-chip:hover {
+  border-color: var(--color-primary);
+  color: var(--text-main);
+}
+.pre-chip.active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+  font-weight: 600;
+}
 .break-time-input {
   width: 82px;
   height: 25px;

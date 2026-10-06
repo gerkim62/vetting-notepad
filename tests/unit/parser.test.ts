@@ -53,6 +53,17 @@ National ID / Document: Failed (Failed)`;
     expect(res.status[idField.id]).toBe('failed');
   });
 
+  it('parses FieldName: Failed format cleanly without duplicate parenthetical', () => {
+    const raw = `SIM Swap – Vetting
+Full Names: Dennis Lagat (Passed)
+Registration Date: Failed`;
+
+    const res = parseVettingText(raw, types);
+    expect(res.typeId).toBe('swap');
+    expect(res.status['sw_regdate']).toBe('failed');
+    expect(res.values['sw_regdate']).toBe('');
+  });
+
   it('parses comma-separated group fields', () => {
     const raw = `Agent Calling (Personal Number) – Call Centre Vetting
 Calling Number: 0722123456, Till / Store Number: 123456`;

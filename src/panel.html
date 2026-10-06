@@ -349,7 +349,7 @@
             <div class="break-time-row">
               <div class="break-time-label">
                 <span>Break 1</span>
-                <span class="break-fixed-dur">10 min</span>
+                <span class="break-time-calc" id="break1Calc">Starts --:-- • Ends --:-- (10m)</span>
               </div>
               <input type="time" class="break-time-input" id="break1Start" step="60">
             </div>
@@ -357,7 +357,7 @@
             <div class="break-time-row">
               <div class="break-time-label">
                 <span>Lunch</span>
-                <span class="break-fixed-dur">40 min</span>
+                <span class="break-time-calc" id="lunchCalc">Starts --:-- • Ends --:-- (40m)</span>
               </div>
               <input type="time" class="break-time-input" id="lunchStart" step="60">
             </div>
@@ -365,7 +365,7 @@
             <div class="break-time-row">
               <div class="break-time-label">
                 <span>Break 2</span>
-                <span class="break-fixed-dur">10 min</span>
+                <span class="break-time-calc" id="break2Calc">Starts --:-- • Ends --:-- (10m)</span>
               </div>
               <input type="time" class="break-time-input" id="break2Start" step="60">
             </div>
@@ -373,9 +373,24 @@
             <div class="break-time-row">
               <div class="break-time-label">
                 <span>Shift End</span>
-                <span class="break-fixed-dur">End of day</span>
+                <span class="break-time-calc" id="shiftEndCalc">Shift ends at --:--</span>
               </div>
               <input type="time" class="break-time-input" id="shiftEnd" step="60">
+            </div>
+          </div>
+
+          <!-- Pre-break Heads-up Warning -->
+          <div class="break-pre-reminder-box" style="margin-top:12px;margin-bottom:12px;background:var(--bg-panel-alt);border:1px solid var(--border-line);border-radius:var(--radius-sm);padding:8px 10px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+              <span style="font-size:11px;font-weight:600;color:var(--text-main);">Pre-break Heads-up Alert</span>
+              <span id="preBreakBadge" style="font-size:10px;color:var(--color-primary);font-weight:600;">2m before</span>
+            </div>
+            <div style="font-size:9.5px;color:var(--text-muted);margin-bottom:8px;">Advance reminder before break starts so you can wrap up calls</div>
+            <div class="pre-break-chips" id="preBreakChips" style="display:flex;gap:6px;">
+              <button type="button" class="pre-chip" data-min="0">Off</button>
+              <button type="button" class="pre-chip" data-min="1">1m</button>
+              <button type="button" class="pre-chip active" data-min="2">2m</button>
+              <button type="button" class="pre-chip" data-min="5">5m</button>
             </div>
           </div>
 
@@ -384,9 +399,15 @@
           <div class="break-toggles-list">
             <label class="break-toggle-row">
               <div class="break-toggle-info">
+                <span>Active Page Break Overlay</span>
+                <span style="font-size:9.5px;color:var(--text-muted);display:block;">Show live break screensaver on active tab</span>
+              </div>
+              <input type="checkbox" id="chkShowPageOverlay" class="custom-chk" checked>
+            </label>
+            <label class="break-toggle-row">
+              <div class="break-toggle-info">
                 <span>System Notification</span>
-                <span class="break-toggle-warn" id="notifBlockedBadge" style="display:none;">Blocked in browser
-                  settings</span>
+                <span class="break-toggle-warn" id="notifBlockedBadge" style="display:none;">Blocked in browser settings</span>
               </div>
               <input type="checkbox" id="chkNotifyDesktop" class="custom-chk">
             </label>

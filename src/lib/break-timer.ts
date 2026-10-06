@@ -10,12 +10,16 @@ export interface ScheduleConfig {
   shiftEnd?: string;
   notifyDesktop?: boolean;
   notifyToast?: boolean;
+  preBreakMinutes?: number;
+  showPageOverlay?: boolean;
 }
 
 export interface BreakCalculationResult {
   isConfigured: boolean;
   currentPhase: string;
   isActive: boolean;
+  isPreBreak: boolean;
+  preBreakMinutes: number;
   eventName: string;
   eventTag: string;
   icon: string;
@@ -25,6 +29,13 @@ export interface BreakCalculationResult {
   diffSec: number;
   targetTime: Date | null;
   notifKey: string | null;
+  b1Start?: Date | null;
+  b1End?: Date | null;
+  lunchStart?: Date | null;
+  lunchEnd?: Date | null;
+  b2Start?: Date | null;
+  b2End?: Date | null;
+  shiftEnd?: Date | null;
 }
 
 export const DEFAULT_BREAK_SCHEDULE: ScheduleConfig = {
@@ -33,7 +44,9 @@ export const DEFAULT_BREAK_SCHEDULE: ScheduleConfig = {
   break2: '',    // 10 min break
   shiftEnd: '',  // End of day
   notifyDesktop: false,
-  notifyToast: true
+  notifyToast: true,
+  preBreakMinutes: 2,
+  showPageOverlay: true
 };
 
 export function parseTimeToDate(timeStr?: string | null, now: Date = new Date()): Date | null {
@@ -95,6 +108,8 @@ export function calculateBreakState(schedule: ScheduleConfig = DEFAULT_BREAK_SCH
       isConfigured: false,
       currentPhase: 'unconfigured',
       isActive: false,
+      isPreBreak: false,
+      preBreakMinutes: schedule.preBreakMinutes ?? 2,
       eventName: 'No Schedule Set',
       eventTag: 'Idle',
       icon: '☕',
@@ -196,10 +211,22 @@ export function calculateBreakState(schedule: ScheduleConfig = DEFAULT_BREAK_SCH
     statusSub = 'All scheduled breaks and shift ended';
   }
 
+  let isPreBreak = false;
+  const preBreakMins = schedule.preBreakMinutes ?? 2;
+  if (!isActive && targetTime && preBreakMins > 0) {
+    const preBreakSec = preBreakMins * 60;
+    if (diffSec > 0 && diffSec <= preBreakSec && currentPhase.startsWith('before_')) {
+      isPreBreak = true;
+      notifKey = `${currentPhase}_prebreak_${preBreakMins}`;
+    }
+  }
+
   return {
     isConfigured: true,
     currentPhase,
     isActive,
+    isPreBreak,
+    preBreakMinutes: preBreakMins,
     eventName,
     eventTag,
     icon,
@@ -208,8 +235,42 @@ export function calculateBreakState(schedule: ScheduleConfig = DEFAULT_BREAK_SCH
     statusSub,
     diffSec,
     targetTime,
-    notifKey
+    notifKey,
+    b1Start,
+    b1End,
+    lunchStart: lStart,
+    lunchEnd: lEnd,
+    b2Start,
+    b2End,
+    shiftEnd: sEnd
   };
+}
+
+/**
+ * Formats a clean human-readable schedule time range: e.g. "Starts 10:15 • Ends 10:25 (10m)".
+ * If start is not set, returns placeholder: "Starts --:-- • Ends --:-- (10m)".
+ */
+export function formatTimeRange(start?: Date | null, end?: Date | null, durationLabel?: string): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const durSuffix = durationLabel ? ` (${durationLabel})` : '';
+  if (!start) {
+    return `Starts --:-- • Ends --:--${durSuffix}`;
+  }
+  const startStr = `${pad(start.getHours())}:${pad(start.getMinutes())}`;
+  if (!end) {
+    return `Starts ${startStr}${durSuffix}`;
+  }
+  const endStr = `${pad(end.getHours())}:${pad(end.getMinutes())}`;
+  return `Starts ${startStr} • Ends ${endStr}${durSuffix}`;
+}
+
+/**
+ * Formats shift end time: e.g. "Shift ends at 17:00" or "Shift ends at --:--".
+ */
+export function formatShiftEndTime(end?: Date | null): string {
+  if (!end) return 'Shift ends at --:--';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `Shift ends at ${pad(end.getHours())}:${pad(end.getMinutes())}`;
 }
 
 /**

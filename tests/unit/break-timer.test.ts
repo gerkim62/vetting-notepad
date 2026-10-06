@@ -5,7 +5,10 @@ import {
   formatShortDuration,
   formatCountdown,
   formatBigCountdown,
-  formatActiveBreakDisplay
+  formatActiveBreakDisplay,
+  formatTimeRange,
+  formatShiftEndTime,
+  parseTimeToDate
 } from '../../src/lib/break-timer.js';
 
 describe('Break Timer & Notifier Engine', () => {
@@ -82,5 +85,57 @@ describe('Break Timer & Notifier Engine', () => {
     expect(formatShortDuration(300)).toBe('5m');
     expect(formatShortDuration(8100)).toBe('2h 15m');
     expect(formatCountdown(492)).toBe('08m 12s');
+  });
+
+  it('triggers isPreBreak within the preBreakMinutes window', () => {
+    const schedule = {
+      break1: '10:00',
+      lunch: '13:00',
+      preBreakMinutes: 2
+    };
+    // 90 seconds before Break 1 (09:58:30) -> inside the 2 minute (120s) window!
+    const now = new Date('2026-10-02T09:58:30');
+    const state = calculateBreakState(schedule, now);
+
+    expect(state.isActive).toBe(false);
+    expect(state.isPreBreak).toBe(true);
+    expect(state.notifKey).toBe('before_b1_prebreak_2');
+    expect(state.diffSec).toBe(90);
+  });
+
+  it('does not trigger isPreBreak when outside the pre-break window', () => {
+    const schedule = {
+      break1: '10:00',
+      lunch: '13:00',
+      preBreakMinutes: 2
+    };
+    // 3 minutes before Break 1 (09:57:00) -> outside the 2 minute window!
+    const now = new Date('2026-10-02T09:57:00');
+    const state = calculateBreakState(schedule, now);
+
+    expect(state.isActive).toBe(false);
+    expect(state.isPreBreak).toBe(false);
+  });
+
+  describe('Schedule Range Formatting (Starts & Ends calculation)', () => {
+    it('returns placeholder string when time is not configured', () => {
+      expect(formatTimeRange(null, null, '10m')).toBe('Starts --:-- • Ends --:-- (10m)');
+      expect(formatTimeRange(null, null, '40m')).toBe('Starts --:-- • Ends --:-- (40m)');
+      expect(formatShiftEndTime(null)).toBe('Shift ends at --:--');
+    });
+
+    it('formats calculated start and end times in 24h format matching user inputs', () => {
+      const now = new Date('2026-10-06T04:00:00');
+      const b1Start = parseTimeToDate('06:06', now);
+      const b1End = b1Start ? new Date(b1Start.getTime() + 10 * 60 * 1000) : null;
+      expect(formatTimeRange(b1Start, b1End, '10m')).toBe('Starts 06:06 • Ends 06:16 (10m)');
+
+      const lStart = parseTimeToDate('07:08', now);
+      const lEnd = lStart ? new Date(lStart.getTime() + 40 * 60 * 1000) : null;
+      expect(formatTimeRange(lStart, lEnd, '40m')).toBe('Starts 07:08 • Ends 07:48 (40m)');
+
+      const sEnd = parseTimeToDate('17:00', now);
+      expect(formatShiftEndTime(sEnd)).toBe('Shift ends at 17:00');
+    });
   });
 });

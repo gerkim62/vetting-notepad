@@ -25,6 +25,18 @@
   "side_panel": {
     "default_path": "src/panel.html"
   },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://*/*",
+        "https://*/*"
+      ],
+      "js": [
+        "src/content/break-overlay.ts"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",

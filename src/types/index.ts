@@ -1,3 +1,5 @@
+export type VettingFieldRole = 'identifier' | 'primary' | 'secondary' | 'action' | 'policy';
+
 export interface VettingField {
   id: string;
   label: string;
@@ -7,6 +9,7 @@ export interface VettingField {
   mpesaTxn?: string;
   article?: string;
   defaultValue?: string;
+  omitDefault?: boolean;
   excludeFromCount?: boolean;
   multiline?: boolean;
   maxLines?: number;
@@ -14,6 +17,8 @@ export interface VettingField {
   groupMin?: number;
   violationAdvice?: string;
   itemType?: 'input' | 'policy' | 'action';
+  role?: VettingFieldRole;
+  isVetting?: boolean;
 }
 
 export interface VettingDiyAction {

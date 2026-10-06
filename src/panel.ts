@@ -9,6 +9,8 @@ import {
   DEFAULT_BREAK_SCHEDULE,
   calculateBreakState,
   formatActiveBreakDisplay,
+  formatTimeRange,
+  formatShiftEndTime,
   parseTimeToDate
 } from './lib/break-timer.js';
 import { attachAutoExpand } from './lib/multiline.js';
@@ -26,6 +28,7 @@ import {
 } from './lib/exporter.js';
 import 'quill/dist/quill.snow.css';
 import './panel.css';
+import type { VettingField } from './types/index.js';
 import { logger } from './lib/logger.js';
 import { renderIcon, initIcons } from './lib/icons.js';
 import {
@@ -176,6 +179,23 @@ const curValues = () => {
 const curStatus = () => {
   const tId = activeTypeId || (types[0] ? types[0].id : 'default');
   return itemStatus[tId] || (itemStatus[tId] = {});
+};
+
+let fillingOrders: Record<string, string[]> = {};
+const curFillingOrder = () => {
+  const tId = activeTypeId || (types[0] ? types[0].id : 'default');
+  return fillingOrders[tId] || (fillingOrders[tId] = []);
+};
+const recordFillingOrder = (id: string) => {
+  if (!id) return;
+  const order = curFillingOrder();
+  if (!order.includes(id)) {
+    order.push(id);
+  }
+};
+const resetFillingOrder = (tId?: string) => {
+  const targetId = tId || activeTypeId || (types[0] ? types[0].id : 'default');
+  fillingOrders[targetId] = [];
 };
 
 function applyTheme(theme) {
@@ -658,42 +678,26 @@ function parseLabel(raw) {
 /* ==========================================================================
    Build Text Output & Copy Operations
    ========================================================================== */
-function isVettingItem(it) {
-  if (!it) return false;
-  const lbl = (it.label || '').toLowerCase();
-  if (
-    lbl.includes('calling number') ||
-    lbl.includes('line to swap') ||
-    lbl.includes('serial') ||
-    lbl.includes('simex') ||
-    lbl.includes('transaction id') ||
-    lbl.includes('sr number') ||
-    lbl.includes('amount') ||
-    lbl.includes('alternative number') ||
-    lbl.includes('reversal type') ||
-    lbl.includes('wrong account') ||
-    lbl.includes('correct account') ||
-    it.itemType === 'policy' ||
-    it.itemType === 'action' ||
-    it.excludeFromCount
-  ) {
-    return false;
-  }
-  return true;
+function getFieldRole(it: Partial<VettingField> | null | undefined): 'identifier' | 'primary' | 'secondary' | 'action' | 'policy' {
+  if (!it) return 'identifier';
+  if (it.role) return it.role;
+  if (it.itemType === 'action') return 'action';
+  if (it.itemType === 'policy') return 'policy';
+  if (it.v360 === 'fullName' || it.v360 === 'idNumber' || it.v360 === 'yob' || it.v360 === 'dob') return 'primary';
+  if (it.excludeFromCount) return 'identifier';
+  return 'secondary';
 }
 
-function isPrimaryItem(it) {
+function isVettingItem(it: Partial<VettingField> | null | undefined): boolean {
   if (!it) return false;
-  const lbl = (it.label || '').toLowerCase();
-  return (
-    it.v360 === 'fullName' ||
-    it.v360 === 'idNumber' ||
-    it.v360 === 'yob' ||
-    lbl.includes('full name') ||
-    lbl.includes('owner name') ||
-    lbl.includes('id number') ||
-    lbl.includes('year of birth')
-  );
+  if (it.isVetting !== undefined) return Boolean(it.isVetting);
+  const role = getFieldRole(it);
+  return role === 'primary' || role === 'secondary';
+}
+
+function isPrimaryItem(it: Partial<VettingField> | null | undefined): boolean {
+  if (!it) return false;
+  return getFieldRole(it) === 'primary';
 }
 
 function countSecondaryPassed(t, st, v) {
@@ -749,7 +753,7 @@ function buildCopyText(t) {
 
   const cb = getCallbackInfo(t, st, v);
   const failedItems = [...t.required, ...t.optional].filter(it => st[it.id] === 'failed');
-  const isFailed = cb.show || failedItems.length > 0;
+  const isFailed = Boolean(cb.show);
 
   // 1. Line 1: Top Advice / Action Taken (CEE Priority)
   const manualComment = (v._comment || '').trim();
@@ -785,92 +789,78 @@ function buildCopyText(t) {
 
   // 2. Line 2: Vetting Outcome
   if (isFailed) {
-    const failedNames = failedItems.map(it => parseLabel(it.label).copy);
+    const failedNames = (cb.labels && cb.labels.length > 0) ? cb.labels : failedItems.map(it => parseLabel(it.label).copy);
     lines.push(`Vetting: Failed${failedNames.length > 0 ? ` (${failedNames.join(', ')})` : ''}`);
   } else {
     lines.push('Vetting: Passed');
   }
 
-  // 3. Compact Vetted Fields
+  // 3. Vetted Fields (Emitted in filling order, each on its own line)
   const allItems = [...t.required, ...t.optional];
-  const seenGroups = new Set();
+  const orderList = curFillingOrder();
 
-  for (const it of allItems) {
-    if (it.group) {
-      if (seenGroups.has(it.group)) continue;
-      seenGroups.add(it.group);
-
-      const groupItems = allItems.filter(x => x.group === it.group);
-      const parts = [];
-      for (const git of groupItems) {
-        if (git.itemType === 'action') {
-          if (st[git.id] === 'passed' || v[git.id] === 'Done') {
-            const { copy: copyLabel } = parseLabel(git.label);
-            parts.push(`${copyLabel}: Done`);
-          }
-          continue;
-        }
-        if (git.itemType === 'policy') {
-          if (st[git.id] === 'failed') {
-            const { copy: copyLabel } = parseLabel(git.label);
-            parts.push(`${copyLabel}: Violated (Policy Restriction)`);
-          }
-          continue;
-        }
-        const val = String(v[git.id] ?? '').trim();
-        const isUnchangedDefault = git.defaultValue && val === git.defaultValue.trim() && !st[git.id];
-        if (git.omitDefault && isUnchangedDefault) {
-          continue;
-        }
-        if (val.length > 0) {
-          const { copy: copyLabel } = parseLabel(git.label);
-          let str = `${copyLabel}: ${val}`;
-          if (isVettingItem(git)) {
-            if (st[git.id] === 'failed') str += ' (Failed)';
-            else str += ' (Passed)';
-          }
-          parts.push(str);
-        } else if (st[git.id] === 'failed') {
-          const { copy: copyLabel } = parseLabel(git.label);
-          parts.push(`${copyLabel}: Failed (Failed)`);
-        }
-      }
-      if (parts.length > 0) {
-        lines.push(parts.join(', '));
-      }
-    } else {
-      if (it.itemType === 'action') {
-        if (st[it.id] === 'passed' || v[it.id] === 'Done') {
-          const { copy: copyLabel } = parseLabel(it.label);
-          lines.push(`${copyLabel}: Done`);
-        }
-        continue;
-      }
-      if (it.itemType === 'policy') {
-        if (st[it.id] === 'failed') {
-          const { copy: copyLabel } = parseLabel(it.label);
-          lines.push(`${copyLabel}: Violated (Policy Restriction)`);
-        }
-        continue;
-      }
-      const val = String(v[it.id] ?? '').trim();
-      const isUnchangedDefault = it.defaultValue && val === it.defaultValue.trim() && !st[it.id];
-      if (it.omitDefault && isUnchangedDefault) {
-        continue;
-      }
-      if (val.length > 0) {
+  const renderItemLine = (it: VettingField) => {
+    if (it.itemType === 'action') {
+      if (st[it.id] === 'passed' || v[it.id] === 'Done') {
         const { copy: copyLabel } = parseLabel(it.label);
-        let line = `${copyLabel}: ${val}`;
-        if (isVettingItem(it)) {
-          if (st[it.id] === 'failed') line += ' (Failed)';
-          else line += ' (Passed)';
-        }
-        lines.push(line);
-      } else if (st[it.id] === 'failed') {
-        const { copy: copyLabel } = parseLabel(it.label);
-        lines.push(`${copyLabel}: Failed (Failed)`);
+        return `${copyLabel}: Done`;
       }
+      return null;
     }
+    if (it.itemType === 'policy') {
+      if (st[it.id] === 'failed') {
+        const { copy: copyLabel } = parseLabel(it.label);
+        return `${copyLabel}: Violated (Policy Restriction)`;
+      }
+      return null;
+    }
+    const val = String(v[it.id] ?? '').trim();
+    const isUnchangedDefault = it.defaultValue && val === it.defaultValue.trim() && !st[it.id];
+    if (it.omitDefault && isUnchangedDefault) {
+      return null;
+    }
+    const { copy: copyLabel } = parseLabel(it.label);
+    if (val.length > 0) {
+      let str = `${copyLabel}: ${val}`;
+      if (isVettingItem(it)) {
+        if (st[it.id] === 'failed') str += ' (Failed)';
+        else str += ' (Passed)';
+      }
+      return str;
+    } else if (st[it.id] === 'failed') {
+      return `${copyLabel}: Failed`;
+    }
+    return null;
+  };
+
+  // Tier 1: Identifier / Account details at top
+  const identifierItems = allItems.filter(it => getFieldRole(it) === 'identifier');
+  for (const it of identifierItems) {
+    const l = renderItemLine(it);
+    if (l) lines.push(l);
+  }
+
+  // Tier 2: Primary and secondary question items in recorded filling order
+  const questionItems = allItems.filter(it => isVettingItem(it));
+  const sortedQuestionItems = [...questionItems].sort((a, b) => {
+    const idxA = orderList.indexOf(a.id);
+    const idxB = orderList.indexOf(b.id);
+    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+    if (idxA !== -1) return -1;
+    if (idxB !== -1) return 1;
+    return questionItems.indexOf(a) - questionItems.indexOf(b);
+  });
+
+  for (const it of sortedQuestionItems) {
+    const l = renderItemLine(it);
+    if (l) lines.push(l);
+  }
+
+  // Tier 3: Action and policy items
+  const actionPolicyItems = allItems.filter(it => getFieldRole(it) === 'action' || getFieldRole(it) === 'policy');
+  for (const it of actionPolicyItems) {
+    const l = renderItemLine(it);
+    if (l) lines.push(l);
   }
 
   return lines.join('\n');
@@ -978,6 +968,7 @@ btnClear.onclick = async () => {
   itemStatus = {};
   activeDiyState = {};
   callAttempt = 1;
+  resetFillingOrder();
 
   if (commentInput) {
     commentInput.value = '';
@@ -1826,6 +1817,9 @@ function bindFormEvents() {
     input.addEventListener('input', () => {
       stopAutoClear();
       curValues()[id] = input.value;
+      if (input.value.trim().length > 0) {
+        recordFillingOrder(id);
+      }
       if (curStatus()[id] === 'failed' && input.value.trim().length > 0) {
         curStatus()[id] = null;
         box.classList.remove('status-failed');
@@ -1881,6 +1875,7 @@ function bindFormEvents() {
       const cur = curStatus()[id];
       const newStatus = cur === 'failed' ? null : 'failed';
       curStatus()[id] = newStatus;
+      if (newStatus) recordFillingOrder(id);
 
       const row = btn.closest('.item-row.policy-row, .item-row.policy-only');
       if (row) {
@@ -1905,6 +1900,7 @@ function bindFormEvents() {
       const newStatus = cur === 'passed' ? null : 'passed';
       curStatus()[id] = newStatus;
       curValues()[id] = newStatus === 'passed' ? 'Done' : '';
+      if (newStatus) recordFillingOrder(id);
 
       const row = btn.closest('.item-row.action-row');
       if (row) {
@@ -1927,6 +1923,7 @@ function bindFormEvents() {
 
       const newStatus = cur === 'failed' ? null : 'failed';
       curStatus()[id] = newStatus;
+      if (newStatus) recordFillingOrder(id);
 
       const row = btn.closest('.item-row');
       const box = row.querySelector('.material-field');
@@ -2037,6 +2034,9 @@ async function smartPasteField(input) {
 
     input.value = textToPaste;
     curValues()[id] = textToPaste;
+    if (textToPaste.trim().length > 0) {
+      recordFillingOrder(id);
+    }
     stopAutoClear();
     const box = input.closest('.material-field');
     if (box) box.classList.add('expanded');
@@ -2467,6 +2467,34 @@ async function doCopy() {
   morphButton(btnCopy, 'Copied', 'Check', 'success', 1200);
 
   if (t) {
+    const allItems = [...(t.required || []), ...(t.optional || [])];
+    const pendingActions = allItems.filter(it => it.itemType === 'action' && st[it.id] !== 'passed' && v[it.id] !== 'Done');
+    if (pendingActions.length > 0) {
+      const act = pendingActions[0];
+      const { copy: actLabel } = parseLabel(act.label);
+      showToast(
+        `Action Reminder: Remember to ${actLabel.toLowerCase()} on CRM`,
+        'Mark Done',
+        async () => {
+          st[act.id] = 'passed';
+          v[act.id] = 'Done';
+          recordFillingOrder(act.id);
+          const actionBtn = mainForm.querySelector<HTMLElement>(`[data-action-id="${act.id}"]`);
+          if (actionBtn) {
+            actionBtn.classList.add('active');
+            actionBtn.innerHTML = `${renderIcon('Check', { size: 10, strokeWidth: 2.5 })} <span>Done</span>`;
+            const row = actionBtn.closest('.item-row.action-row');
+            if (row) row.classList.add('is-done');
+          }
+          syncPreview();
+          const updatedText = buildCopyText(t);
+          await writeToClipboard(updatedText);
+          showToast('Updated notes copied to clipboard!', null, null, 2500, 'info');
+        },
+        7000,
+        'warn'
+      );
+    }
     startAutoClear(t.id);
   }
 }
@@ -4864,6 +4892,15 @@ const lunchStartInput = document.getElementById('lunchStart');
 const break2StartInput = document.getElementById('break2Start');
 const shiftEndInput = document.getElementById('shiftEnd');
 
+const break1Calc = document.getElementById('break1Calc');
+const lunchCalc = document.getElementById('lunchCalc');
+const break2Calc = document.getElementById('break2Calc');
+const shiftEndCalc = document.getElementById('shiftEndCalc');
+
+const preBreakBadge = document.getElementById('preBreakBadge');
+const preBreakChips = document.getElementById('preBreakChips');
+const chkShowPageOverlay = document.getElementById('chkShowPageOverlay');
+
 const chkNotifyDesktop = document.getElementById('chkNotifyDesktop');
 const chkNotifyToast = document.getElementById('chkNotifyToast');
 
@@ -4876,6 +4913,37 @@ const breakStatusSub = document.getElementById('breakStatusSub');
 let breakSchedule = Object.assign({}, DEFAULT_BREAK_SCHEDULE);
 let lastNotifiedEventKey = null;
 
+function updateScheduleCalcDisplays() {
+  const now = new Date();
+  const b1Start = parseTimeToDate(breakSchedule.break1, now);
+  const b1End = b1Start ? new Date(b1Start.getTime() + 10 * 60 * 1000) : null;
+  if (break1Calc) break1Calc.textContent = formatTimeRange(b1Start, b1End, '10m');
+
+  const lStart = parseTimeToDate(breakSchedule.lunch, now);
+  const lEnd = lStart ? new Date(lStart.getTime() + 40 * 60 * 1000) : null;
+  if (lunchCalc) lunchCalc.textContent = formatTimeRange(lStart, lEnd, '40m');
+
+  const b2Start = parseTimeToDate(breakSchedule.break2, now);
+  const b2End = b2Start ? new Date(b2Start.getTime() + 10 * 60 * 1000) : null;
+  if (break2Calc) break2Calc.textContent = formatTimeRange(b2Start, b2End, '10m');
+
+  const sEnd = parseTimeToDate(breakSchedule.shiftEnd, now);
+  if (shiftEndCalc) shiftEndCalc.textContent = formatShiftEndTime(sEnd);
+}
+
+function updatePreBreakUi() {
+  const mins = breakSchedule.preBreakMinutes ?? 2;
+  if (preBreakBadge) {
+    preBreakBadge.textContent = mins === 0 ? 'Off' : `${mins}m before`;
+  }
+  if (preBreakChips) {
+    preBreakChips.querySelectorAll('.pre-chip').forEach(btn => {
+      const bMin = parseInt(btn.getAttribute('data-min') || '0', 10);
+      btn.classList.toggle('active', bMin === mins);
+    });
+  }
+}
+
 async function initBreakNotifier() {
   const saved = await Storage.get('vpad.break_schedule', null);
   if (saved && typeof saved === 'object') {
@@ -4886,9 +4954,12 @@ async function initBreakNotifier() {
   if (lunchStartInput) lunchStartInput.value = breakSchedule.lunch || '';
   if (break2StartInput) break2StartInput.value = breakSchedule.break2 || '';
   if (shiftEndInput) shiftEndInput.value = breakSchedule.shiftEnd || '';
+  if (chkShowPageOverlay) chkShowPageOverlay.checked = (breakSchedule.showPageOverlay !== false);
   if (chkNotifyDesktop) chkNotifyDesktop.checked = Boolean(breakSchedule.notifyDesktop);
   if (chkNotifyToast) chkNotifyToast.checked = (breakSchedule.notifyToast !== false);
 
+  updatePreBreakUi();
+  updateScheduleCalcDisplays();
   bindBreakScheduleEvents();
   updateBreakNotifier();
   setInterval(updateBreakNotifier, 1000);
@@ -4909,15 +4980,35 @@ function bindBreakScheduleEvents() {
     breakSchedule.lunch = lunchStartInput?.value || '';
     breakSchedule.break2 = break2StartInput?.value || '';
     breakSchedule.shiftEnd = shiftEndInput?.value || '';
+    breakSchedule.showPageOverlay = Boolean(chkShowPageOverlay?.checked);
     breakSchedule.notifyDesktop = Boolean(chkNotifyDesktop?.checked);
     breakSchedule.notifyToast = Boolean(chkNotifyToast?.checked);
     Storage.set('vpad.break_schedule', breakSchedule);
+    updateScheduleCalcDisplays();
     updateBreakNotifier();
   };
 
   [break1StartInput, lunchStartInput, break2StartInput, shiftEndInput].forEach(inp => {
-    if (inp) inp.addEventListener('change', save);
+    if (inp) {
+      inp.addEventListener('input', save);
+      inp.addEventListener('change', save);
+    }
   });
+
+  if (chkShowPageOverlay) {
+    chkShowPageOverlay.addEventListener('change', save);
+  }
+
+  if (preBreakChips) {
+    preBreakChips.querySelectorAll('.pre-chip').forEach(btn => {
+      btn.onclick = () => {
+        const bMin = parseInt(btn.getAttribute('data-min') || '0', 10);
+        breakSchedule.preBreakMinutes = bMin;
+        updatePreBreakUi();
+        save();
+      };
+    });
+  }
 
   if (chkNotifyDesktop) {
     chkNotifyDesktop.addEventListener('change', async () => {
@@ -4988,8 +5079,11 @@ function renderBreakNotifierView() {
   if (lunchStartInput) lunchStartInput.value = breakSchedule.lunch || '';
   if (break2StartInput) break2StartInput.value = breakSchedule.break2 || '';
   if (shiftEndInput) shiftEndInput.value = breakSchedule.shiftEnd || '';
+  if (chkShowPageOverlay) chkShowPageOverlay.checked = (breakSchedule.showPageOverlay !== false);
   if (chkNotifyDesktop) chkNotifyDesktop.checked = Boolean(breakSchedule.notifyDesktop);
   if (chkNotifyToast) chkNotifyToast.checked = (breakSchedule.notifyToast !== false);
+  updatePreBreakUi();
+  updateScheduleCalcDisplays();
   updateNotifPermissionUi();
   updateBreakNotifier();
 }
@@ -5019,6 +5113,7 @@ function triggerBreakNotification(key, title, body) {
 function updateBreakNotifier() {
   const now = new Date();
   const state = calculateBreakState(breakSchedule, now);
+  updateScheduleCalcDisplays();
 
   const ambientBreakBar = document.getElementById('ambientBreakBar');
   const ambientBreakIcon = document.getElementById('ambientBreakIcon');
@@ -5082,6 +5177,16 @@ function updateBreakNotifier() {
     if (breakProgressBar) breakProgressBar.style.width = '0%';
   }
 
+  if (state.isPreBreak && state.notifKey) {
+    if (state.notifKey.includes('before_b1')) {
+      triggerBreakNotification(state.notifKey, 'Upcoming Break', `Break 1 starts in ${state.preBreakMinutes}m ⏳`);
+    } else if (state.notifKey.includes('before_lunch')) {
+      triggerBreakNotification(state.notifKey, 'Upcoming Lunch', `Lunch starts in ${state.preBreakMinutes}m 🍱`);
+    } else if (state.notifKey.includes('before_b2')) {
+      triggerBreakNotification(state.notifKey, 'Upcoming Break', `Break 2 starts in ${state.preBreakMinutes}m ⏳`);
+    }
+  }
+
   if (state.notifKey && state.targetTime) {
     if (state.notifKey === 'b1_start' && state.diffSec >= 590) {
       triggerBreakNotification('b1_start', 'Break 1 Started', 'Time for Break 1 (10 min break) ☕');
@@ -5090,6 +5195,41 @@ function updateBreakNotifier() {
     } else if (state.notifKey === 'b2_start' && state.diffSec >= 590) {
       triggerBreakNotification('b2_start', 'Break 2 Started', 'Time for Break 2 (10 min break) ☕');
     }
+  }
+
+  // Persist current state and broadcast to active tabs for live break overlay
+  try {
+    Storage.set('vpad.lastBreakState', {
+      isConfigured: state.isConfigured,
+      currentPhase: state.currentPhase,
+      isActive: state.isActive,
+      isPreBreak: state.isPreBreak,
+      preBreakMinutes: state.preBreakMinutes,
+      eventName: state.eventName,
+      eventTag: state.eventTag,
+      icon: state.icon,
+      tickerText: state.tickerText,
+      bigCountdown: state.bigCountdown,
+      statusSub: state.statusSub,
+      diffSec: state.diffSec,
+      showPageOverlay: breakSchedule.showPageOverlay !== false
+    });
+
+    if (typeof chrome !== 'undefined' && chrome.tabs && typeof chrome.tabs.query === 'function') {
+      chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+        if (tabs && tabs[0]?.id) {
+          chrome.tabs.sendMessage(tabs[0].id, {
+            type: 'VPAD_BREAK_STATE',
+            ...state,
+            showPageOverlay: breakSchedule.showPageOverlay !== false
+          }).catch(() => {
+            // tab may not have content script loaded or is restricted
+          });
+        }
+      });
+    }
+  } catch (err) {
+    logger.captureError('break-timer', err, { action: 'broadcastBreakState' });
   }
 }
 
