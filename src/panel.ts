@@ -5067,6 +5067,30 @@ function bindBreakScheduleEvents() {
       renderBreakNotifierView();
     };
   }
+
+  const btnPreviewOverlay = document.getElementById('btnPreviewOverlay');
+  if (btnPreviewOverlay) {
+    btnPreviewOverlay.onclick = () => {
+      chrome.tabs.query({ active: true }, (tabs) => {
+        const webTab = tabs.find(t => t.id && t.url && (t.url.startsWith('http://') || t.url.startsWith('https://')));
+        if (!webTab || !webTab.id) {
+          showBanner('Open any web page (e.g. google.com or CRM) to see the break overlay.', 'Dismiss', null, 6000, 'warn');
+          return;
+        }
+        chrome.tabs.sendMessage(webTab.id, {
+          type: 'VPAD_BREAK_STATE',
+          isPreview: true,
+          eventName: '☕ Tea break (Preview)',
+          diffSec: 300,
+          showPageOverlay: true
+        }).then(() => {
+          showBanner('Break overlay launched on your active web tab!', 'OK', null, 3000, 'info');
+        }).catch(() => {
+          showBanner('Please refresh your web page once so the break overlay script can load.', 'Dismiss', null, 6000, 'warn');
+        });
+      });
+    };
+  }
 }
 
 function renderBreakNotifierView() {

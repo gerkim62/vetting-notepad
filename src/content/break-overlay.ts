@@ -1,7 +1,10 @@
 /**
  * Vetting Notepad - Active Browser Tab Break Notifier Overlay
- * Renders an isolated, ambient, draggable screensaver overlay with edge glow and snooze controls.
+ * Runs directly in web page content script, autonomously tracking configured break times,
+ * pre-break heads-up alert, active break countdown, draggable pill, and edge glow.
  */
+
+import { calculateBreakState, ScheduleConfig } from '../lib/break-timer.js';
 
 declare global {
   interface Window {
@@ -14,33 +17,28 @@ declare global {
 export interface BreakNotifierOptions {
   name?: string;
   seconds?: number;
+  totalSeconds?: number;
   snooze?: number[];
   onDismiss?: () => void;
 }
 
-export interface BreakStateMessage {
-  type: 'VPAD_BREAK_STATE';
-  isConfigured: boolean;
-  currentPhase: string;
-  isActive: boolean;
-  isPreBreak: boolean;
-  preBreakMinutes: number;
-  eventName: string;
-  eventTag: string;
-  icon: string;
-  tickerText: string;
-  bigCountdown: string;
-  statusSub: string;
-  diffSec: number;
+export interface BreakMessagePayload {
+  type: string;
+  isPreview?: boolean;
+  eventName?: string;
+  diffSec?: number;
   showPageOverlay?: boolean;
 }
 
-let activePhase: string | null = null;
+let cachedSchedule: ScheduleConfig = {};
+let currentOverlayPhase: string | null = null;
 let dismissedPhase: string | null = null;
+let snoozedUntil: number | null = null;
 
 export function breakNotifier({
   name = '☕ Tea break',
   seconds = 300,
+  totalSeconds = seconds,
   snooze = [2, 5, 10],
   onDismiss
 }: BreakNotifierOptions = {}) {
@@ -127,7 +125,8 @@ export function breakNotifier({
   function render() {
     const left = Math.max(0, Math.round((end - Date.now()) / 1000));
     if (timeEl) timeEl.textContent = fmt(left);
-    setIntensity(1 - left / seconds);
+    const denom = totalSeconds > 0 ? totalSeconds : seconds;
+    setIntensity(1 - left / denom);
     if (left <= 0) stop();
   }
 
@@ -143,7 +142,9 @@ export function breakNotifier({
     if (tick) clearInterval(tick);
     remaining = end - Date.now();
     host.style.display = 'none';
+    snoozedUntil = Date.now() + mins * 60000;
     wake = setTimeout(() => {
+      snoozedUntil = null;
       end = Date.now() + remaining;
       host.style.display = '';
       tick = setInterval(render, 1000);
@@ -160,7 +161,13 @@ export function breakNotifier({
   });
 
   if (closeBtn instanceof HTMLElement) {
-    closeBtn.onclick = stop;
+    closeBtn.title = 'Hide popup';
+    closeBtn.onclick = (e: MouseEvent) => {
+      e.stopPropagation();
+      if (bar instanceof HTMLElement) {
+        bar.style.display = 'none';
+      }
+    };
   }
 
   // drag the strip anywhere (ignore presses on buttons)
@@ -190,95 +197,171 @@ export function breakNotifier({
   return 'Break started. Run __brk.stop() to remove it.';
 }
 
-function isBreakStateMessage(msg: unknown): msg is BreakStateMessage {
-  if (typeof msg !== 'object' || msg === null) return false;
-  return 'type' in msg && msg.type === 'VPAD_BREAK_STATE';
-}
-
-function handleBreakState(state: BreakStateMessage) {
-  if (state.showPageOverlay === false || !state.isActive) {
+function evaluateSchedule() {
+  if (cachedSchedule.showPageOverlay === false) {
     if (window.__brk) {
       window.__brk.stop();
+      currentOverlayPhase = null;
     }
-    activePhase = null;
     return;
   }
 
-  // Phase transition check
+  if (snoozedUntil && Date.now() < snoozedUntil) {
+    return;
+  }
+
+  const now = new Date();
+  const state = calculateBreakState(cachedSchedule, now);
+
+  // If phase changed away from dismissedPhase, reset it
   if (dismissedPhase && dismissedPhase !== state.currentPhase) {
     dismissedPhase = null;
   }
 
-  // If already dismissed by user in this phase, do not pop back up
-  if (dismissedPhase === state.currentPhase) {
-    return;
-  }
-
-  // If overlay is already active in this phase, keep it running smoothly
-  if (activePhase === state.currentPhase && window.__brk) {
-    return;
-  }
-
-  activePhase = state.currentPhase;
-  const isLunch = state.currentPhase === 'in_lunch';
-  const name = isLunch
-    ? '🍽 Lunch break'
-    : `${state.icon || '☕'} ${state.eventName || 'Tea break'}`;
-  const snooze = isLunch ? [5, 10, 15] : [2, 5, 10];
-  const seconds = Math.max(1, state.diffSec || (isLunch ? 2400 : 600));
-
-  breakNotifier({
-    name,
-    seconds,
-    snooze,
-    onDismiss: () => {
-      dismissedPhase = state.currentPhase;
-      activePhase = null;
+  // 1. In Break (Active)
+  if (state.isActive) {
+    if (dismissedPhase === state.currentPhase) {
+      return;
     }
-  });
+    if (currentOverlayPhase === state.currentPhase && window.__brk) {
+      return;
+    }
+
+    currentOverlayPhase = state.currentPhase;
+    const isLunch = state.currentPhase === 'in_lunch';
+    const name = isLunch
+      ? '🍽 Lunch break'
+      : `${state.icon || '☕'} ${state.eventName || 'Tea break'}`;
+    const totalSec = isLunch ? 2400 : 600;
+    const remainingSec = Math.max(1, state.diffSec || totalSec);
+    const snoozeOptions = isLunch ? [5, 10, 15] : [2, 5, 10];
+
+    breakNotifier({
+      name,
+      seconds: remainingSec,
+      totalSeconds: totalSec,
+      snooze: snoozeOptions,
+      onDismiss: () => {
+        dismissedPhase = state.currentPhase;
+        currentOverlayPhase = null;
+      }
+    });
+    return;
+  }
+
+  // 2. Pre-Break (X mins to break)
+  if (state.isPreBreak) {
+    const prePhaseKey = state.currentPhase + '_pre';
+    if (dismissedPhase === prePhaseKey) {
+      return;
+    }
+    if (currentOverlayPhase === prePhaseKey && window.__brk) {
+      return;
+    }
+
+    currentOverlayPhase = prePhaseKey;
+    const totalSec = (state.preBreakMinutes || 2) * 60;
+    const remainingSec = Math.max(1, state.diffSec || totalSec);
+    const name = `⏳ Wrap up call (${state.eventName} in ${Math.ceil(remainingSec / 60)}m)`;
+
+    breakNotifier({
+      name,
+      seconds: remainingSec,
+      totalSeconds: totalSec,
+      snooze: [1, 2],
+      onDismiss: () => {
+        dismissedPhase = prePhaseKey;
+        currentOverlayPhase = null;
+      }
+    });
+    return;
+  }
+
+  // 3. Neither active nor pre-break: stop any running break
+  if (!state.isActive && !state.isPreBreak && currentOverlayPhase !== 'preview') {
+    if (window.__brk) {
+      window.__brk.stop();
+      currentOverlayPhase = null;
+    }
+  }
 }
 
 // Global Esc key listener to dismiss break overlay
 window.addEventListener('keydown', (e: KeyboardEvent) => {
   if (e.key === 'Escape' && window.__brk) {
     window.__brk.stop();
+    if (currentOverlayPhase) {
+      dismissedPhase = currentOverlayPhase;
+      currentOverlayPhase = null;
+    }
   }
 });
 
-// Runtime message listener from panel / background
+function isBreakMessage(msg: unknown): msg is BreakMessagePayload {
+  return typeof msg === 'object' && msg !== null && 'type' in msg;
+}
+
+function parseScheduleConfig(val: unknown): ScheduleConfig | null {
+  if (typeof val === 'object' && val !== null) {
+    return val;
+  }
+  return null;
+}
+
+// Runtime message listener for immediate preview or direct triggers
 if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
   chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) => {
-    if (isBreakStateMessage(message)) {
-      handleBreakState(message);
-      sendResponse({ ok: true });
+    if (isBreakMessage(message)) {
+      if (message.type === 'VPAD_BREAK_STATE') {
+        if (message.isPreview) {
+          currentOverlayPhase = 'preview';
+          breakNotifier({
+            name: message.eventName || '☕ Tea break (Preview)',
+            seconds: message.diffSec || 300,
+            totalSeconds: 300,
+            snooze: [2, 5, 10],
+            onDismiss: () => {
+              currentOverlayPhase = null;
+            }
+          });
+          sendResponse({ ok: true });
+          return;
+        }
+        // Force evaluate on message
+        evaluateSchedule();
+        sendResponse({ ok: true });
+      }
     }
   });
 }
 
-// Initial storage check
+// Storage change listener to keep content script schedule synchronized in real time
+if (typeof chrome !== 'undefined' && chrome.storage?.onChanged) {
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName === 'local') {
+      const changedVal = changes['vpad.break_schedule']?.newValue ?? changes['vpad.breakSchedule']?.newValue;
+      const newSched = parseScheduleConfig(changedVal);
+      if (newSched) {
+        cachedSchedule = newSched;
+        evaluateSchedule();
+      }
+    }
+  });
+}
+
+// Initial storage fetch and interval initialization
 if (typeof chrome !== 'undefined' && chrome.storage?.local) {
   try {
-    chrome.storage.local.get(
-      ['vpad.break_schedule', 'vpad.breakSchedule', 'vpad.lastBreakState'],
-      (res) => {
-        const sched = res['vpad.break_schedule'] || res['vpad.breakSchedule'];
-        const state = res['vpad.lastBreakState'];
-        if (sched && sched.showPageOverlay === false) {
-          return;
-        }
-        if (state && typeof state === 'object') {
-          const candidate = {
-            type: 'VPAD_BREAK_STATE',
-            ...state,
-            showPageOverlay: sched ? sched.showPageOverlay !== false : true
-          };
-          if (isBreakStateMessage(candidate)) {
-            handleBreakState(candidate);
-          }
-        }
+    chrome.storage.local.get(['vpad.break_schedule', 'vpad.breakSchedule'], (res) => {
+      const storedVal = res['vpad.break_schedule'] ?? res['vpad.breakSchedule'];
+      const sched = parseScheduleConfig(storedVal);
+      if (sched) {
+        cachedSchedule = sched;
       }
-    );
+      evaluateSchedule();
+      setInterval(evaluateSchedule, 1000);
+    });
   } catch {
-    // context not ready
+    // Context may not be ready
   }
 }

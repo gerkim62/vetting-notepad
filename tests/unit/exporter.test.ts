@@ -104,7 +104,7 @@ describe('Configuration Exporter & Importer', () => {
 
   describe('Debug Diagnostics Exporter', () => {
     const diagnosticContext = {
-      version: '3.0.0',
+      version: '3.1.0',
       types: [{ id: 'sim_swap', name: 'SIM Swap', required: [{ id: 'id_num' }], optional: [] }],
       settings: { theme: 'dark', autoClear: 0 },
       activeTypeId: 'sim_swap',
@@ -122,7 +122,7 @@ describe('Configuration Exporter & Importer', () => {
       const diag = buildDebugDiagnostics(diagnosticContext);
       expect(diag.app).toBe('vetting-notepad');
       expect(diag.type).toBe('debug-diagnostics');
-      expect(diag.version).toBe('3.0.0');
+      expect(diag.version).toBe('3.1.0');
       expect(diag.timestamp).toBeDefined();
 
       // Ensure customer values are redacted
