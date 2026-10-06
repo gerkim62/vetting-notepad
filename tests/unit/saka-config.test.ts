@@ -183,5 +183,18 @@ describe('SAKA Vetting Configuration', () => {
       expect(item.omitDefault, `${typeId}.${fieldId} omitDefault`).toBe(true);
     });
   });
+
+  it('verifies that every single field across all types has an explicit role defined with zero guesswork', () => {
+    const validRoles = new Set(['identifier', 'primary', 'secondary', 'action', 'policy']);
+    let count = 0;
+    config.types.forEach(t => {
+      [...t.required, ...t.optional].forEach(f => {
+        count++;
+        expect(f.role, `Field ${t.id}.${f.id} must define an explicit role`).toBeDefined();
+        expect(validRoles.has(f.role!), `Field ${t.id}.${f.id} has invalid role: ${f.role}`).toBe(true);
+      });
+    });
+    expect(count).toBeGreaterThanOrEqual(200);
+  });
 });
 

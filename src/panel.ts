@@ -680,12 +680,7 @@ function parseLabel(raw) {
    ========================================================================== */
 function getFieldRole(it: Partial<VettingField> | null | undefined): 'identifier' | 'primary' | 'secondary' | 'action' | 'policy' {
   if (!it) return 'identifier';
-  if (it.role) return it.role;
-  if (it.itemType === 'action') return 'action';
-  if (it.itemType === 'policy') return 'policy';
-  if (it.v360 === 'fullName' || it.v360 === 'idNumber' || it.v360 === 'yob' || it.v360 === 'dob') return 'primary';
-  if (it.excludeFromCount) return 'identifier';
-  return 'secondary';
+  return it.role || 'identifier';
 }
 
 function isVettingItem(it: Partial<VettingField> | null | undefined): boolean {
@@ -772,7 +767,7 @@ function buildCopyText(t) {
     } else if (cb.policy && cb.policyDirective) {
       topAdvice = `${typeName}: Policy restriction triggered. ${cb.policyDirective}`;
     } else if (!isFailed) {
-      topAdvice = `${typeName}: Customer vetted successfully on primary details. Guided as per policy.`;
+      topAdvice = `${typeName}: Passed vetting.`;
     } else {
       if (cb.primary) {
         topAdvice = `${typeName}: Failed vetting. Referred to Retail Centre / Care Desk with original ID.`;
@@ -6066,58 +6061,12 @@ async function init() {
   logger.initGlobalHandlers();
   initIcons();
 
-  const configVer = await Storage.get('vpad.config_version', 0);
   const loadedTypes = await Storage.get('vpad.types', null);
-  const defaults = defaultVettingTypes();
-
-  if (configVer < 15 || !Array.isArray(loadedTypes) || loadedTypes.length < 15) {
-    if (!Array.isArray(loadedTypes) || loadedTypes.length === 0) {
-      types = defaults;
-    } else {
-      types = [...loadedTypes];
-      defaults.forEach(defType => {
-        const existing = types.find(t => t.id === defType.id);
-        if (!existing) {
-          types.push(defType);
-        } else {
-          if (defType.diyActions) {
-            existing.diyActions = defType.diyActions.map(d => ({
-              id: d.id,
-              label: d.label,
-              adviceText: d.adviceText,
-              smsId: d.smsId
-            }));
-          }
-          const sections: Array<'required' | 'optional'> = ['required', 'optional'];
-          sections.forEach(sec => {
-            const defSec = defType[sec] || [];
-            const exSec = existing[sec] || [];
-            defSec.forEach(defItem => {
-              const exItem = exSec.find(x => x.id === defItem.id);
-              if (exItem) {
-                if (defItem.defaultValue !== undefined) exItem.defaultValue = defItem.defaultValue;
-                if (defItem.omitDefault !== undefined) exItem.omitDefault = defItem.omitDefault;
-                if (defItem.itemType !== undefined) exItem.itemType = defItem.itemType;
-                if (defItem.violationAdvice !== undefined) exItem.violationAdvice = defItem.violationAdvice;
-              }
-            });
-          });
-        }
-      });
-      types.forEach(t => {
-        if (Array.isArray(t.diyActions)) {
-          t.diyActions.forEach(d => {
-            Reflect.deleteProperty(d, 'smsText');
-          });
-        }
-      });
-    }
-    Storage.setMultiple({
-      'vpad.types': types,
-      'vpad.config_version': 15
-    });
-  } else {
+  if (Array.isArray(loadedTypes) && loadedTypes.length > 0) {
     types = loadedTypes;
+  } else {
+    types = defaultVettingTypes();
+    await Storage.set('vpad.types', types);
   }
 
   const loadedSettings = await Storage.get('vpad.settings', null);
