@@ -218,5 +218,38 @@ describe('SAKA Vetting Configuration', () => {
       });
     });
   });
+
+  it('verifies SIM Swap pre-checks for Calling Number and Line to Swap per SAKA SSCB-0006 & SCEK-0002', () => {
+    const swap = config.types.find(t => t.id === 'swap');
+    expect(swap).toBeDefined();
+    if (!swap) return;
+
+    const callnoPrechecks = swap.optional.filter(f => f.compactChip && f.attachTo === 'sw_callno');
+    expect(callnoPrechecks.map(f => f.id)).toEqual([
+      'sw_call_72h',
+      'sw_call_30d',
+      'sw_call_roam',
+      'sw_call_2swaps',
+      'sw_call_agent'
+    ]);
+
+    const msisdnPrechecks = swap.optional.filter(f => f.compactChip && f.attachTo === 'sw_msisdn');
+    expect(msisdnPrechecks.map(f => f.id)).toEqual([
+      'swap_whitelist',
+      'swap_golden',
+      'swap_outbound'
+    ]);
+
+    // Verify all policy pre-checks have violationAdvice
+    const allPrechecks = [...callnoPrechecks, ...msisdnPrechecks];
+    allPrechecks.forEach(chip => {
+      if (chip.itemType === 'policy') {
+        expect(chip.violationAdvice, `Policy chip ${chip.id} must define violationAdvice`).toBeTruthy();
+        expect(chip.role).toBe('policy');
+      } else if (chip.itemType === 'action') {
+        expect(chip.role).toBe('action');
+      }
+    });
+  });
 });
 

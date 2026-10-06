@@ -1208,6 +1208,221 @@ function setupInfoPopovers() {
   });
 }
 
+function closePrecheckPopover() {
+  const pop = document.getElementById('activePrecheckPopover');
+  if (pop) pop.remove();
+  document.querySelectorAll('.precheck-trigger-btn.active').forEach(b => b.classList.remove('active'));
+}
+
+function getPrecheckTriggerMeta(parentId: string, compactChips: VettingField[]) {
+  const st = curStatus();
+  const v = curValues();
+  const violated = compactChips.filter(c => c.itemType !== 'action' && st[c.id] === 'failed');
+  const agentActive = compactChips.some(c => c.itemType === 'action' && (st[c.id] === 'passed' || v[c.id] === 'Done'));
+
+  if (violated.length === 1) {
+    const label = violated[0].label.split('//')[0].trim();
+    return {
+      iconHtml: renderIcon('AlertTriangle', { size: 12, strokeWidth: 2.3 }),
+      statusClass: 'is-violated',
+      title: `${label}: Flagged policy blocker`
+    };
+  }
+  if (violated.length > 1) {
+    return {
+      iconHtml: renderIcon('AlertTriangle', { size: 12, strokeWidth: 2.3 }),
+      statusClass: 'is-violated',
+      title: `${violated.length} policy blockers flagged`
+    };
+  }
+  if (agentActive) {
+    return {
+      iconHtml: renderIcon('ShieldCheck', { size: 12, strokeWidth: 2.3 }),
+      statusClass: 'is-modified',
+      title: 'Agent line exemption active'
+    };
+  }
+  return {
+    iconHtml: renderIcon('Shield', { size: 12, strokeWidth: 2.0 }),
+    statusClass: 'is-neutral',
+    title: `SAKA Pre-Checks (${compactChips.length} rules)`
+  };
+}
+
+function updatePrecheckTriggerBadge(parentId: string) {
+  if (!mainForm) return;
+  const triggerBtn = mainForm.querySelector(`[data-precheck-trigger="${parentId}"]`);
+  if (!(triggerBtn instanceof HTMLElement)) return;
+  const t = curType();
+  if (!t) return;
+  const compactChips = (t.optional || []).filter(x => x.compactChip && x.attachTo === parentId);
+  const meta = getPrecheckTriggerMeta(parentId, compactChips);
+
+  triggerBtn.className = `precheck-trigger-btn ${meta.statusClass}`;
+  triggerBtn.title = meta.title;
+  triggerBtn.innerHTML = meta.iconHtml;
+}
+
+function showPrecheckPopover(triggerBtn: HTMLElement, parentFieldId: string) {
+  const existing = document.getElementById('activePrecheckPopover');
+  if (existing && existing.dataset.parentId === parentFieldId) {
+    closePrecheckPopover();
+    return;
+  }
+  closePrecheckPopover();
+  closeInfoPopover();
+
+  triggerBtn.classList.add('active');
+
+  const t = curType();
+  if (!t) return;
+  const compactChips = (t.optional || []).filter(x => x.compactChip && x.attachTo === parentFieldId);
+  if (compactChips.length === 0) return;
+
+  const pop = document.createElement('div');
+  pop.className = 'precheck-popover';
+  pop.id = 'activePrecheckPopover';
+  pop.dataset.parentId = parentFieldId;
+
+  const renderItemsHtml = (openDrawers = new Set<string>()) => {
+    return compactChips.map(chip => {
+      const isAction = chip.itemType === 'action';
+      const isViolated = !isAction && curStatus()[chip.id] === 'failed';
+      const isDone = isAction && (curStatus()[chip.id] === 'passed' || curValues()[chip.id] === 'Done');
+      const { main: lblMain, hint: lblHint } = parseLabel(chip.label);
+      const advice = isAction
+        ? (chip.info || 'Agent exemption')
+        : (chip.violationAdvice || chip.info || 'Policy restriction');
+      const isDrawerOpen = openDrawers.has(chip.id);
+
+      return `
+        <div class="precheck-pop-item ${isAction ? 'is-action' : 'is-policy'} ${isViolated ? 'is-violated' : ''} ${isDone ? 'is-active' : ''}" data-pop-item-id="${chip.id}">
+          <div class="pop-item-row" data-pop-toggle="${chip.id}" title="${isViolated ? 'Flagged rule: Click to clear' : 'Click to flag violation'}">
+            <span class="pop-check-icon">
+              ${isViolated ? renderIcon('AlertTriangle', { size: 11, strokeWidth: 2.4 }) :
+                (isDone ? renderIcon('Check', { size: 11, strokeWidth: 2.5 }) :
+                `<span class="pop-empty-box"></span>`)}
+            </span>
+            <span class="pop-item-label">
+              <span class="pop-item-main">${escapeHtml(lblMain)}</span>
+              ${lblHint ? `<span class="pop-item-hint">(${escapeHtml(lblHint)})</span>` : ''}
+            </span>
+            ${advice ? `
+              <button type="button" class="pop-info-btn ${isDrawerOpen ? 'active' : ''}" data-pop-info="${chip.id}" title="SAKA Advice" aria-label="Show advice for ${escapeHtml(lblMain)}">
+                ${renderIcon('Info', { size: 10, strokeWidth: 2.2 })}
+              </button>
+            ` : ''}
+          </div>
+          <div class="pop-item-advice-drawer" id="advice_${chip.id}" style="${isDrawerOpen ? 'display: block;' : 'display: none;'}">
+            <span>${escapeHtml(advice)}</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  };
+
+  pop.innerHTML = `
+    <div class="precheck-pop-header">
+      <div class="precheck-pop-title-wrap">
+        <span class="precheck-pop-title">
+          ${renderIcon('Shield', { size: 12, strokeWidth: 2.2 })}
+          <span>Checks</span>
+        </span>
+        <span class="precheck-pop-count">${compactChips.length}</span>
+      </div>
+      <button type="button" class="precheck-pop-close" aria-label="Close pre-checks">
+        ${renderIcon('X', { size: 11, strokeWidth: 2.2 })}
+      </button>
+    </div>
+    <div class="precheck-pop-list">
+      ${renderItemsHtml()}
+    </div>
+  `;
+
+  document.body.appendChild(pop);
+
+  // Position anchored to trigger button
+  const btnRect = triggerBtn.getBoundingClientRect();
+  const popRect = pop.getBoundingClientRect();
+
+  let left = 6;
+  if (window.innerWidth > 270) {
+    left = Math.max(6, Math.min(btnRect.right - popRect.width, window.innerWidth - popRect.width - 6));
+  }
+
+  let top = btnRect.bottom + 4;
+  if (top + popRect.height > window.innerHeight - 8) {
+    top = Math.max(8, btnRect.top - popRect.height - 4);
+  }
+
+  pop.style.left = `${Math.round(left)}px`;
+  pop.style.top = `${Math.round(top)}px`;
+
+  // Attach event handlers
+  const closeBtn = pop.querySelector('.precheck-pop-close');
+  if (closeBtn instanceof HTMLElement) {
+    closeBtn.onclick = (e) => {
+      e.stopPropagation();
+      closePrecheckPopover();
+    };
+  }
+
+  const listEl = pop.querySelector('.precheck-pop-list');
+  if (listEl instanceof HTMLElement) {
+    listEl.onclick = (e) => {
+      const target = e.target;
+      if (!(target instanceof HTMLElement)) return;
+
+      const infoBtn = target.closest('[data-pop-info]');
+      if (infoBtn instanceof HTMLElement) {
+        e.stopPropagation();
+        const chipId = infoBtn.dataset.popInfo;
+        if (!chipId) return;
+        const drawer = pop.querySelector(`#advice_${chipId}`);
+        if (drawer instanceof HTMLElement) {
+          const isOpen = drawer.style.display !== 'none';
+          drawer.style.display = isOpen ? 'none' : 'block';
+          infoBtn.classList.toggle('active', !isOpen);
+        }
+        return;
+      }
+
+      const toggleRow = target.closest('[data-pop-toggle]');
+      if (toggleRow instanceof HTMLElement) {
+        e.stopPropagation();
+        const chipId = toggleRow.dataset.popToggle;
+        if (!chipId) return;
+        const chip = compactChips.find(x => x.id === chipId);
+        if (!chip) return;
+
+        stopAutoClear();
+        if (chip.itemType === 'action') {
+          const cur = curStatus()[chipId];
+          const newStatus = cur === 'passed' ? null : 'passed';
+          curStatus()[chipId] = newStatus;
+          curValues()[chipId] = newStatus === 'passed' ? 'Done' : '';
+          if (newStatus) recordFillingOrder(chipId);
+        } else {
+          const cur = curStatus()[chipId];
+          const newStatus = cur === 'failed' ? null : 'failed';
+          curStatus()[chipId] = newStatus;
+          if (newStatus) recordFillingOrder(chipId);
+        }
+
+        updatePrecheckTriggerBadge(parentFieldId);
+        const openDrawerIds = new Set(
+          Array.from(pop.querySelectorAll<HTMLElement>('.pop-item-advice-drawer'))
+            .filter(d => d.style.display !== 'none')
+            .map(d => d.id.replace('advice_', ''))
+        );
+        listEl.innerHTML = renderItemsHtml(openDrawerIds);
+        renderCallbackPanelOnly();
+        syncPreview();
+      }
+    };
+  }
+}
+
 function getItemEffectiveStatus(it, st, val) {
   if (!it) return null;
   if (st[it.id] === 'failed') return 'failed';
@@ -1553,6 +1768,8 @@ function switchToType(targetId) {
 }
 
 function renderForm() {
+  closePrecheckPopover();
+  closeInfoPopover();
   const t = curType();
   if (!t) {
     mainForm.innerHTML = '<div style="padding:24px 16px;text-align:center;color:var(--text-muted);font-size:11px;">No vetting type selected</div>';
@@ -1723,13 +1940,27 @@ function createRowHtml(it, kind, _idx) {
   ` : '';
 
   const isVetted = isVettingItem(it);
-  const statusActionsHtml = isVetted ? `
-    <div class="status-actions">
+  const t = curType();
+  const compactChips = (t?.optional || []).filter(x => x.compactChip && x.attachTo === it.id);
+  const hasPrechecks = compactChips.length > 0;
+
+  let statusButtonsHtml = '';
+  if (hasPrechecks) {
+    const meta = getPrecheckTriggerMeta(it.id, compactChips);
+    statusButtonsHtml += `
+      <button type="button" class="precheck-trigger-btn ${meta.statusClass}" data-precheck-trigger="${it.id}" title="${escapeHtml(meta.title)}" aria-label="Pre-checks for ${escapeHtml(lblMain)}">
+        ${meta.iconHtml}
+      </button>
+    `;
+  }
+  if (isVetted) {
+    statusButtonsHtml += `
       <button type="button" class="pf-btn fail ${st === 'failed' ? 'active' : ''}" data-status-btn="failed" data-id="${it.id}" title="Mark as Failed" aria-label="Mark ${escapeHtml(lblMain)} as Failed">
         ${renderIcon('Ban', { size: 12, strokeWidth: 2.2 })}
       </button>
-    </div>
-  ` : `<div class="status-actions"></div>`;
+    `;
+  }
+  const statusActionsHtml = `<div class="status-actions">${statusButtonsHtml}</div>`;
 
   if (it.itemType === 'policy') {
     const isViolated = st === 'failed';
@@ -1763,26 +1994,6 @@ function createRowHtml(it, kind, _idx) {
     `;
   }
 
-  let precheckChipsHtml = '';
-  const t = curType();
-  const compactChips = (t?.optional || []).filter(x => x.compactChip && x.attachTo === it.id);
-  if (compactChips.length > 0) {
-    precheckChipsHtml = `
-      <div class="precheck-chips">
-        ${compactChips.map(chip => {
-          const isViolated = curStatus()[chip.id] === 'failed';
-          const shortLabel = chip.label.split('//')[0].trim();
-          return `
-            <button type="button" class="precheck-chip ${isViolated ? 'active' : ''}" data-precheck-chip="${chip.id}" title="${escapeHtml(chip.violationAdvice || chip.label)}">
-              ${isViolated ? renderIcon('AlertTriangle', { size: 10, strokeWidth: 2.2 }) : ''}
-              <span>${escapeHtml(shortLabel)}</span>
-            </button>
-          `;
-        }).join('')}
-      </div>
-    `;
-  }
-
   return `
     <div class="item-row ${kind}" data-id="${it.id}">
       <div class="field-container">
@@ -1791,13 +2002,14 @@ function createRowHtml(it, kind, _idx) {
             <span class="mat-label-text">${lblDisplay}${isMandatory ? ' <span class="req-mark" title="Required">*</span>' : ''}</span>
             ${infoBtnHtml}
           </label>
-          ${it.len > 0 ? `<span class="field-counter" id="cnt_${it.id}"></span>` : ''}
+          <div class="field-top-meta">
+            ${it.len > 0 ? `<span class="field-counter" id="cnt_${it.id}"></span>` : ''}
+          </div>
           ${it.multiline
             ? `<textarea class="mat-input vfield-textarea ${it.len > 0 ? 'has-len' : ''}" id="inp_${it.id}" data-id="${it.id}" data-max-lines="${it.maxLines || 4}" rows="1" autocomplete="off" spellcheck="false">${escapeHtml(val)}</textarea>`
             : `<input type="text" class="mat-input ${it.len > 0 ? 'has-len' : ''}" id="inp_${it.id}" data-id="${it.id}" value="${escapeHtml(val)}" autocomplete="off" spellcheck="false">`}
           ${underlineHtml}
         </div>
-        ${precheckChipsHtml}
       </div>
 
       ${statusActionsHtml}
@@ -1976,6 +2188,16 @@ function bindFormEvents() {
 
       renderCallbackPanelOnly();
       syncPreview();
+    };
+  });
+
+  mainForm.querySelectorAll<HTMLElement>('[data-precheck-trigger]').forEach(btn => {
+    btn.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const parentId = btn.dataset.precheckTrigger;
+      if (!parentId) return;
+      showPrecheckPopover(btn, parentId);
     };
   });
 
@@ -6186,13 +6408,22 @@ window.addEventListener('resize', () => {
 
 document.addEventListener('pointerdown', (e) => {
   const pop = document.getElementById('activeSakaPopover');
-  if (pop && !pop.contains(e.target) && !e.target.closest('.mat-info-btn')) {
-    closeInfoPopover();
+  if (pop && e.target instanceof Node && !pop.contains(e.target)) {
+    if (!(e.target instanceof Element && e.target.closest('.mat-info-btn'))) {
+      closeInfoPopover();
+    }
+  }
+  const precheckPop = document.getElementById('activePrecheckPopover');
+  if (precheckPop && e.target instanceof Node && !precheckPop.contains(e.target)) {
+    if (!(e.target instanceof Element && e.target.closest('[data-precheck-trigger]'))) {
+      closePrecheckPopover();
+    }
   }
 });
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') {
     closeInfoPopover();
+    closePrecheckPopover();
   }
 });
 

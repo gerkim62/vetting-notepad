@@ -20,6 +20,17 @@ describe('Unified Lucide Icon Provider', () => {
     expect(utensilsSvg).toContain('lucide-utensils');
   });
 
+  it('renders Shield icons for pre-checks', () => {
+    const shieldSvg = renderIcon('Shield', { size: 12 });
+    expect(shieldSvg).toContain('lucide-shield');
+
+    const alertSvg = renderIcon('ShieldAlert', { size: 12 });
+    expect(alertSvg).toContain('lucide-shieldalert');
+
+    const checkSvg = renderIcon('ShieldCheck', { size: 12 });
+    expect(checkSvg).toContain('lucide-shieldcheck');
+  });
+
   it('handles unknown icon gracefully', () => {
     // @ts-expect-error Testing invalid name fallback
     const result = renderIcon('NonExistentIcon');

@@ -802,11 +802,23 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   font-weight: bold;
 }
 
+/* Field Top Meta Container */
+.field-top-meta {
+  position: absolute;
+  top: 1px;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  z-index: 4;
+  pointer-events: auto;
+}
+
 /* Counter */
 .field-counter {
-  position: absolute;
-  right: 0;
-  top: 1px;
+  position: relative;
+  right: auto;
+  top: auto;
   font-size: 9px;
   font-family: ui-monospace, Menlo, Consolas, monospace;
   color: var(--text-dim);
@@ -814,6 +826,7 @@ input, select, textarea { font: inherit; color: inherit; border: 0; background: 
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.15s ease, color 0.15s ease;
+  white-space: nowrap;
 }
 .material-field.expanded .field-counter,
 .material-field.is-focused .field-counter,
@@ -4490,49 +4503,308 @@ textarea.mat-input.vfield-textarea::-webkit-resizer {
 }
 
 /* ==========================================================================
-   SIM Swap Pre-Check Micro-Chips
+   Ultra-Compact Row Action Slot Trigger & Checklist Popover for SAKA Pre-Checks
    ========================================================================== */
-.precheck-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 5px;
-  margin-bottom: 2px;
-}
-
-.precheck-chip {
+.precheck-trigger-btn {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
+  width: 20px;
   height: 20px;
-  padding: 0 8px;
-  font-size: 10px;
-  font-weight: 500;
-  line-height: 1;
-  color: var(--text-muted, #94a3b8);
-  background: var(--bg-hover, rgba(255, 255, 255, 0.04));
-  border: 1px solid var(--border-line, rgba(255, 255, 255, 0.1));
-  border-radius: 10px;
+  padding: 0;
+  border-radius: 4px;
   cursor: pointer;
+  border: 1px solid var(--border-line, rgba(255, 255, 255, 0.12));
+  background: var(--bg-hover, rgba(255, 255, 255, 0.05));
+  color: var(--text-muted, #94a3b8);
   transition: all 0.15s ease;
   user-select: none;
+  flex-shrink: 0;
 }
 
-.precheck-chip:hover {
-  background: var(--bg-active, rgba(255, 255, 255, 0.08));
+.precheck-trigger-btn:hover {
+  background: var(--bg-active, rgba(255, 255, 255, 0.12));
   color: var(--text-main, #f3f4f6);
-  border-color: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.25);
 }
 
-.precheck-chip.active {
-  background: rgba(239, 68, 68, 0.15);
-  border-color: rgba(239, 68, 68, 0.5);
+.precheck-trigger-btn.active,
+.precheck-trigger-btn.is-active {
+  border-color: var(--saf-emerald, #059669);
+  box-shadow: 0 0 0 1px var(--saf-emerald-soft, rgba(5, 150, 105, 0.2));
+}
+
+.precheck-trigger-btn.is-violated {
+  background: rgba(239, 68, 68, 0.16);
+  border-color: rgba(239, 68, 68, 0.6);
   color: #ef4444;
+}
+
+.precheck-trigger-btn.is-violated:hover {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: #ef4444;
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.3);
+}
+
+.precheck-trigger-btn.is-modified {
+  background: rgba(16, 185, 129, 0.16);
+  border-color: rgba(16, 185, 129, 0.6);
+  color: #10b981;
+}
+
+.precheck-trigger-btn.is-modified:hover {
+  background: rgba(16, 185, 129, 0.25);
+  border-color: #10b981;
+  box-shadow: 0 0 6px rgba(16, 185, 129, 0.3);
+}
+
+/* Floating Checklist Popover (Optimized for 200px) */
+.precheck-popover {
+  position: fixed;
+  z-index: 10000;
+  width: calc(100vw - 12px);
+  max-width: 250px;
+  background: var(--bg-panel, #0f172a);
+  border: 1px solid var(--border-line, rgba(255, 255, 255, 0.14));
+  border-radius: 7px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: precheckPopFadeIn 0.12s ease-out;
+  backdrop-filter: blur(12px);
+}
+
+@keyframes precheckPopFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.precheck-pop-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 24px;
+  padding: 0 8px;
+  background: var(--bg-header, rgba(255, 255, 255, 0.04));
+  border-bottom: 1px solid var(--border-line, rgba(255, 255, 255, 0.08));
+}
+
+.precheck-pop-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.precheck-pop-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-main, #f3f4f6);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.precheck-pop-title svg {
+  color: var(--saf-emerald, #10b981);
+}
+
+.precheck-pop-count {
+  font-size: 8.5px;
+  font-weight: 600;
+  color: var(--text-dim, #64748b);
+  background: var(--bg-hover, rgba(255, 255, 255, 0.08));
+  padding: 0 4px;
+  border-radius: 3px;
+  line-height: 14px;
+}
+
+.precheck-pop-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-muted, #94a3b8);
+  border-radius: 3px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.12s ease;
+}
+
+.precheck-pop-close:hover {
+  background: var(--bg-hover, rgba(255, 255, 255, 0.12));
+  color: var(--text-main, #f3f4f6);
+}
+
+.precheck-pop-list {
+  display: flex;
+  flex-direction: column;
+  padding: 3px;
+  max-height: 220px;
+  overflow-y: auto;
+  gap: 2px;
+}
+
+.precheck-pop-item {
+  display: flex;
+  flex-direction: column;
+  border-radius: 4px;
+  transition: all 0.12s ease;
+}
+
+.pop-item-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  padding: 0 5px;
+  border-radius: 4px;
+  cursor: pointer;
+  user-select: none;
+  background: var(--bg-surface, rgba(255, 255, 255, 0.02));
+  border: 1px solid transparent;
+  transition: all 0.12s ease;
+}
+
+.pop-item-row:hover {
+  background: var(--bg-hover, rgba(255, 255, 255, 0.06));
+}
+
+.precheck-pop-item.is-violated .pop-item-row {
+  background: rgba(239, 68, 68, 0.12);
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #fca5a5;
+}
+
+.precheck-pop-item.is-active .pop-item-row {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.35);
+  color: #6ee7b7;
+}
+
+.pop-check-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 13px;
+  height: 13px;
+  flex-shrink: 0;
+}
+
+.pop-check-icon svg {
+  display: block;
+}
+
+.pop-empty-box {
+  width: 11px;
+  height: 11px;
+  border-radius: 2.5px;
+  border: 1px solid var(--border-line, rgba(255, 255, 255, 0.25));
+  transition: border-color 0.12s ease;
+}
+
+.pop-item-row:hover .pop-empty-box {
+  border-color: var(--text-muted, #94a3b8);
+}
+
+.pop-item-label {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  font-size: 10.5px;
+  line-height: 1;
+}
+
+.pop-item-main {
+  font-weight: 500;
+  color: var(--text-main, #f3f4f6);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.precheck-pop-item.is-violated .pop-item-main {
+  color: #fca5a5;
   font-weight: 600;
 }
 
-.precheck-chip.active svg {
-  color: #ef4444;
+.precheck-pop-item.is-active .pop-item-main {
+  color: #6ee7b7;
+  font-weight: 600;
+}
+
+.pop-item-hint {
+  font-size: 9px;
+  font-style: italic;
+  color: var(--text-dim, #64748b);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pop-info-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 15px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-dim, #64748b);
+  border-radius: 3px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.12s ease;
+}
+
+.pop-info-btn:hover,
+.pop-info-btn.active {
+  background: var(--bg-hover, rgba(255, 255, 255, 0.12));
+  color: var(--saf-emerald, #10b981);
+}
+
+.pop-item-advice-drawer {
+  padding: 4px 6px 4px 24px;
+  font-size: 9px;
+  line-height: 1.3;
+  color: var(--text-muted, #94a3b8);
+  border-left: 2px solid var(--border-line, rgba(255, 255, 255, 0.15));
+  margin: 1px 2px 2px 5px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 0 3px 3px 0;
+  animation: precheckAdviceSlide 0.1s ease-out;
+}
+
+@keyframes precheckAdviceSlide {
+  from { opacity: 0; transform: translateY(-2px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.precheck-pop-item.is-violated .pop-item-advice-drawer {
+  border-left-color: #ef4444;
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.06);
+}
+
+.precheck-pop-item.is-active .pop-item-advice-drawer {
+  border-left-color: #10b981;
+  color: #6ee7b7;
+  background: rgba(16, 185, 129, 0.06);
 }
 
 /* ==========================================================================
