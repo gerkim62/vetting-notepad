@@ -121,6 +121,7 @@ export interface QuickInteractionTemplate {
   id: string;
   title: string;
   text: string;
+  unpinnedVars?: string[];
 }
 
 export interface ExportPayload {

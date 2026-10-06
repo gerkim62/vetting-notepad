@@ -479,7 +479,14 @@
             <span class="template-diy-link-notice" id="templateDiyLinkNotice" style="display:none;"></span>
           </div>
         </div>
-        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:4px;">
+        <div class="modal-form-group" id="templateVarsSection" style="display:none;margin-top:6px;">
+          <label class="modal-field-label">Variable Defaults (Click to toggle Unpinned from History)</label>
+          <div class="template-vars-chips" id="templateVarsChips"></div>
+          <span style="font-size:10px;color:var(--text-dim);display:block;margin-top:4px;">
+            Unpinned variables will default to empty and not be saved to history across calls.
+          </span>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px;">
           <button type="button" class="btn-action" id="btnCancelTemplate">Cancel</button>
           <button type="button" class="btn-action primary" id="btnSaveTemplate">Save Template</button>
         </div>

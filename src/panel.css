@@ -4534,3 +4534,65 @@ textarea.mat-input.vfield-textarea::-webkit-resizer {
 .precheck-chip.active svg {
   color: #ef4444;
 }
+
+/* ==========================================================================
+   Full Config UI Editor Additions
+   ========================================================================== */
+.edit-comment-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 5px;
+}
+
+.el-comment-text {
+  flex: 1;
+  height: 28px;
+  padding: 4px 8px;
+  font-size: 11px;
+  color: var(--text-main);
+  background: var(--bg-panel);
+  border: 1px solid var(--border-line);
+  border-radius: 4px;
+  outline: none;
+}
+
+.el-comment-text:focus {
+  border-color: var(--saf-emerald);
+}
+
+.template-vars-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 4px;
+}
+
+.template-var-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 8px;
+  font-size: 10px;
+  font-weight: 500;
+  border-radius: 11px;
+  border: 1px solid var(--border-line);
+  background: var(--bg-hover);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.template-var-chip:hover {
+  border-color: var(--saf-emerald);
+  color: var(--text-main);
+}
+
+.template-var-chip.unpinned {
+  background: rgba(245, 158, 11, 0.15);
+  border-color: rgba(245, 158, 11, 0.5);
+  color: #f59e0b;
+  font-weight: 600;
+}

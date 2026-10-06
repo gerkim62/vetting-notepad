@@ -2853,18 +2853,44 @@ function closeEditView() {
 function renderEditView() {
   const t = curType();
   let html = `
-    <div class="section-head" style="margin-top:0;">Vetting Type Name</div>
+    <div class="section-head" style="margin-top:0;">Vetting Type Configuration</div>
     <div class="material-field has-value" style="margin-bottom:8px;">
       <input type="text" class="mat-input" id="editTypeName" value="${escapeHtml(t.name)}" placeholder="e.g. SIM Swap">
       <div class="mat-underline-continuous" style="height:2px;background:var(--saf-emerald)"></div>
     </div>
 
-    <div class="edit-type-meta-row">
+    <div class="edit-type-meta-row" style="margin-bottom:6px;">
       <span class="meta-label">Min Secondary Passes:</span>
       <input type="number" id="editMinSecondary" min="0" max="10" value="${t.minSecondary || 0}" class="el-min-sec" title="Minimum secondary questions required to pass (e.g. 2 for Enhanced Vetting)">
     </div>
 
-    <div class="section-head">
+    <div class="edit-type-meta-row" style="margin-bottom:6px;">
+      <span class="meta-label">Copy Title (Note Header):</span>
+      <input type="text" id="editCopyTitle" value="${escapeHtml(t.copyTitle || '')}" placeholder="e.g. ${escapeHtml(t.name)} – Vetting" class="mat-input" style="font-size:11px;padding:3px 6px;flex:1;" title="Header emitted on first line of copied Siebel notes">
+    </div>
+
+    <div class="edit-type-meta-row" style="margin-bottom:8px;">
+      <span class="meta-label">SAKA Standard Article:</span>
+      <input type="text" id="editTypeArticle" value="${escapeHtml(t.article || '')}" placeholder="e.g. SSCB-0006" class="mat-input" style="font-size:11px;padding:3px 6px;flex:1;" title="Reference SAKA procedure document code">
+    </div>
+
+    <div class="section-head" style="margin-top:10px;">
+      <span>Preset Comments & Remarks</span>
+      <span style="font-size:9.5px;color:var(--text-dim);">Quick Remarks Dropdown</span>
+    </div>
+    <div id="editCommentList">
+      ${(t.comments || []).map((c, i) => `
+        <div class="edit-comment-row" data-comment-idx="${i}">
+          <input type="text" class="el-comment-text" value="${escapeHtml(c)}" placeholder="Preset remark text...">
+          <button type="button" class="ibtn btn-del-comment" data-comment-idx="${i}" title="Remove comment">
+            ${renderIcon('Trash2', { size: 11 })}
+          </button>
+        </div>
+      `).join('')}
+    </div>
+    <button class="btn-action" style="width:100%;margin-top:4px;" id="btnAddComment">+ Add Preset Remark</button>
+
+    <div class="section-head" style="margin-top:14px;">
       <span>Primary Items</span>
       <span style="font-size:9.5px;color:var(--text-dim);">Use ▲▼ to Reorder</span>
     </div>
@@ -2929,9 +2955,14 @@ function renderEditView() {
     </div>
     <button class="btn-action" style="width:100%;margin-top:5px;" id="btnAddDiy">+ Add DIY Action</button>
 
-    <button class="btn-action" id="btnDeleteType" style="width:100%;margin-top:20px;color:var(--color-danger);border-color:var(--border-line);">
-      Delete this Vetting Type
-    </button>
+    <div style="display:flex;gap:6px;margin-top:20px;">
+      <button class="btn-action" id="btnNewVettingType" style="flex:1;">
+        + New Vetting Type
+      </button>
+      <button class="btn-action" id="btnDeleteType" style="flex:1;color:var(--color-danger);border-color:var(--border-line);">
+        Delete Vetting Type
+      </button>
+    </div>
   `;
 
   editPane.innerHTML = html;
@@ -2939,8 +2970,19 @@ function renderEditView() {
 }
 
 function createEditRowHtml(it, kind, idx, total, list) {
-  const hasRich = !!(it.article || it.info || it.v360 || it.mpesaTxn || it.defaultValue || it.excludeFromCount || it.multiline);
   const isTied = !!it.group;
+  const hasRich = !!(
+    it.article ||
+    it.info ||
+    it.v360 ||
+    it.mpesaTxn ||
+    it.defaultValue ||
+    it.excludeFromCount ||
+    it.multiline ||
+    it.compactChip ||
+    it.groupLabel ||
+    (it.role && it.role !== 'primary' && it.role !== 'secondary')
+  );
   let canMoveUp = idx > 0;
   let canMoveDown = idx < total - 1;
 
@@ -2952,6 +2994,10 @@ function createEditRowHtml(it, kind, idx, total, list) {
     canMoveUp = startIdx > 0;
     canMoveDown = endIdx < list.length - 1;
   }
+
+  const t = curType();
+  const allFields = [...(t?.required || []), ...(t?.optional || [])];
+  const candidateParents = allFields.filter(f => f.id !== it.id && !f.compactChip);
 
   return `
     <div class="edit-item-group ${isTied ? 'is-tied' : ''}" data-id="${it.id}" data-kind="${kind}">
@@ -2977,6 +3023,35 @@ function createEditRowHtml(it, kind, idx, total, list) {
         </button>
       </div>
       <div class="edit-item-drawer" id="drawer_${it.id}" style="display:none;">
+        <div class="drawer-field">
+          <span class="drawer-label">Field Role:</span>
+          <select class="el-role">
+            <option value="primary" ${(!it.role || it.role === 'primary') ? 'selected' : ''}>Primary Vetting</option>
+            <option value="secondary" ${it.role === 'secondary' ? 'selected' : ''}>Secondary Vetting</option>
+            <option value="identifier" ${it.role === 'identifier' ? 'selected' : ''}>Identifier (Calling / Target MSISDN)</option>
+            <option value="policy" ${it.role === 'policy' ? 'selected' : ''}>Policy Rule</option>
+            <option value="action" ${it.role === 'action' ? 'selected' : ''}>SOP Action</option>
+          </select>
+        </div>
+        <div class="drawer-field drawer-field-checkbox">
+          <label class="drawer-check-label">
+            <input type="checkbox" class="el-compact-chip" ${it.compactChip ? 'checked' : ''}>
+            <span>Render as compact micro-chip</span>
+          </label>
+        </div>
+        <div class="drawer-field el-attach-row" id="attach_row_${it.id}" style="${it.compactChip ? '' : 'display:none;'}">
+          <span class="drawer-label">Attach Beneath Field:</span>
+          <select class="el-attach-to">
+            <option value="">-- Standalone (No parent) --</option>
+            ${candidateParents.map(f => `
+              <option value="${f.id}" ${it.attachTo === f.id ? 'selected' : ''}>${escapeHtml(f.label.split('//')[0].trim())} (${f.id})</option>
+            `).join('')}
+          </select>
+        </div>
+        <div class="drawer-field el-group-label-row" id="group_label_row_${it.id}" style="${isTied ? '' : 'display:none;'}">
+          <span class="drawer-label">Group Copy Label:</span>
+          <input type="text" class="el-group-label" value="${escapeHtml(it.groupLabel || '')}" placeholder="e.g. FDN 1 & 2">
+        </div>
         <div class="drawer-field">
           <span class="drawer-label">View 360 Auto-fill:</span>
           <select class="el-v360">
@@ -3101,17 +3176,54 @@ function bindEditEvents() {
     };
   }
 
+  const updateDrawerRich = (grp: Element, itm: VettingField) => {
+    const btn = grp.querySelector('.btn-toggle-drawer');
+    if (btn) {
+      btn.classList.toggle('has-rich', !!(
+        itm.article ||
+        itm.info ||
+        itm.v360 ||
+        itm.mpesaTxn ||
+        itm.defaultValue ||
+        itm.excludeFromCount ||
+        itm.multiline ||
+        itm.compactChip ||
+        itm.groupLabel ||
+        (itm.role && itm.role !== 'primary' && itm.role !== 'secondary')
+      ));
+    }
+  };
+
   const minSecInput = document.getElementById('editMinSecondary');
-  if (minSecInput) {
+  if (minSecInput instanceof HTMLInputElement) {
     minSecInput.oninput = () => {
       t.minSecondary = Math.max(0, parseInt(minSecInput.value, 10) || 0);
       saveTypes();
     };
   }
 
+  const copyTitleInput = document.getElementById('editCopyTitle');
+  if (copyTitleInput instanceof HTMLInputElement) {
+    copyTitleInput.oninput = () => {
+      t.copyTitle = copyTitleInput.value.trim() || undefined;
+      saveTypes();
+    };
+  }
+
+  const articleInput = document.getElementById('editTypeArticle');
+  if (articleInput instanceof HTMLInputElement) {
+    articleInput.oninput = () => {
+      t.article = articleInput.value.trim() || undefined;
+      saveTypes();
+    };
+  }
+
   editPane.onclick = async (e) => {
-    const drawerBtn = e.target.closest('[data-drawer-btn]');
-    if (drawerBtn) {
+    const targetEl = e.target;
+    if (!(targetEl instanceof HTMLElement)) return;
+
+    const drawerBtn = targetEl.closest('[data-drawer-btn]');
+    if (drawerBtn instanceof HTMLElement) {
       const id = drawerBtn.dataset.drawerBtn;
       const drawer = document.getElementById(`drawer_${id}`);
       if (drawer) {
@@ -3122,15 +3234,28 @@ function bindEditEvents() {
       return;
     }
 
-    const group = e.target.closest('.edit-item-group');
-    if (!group) {
-      if (e.target.id === 'btnAddReq') {
-        t.required.push({ id: uid(), label: 'New Required', len: 0 });
+    const group = targetEl.closest('.edit-item-group');
+    if (!(group instanceof HTMLElement)) {
+      if (targetEl.id === 'btnAddReq') {
+        t.required.push({ id: uid(), label: 'New Required', len: 0, role: 'primary' });
         renderEditView();
-      } else if (e.target.id === 'btnAddOpt') {
-        t.optional.push({ id: uid(), label: 'New Optional', len: 0 });
+      } else if (targetEl.id === 'btnAddOpt') {
+        t.optional.push({ id: uid(), label: 'New Optional', len: 0, role: 'secondary' });
         renderEditView();
-      } else if (e.target.id === 'btnAddDiy' || e.target.closest('#btnAddDiy')) {
+      } else if (targetEl.id === 'btnAddComment' || targetEl.closest('#btnAddComment')) {
+        if (!Array.isArray(t.comments)) t.comments = [];
+        t.comments.push('New remark');
+        saveTypes();
+        renderEditView();
+      } else if (targetEl.closest('.btn-del-comment')) {
+        const delBtn = targetEl.closest('.btn-del-comment');
+        const cIdx = parseInt((delBtn instanceof HTMLElement ? delBtn.dataset.commentIdx : '') || '-1', 10);
+        if (t.comments && cIdx >= 0 && t.comments[cIdx] !== undefined) {
+          t.comments.splice(cIdx, 1);
+          saveTypes();
+          renderEditView();
+        }
+      } else if (targetEl.id === 'btnAddDiy' || targetEl.closest('#btnAddDiy')) {
         if (!Array.isArray(t.diyActions)) t.diyActions = [];
         t.diyActions.push({
           id: 'diy_' + Date.now(),
@@ -3140,9 +3265,9 @@ function bindEditEvents() {
         });
         saveTypes();
         renderEditView();
-      } else if (e.target instanceof HTMLElement && e.target.closest('.btn-edit-linked-sms')) {
-        const btn = e.target.closest<HTMLElement>('.btn-edit-linked-sms');
-        const smsId = btn?.dataset.smsId;
+      } else if (targetEl.closest('.btn-edit-linked-sms')) {
+        const btn = targetEl.closest('.btn-edit-linked-sms');
+        const smsId = btn instanceof HTMLElement ? btn.dataset.smsId : undefined;
         if (smsId) {
           const tpl = quickSmsTemplates.find(s => s.id === smsId);
           if (tpl) {
@@ -3153,15 +3278,32 @@ function bindEditEvents() {
             openTemplateEditModal(tpl, 'sms');
           }
         }
-      } else if (e.target.closest('.btn-del-diy')) {
-        const delBtn = e.target.closest('.btn-del-diy');
-        const dIdx = parseInt(delBtn.dataset.diyIdx, 10);
+      } else if (targetEl.closest('.btn-del-diy')) {
+        const delBtn = targetEl.closest('.btn-del-diy');
+        const dIdx = parseInt((delBtn instanceof HTMLElement ? delBtn.dataset.diyIdx : '') || '-1', 10);
         if (t.diyActions && t.diyActions[dIdx]) {
           t.diyActions.splice(dIdx, 1);
           saveTypes();
           renderEditView();
         }
-      } else if (e.target.id === 'btnDeleteType') {
+      } else if (targetEl.id === 'btnNewVettingType' || targetEl.closest('#btnNewVettingType')) {
+        const newId = 'type_' + uid();
+        const newType: VettingType = {
+          id: newId,
+          name: 'New Vetting Type',
+          required: [{ id: uid(), label: 'MSISDN', len: 12, role: 'identifier' }],
+          optional: [{ id: uid(), label: 'Secondary Check', len: 0, role: 'secondary' }],
+          minSecondary: 1,
+          comments: []
+        };
+        types.push(newType);
+        formValues[newId] = {};
+        itemStatus[newId] = {};
+        activeTypeId = newId;
+        saveTypes();
+        refreshTypeSelect();
+        renderEditView();
+      } else if (targetEl.id === 'btnDeleteType') {
         if (types.length <= 1) {
           showToast('Cannot delete the last vetting type', null, null, 2500, 'warn');
           return;
@@ -3190,14 +3332,17 @@ function bindEditEvents() {
     const itemId = group.dataset.id;
     const idx = list.findIndex(x => x.id === itemId);
 
-    const tieBtn = e.target.closest('[data-tie-id]');
+    const tieBtn = targetEl.closest('[data-tie-id]');
     if (tieBtn) {
       const it = list[idx];
       if (!it) return;
       if (it.group) {
         const grpId = it.group;
         list.forEach(x => {
-          if (x.group === grpId) delete x.group;
+          if (x.group === grpId) {
+            delete x.group;
+            delete x.groupLabel;
+          }
         });
       } else {
         let partner = null;
@@ -3210,6 +3355,11 @@ function bindEditEvents() {
           const newGrp = 'grp_' + uid();
           it.group = newGrp;
           partner.group = newGrp;
+          const cleanIt = it.label.split('//')[0].trim();
+          const cleanPart = partner.label.split('//')[0].trim();
+          const autoLabel = (cleanIt && cleanPart) ? `${cleanIt} & ${cleanPart}` : undefined;
+          it.groupLabel = autoLabel;
+          partner.groupLabel = autoLabel;
         }
       }
       saveTypes();
@@ -3217,27 +3367,31 @@ function bindEditEvents() {
       return;
     }
 
-    if (e.target.closest('[data-del]')) {
+    if (targetEl.closest('[data-del]')) {
       const it = list[idx];
       list.splice(idx, 1);
       if (it && it.group) {
         const remaining = list.filter(x => x.group === it.group);
         if (remaining.length <= 1) {
-          remaining.forEach(r => delete r.group);
+          remaining.forEach(r => {
+            delete r.group;
+            delete r.groupLabel;
+          });
         }
       }
       saveTypes();
       renderEditView();
       return;
-    } else if (e.target.closest('[data-move]')) {
-      const step = parseInt(e.target.closest('[data-move]').dataset.move, 10);
+    } else if (targetEl.closest('[data-move]')) {
+      const moveTarget = targetEl.closest('[data-move]');
+      const step = parseInt((moveTarget instanceof HTMLElement ? moveTarget.dataset.move : '') || '0', 10);
       if (moveItemInList(list, idx, step)) {
         saveTypes();
         renderEditView();
         const newGroup = editPane.querySelector(`.edit-item-group[data-id="${itemId}"]`);
-        if (newGroup) {
+        if (newGroup instanceof HTMLElement) {
           const btn = newGroup.querySelector(`[data-move="${step}"]`) || newGroup.querySelector('.arr-btn');
-          if (btn && !btn.disabled) btn.focus();
+          if (btn instanceof HTMLButtonElement && !btn.disabled) btn.focus();
         }
       }
       return;
@@ -3246,12 +3400,14 @@ function bindEditEvents() {
 
   // Keyboard reordering: Alt+↑ / Alt+↓ anywhere on row, plain ↑ / ↓ on arr-btn
   editPane.onkeydown = (e) => {
-    const group = e.target.closest('.edit-item-group');
-    if (!group) return;
+    const targetEl = e.target;
+    if (!(targetEl instanceof HTMLElement)) return;
+    const group = targetEl.closest('.edit-item-group');
+    if (!(group instanceof HTMLElement)) return;
 
     const isAltUp = e.altKey && e.key === 'ArrowUp';
     const isAltDown = e.altKey && e.key === 'ArrowDown';
-    const isArrBtn = e.target.classList.contains('arr-btn');
+    const isArrBtn = targetEl.classList.contains('arr-btn');
     const isPlainUp = isArrBtn && e.key === 'ArrowUp';
     const isPlainDown = isArrBtn && e.key === 'ArrowDown';
 
@@ -3267,15 +3423,18 @@ function bindEditEvents() {
         saveTypes();
         renderEditView();
         const newGroup = editPane.querySelector(`.edit-item-group[data-id="${itemId}"]`);
-        if (newGroup) {
+        if (newGroup instanceof HTMLElement) {
           if (isArrBtn) {
             const btn = newGroup.querySelector(`[data-move="${step}"]`) || newGroup.querySelector('.arr-btn');
-            if (btn && !btn.disabled) btn.focus();
+            if (btn instanceof HTMLButtonElement && !btn.disabled) btn.focus();
           } else {
-            const cls = e.target.className.split(' ')[0];
+            const cls = targetEl.className.split(' ')[0];
             const el = cls ? newGroup.querySelector(`.${cls}`) : null;
-            if (el) el.focus();
-            else newGroup.querySelector('.el-label')?.focus();
+            if (el instanceof HTMLElement) el.focus();
+            else {
+              const labelInput = newGroup.querySelector('.el-label');
+              if (labelInput instanceof HTMLElement) labelInput.focus();
+            }
           }
         }
       }
@@ -3283,166 +3442,162 @@ function bindEditEvents() {
   };
 
   editPane.oninput = (e: Event) => {
-    if (!(e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement || e.target instanceof HTMLSelectElement)) return;
-    if (e.target.classList.contains('diy-edit-label')) {
-      const dIdx = parseInt(e.target.dataset.diyIdx, 10);
-      if (t.diyActions && t.diyActions[dIdx]) {
-        t.diyActions[dIdx].label = e.target.value;
+    const target = e.target;
+    if (!(target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement || target instanceof HTMLSelectElement)) return;
+    if (target.classList.contains('el-comment-text')) {
+      const row = target.closest('.edit-comment-row');
+      const cIdx = parseInt((row instanceof HTMLElement ? row.dataset.commentIdx : '') || '-1', 10);
+      if (t.comments && cIdx >= 0 && t.comments[cIdx] !== undefined) {
+        t.comments[cIdx] = target.value;
         saveTypes();
-        const card = e.target.closest('.diy-editor-card');
+      }
+      return;
+    }
+    if (target.classList.contains('diy-edit-label')) {
+      const dIdx = parseInt(target.dataset.diyIdx || '0', 10);
+      if (t.diyActions && t.diyActions[dIdx]) {
+        t.diyActions[dIdx].label = target.value;
+        saveTypes();
+        const card = target.closest('.diy-editor-card');
         const titleEl = card?.querySelector('.diy-card-header-title');
         if (titleEl) {
-          titleEl.textContent = e.target.value || 'New Action';
+          titleEl.textContent = target.value || 'New Action';
         }
       }
       return;
     }
-    if (e.target.classList.contains('diy-edit-advice')) {
-      const dIdx = parseInt(e.target.dataset.diyIdx, 10);
+    if (target.classList.contains('diy-edit-advice')) {
+      const dIdx = parseInt(target.dataset.diyIdx || '0', 10);
       if (t.diyActions && t.diyActions[dIdx]) {
-        t.diyActions[dIdx].adviceText = e.target.value;
+        t.diyActions[dIdx].adviceText = target.value;
         saveTypes();
       }
       return;
     }
 
-    const group = e.target.closest('.edit-item-group');
-    if (!group) return;
+    const group = target.closest('.edit-item-group');
+    if (!(group instanceof HTMLElement)) return;
     const kind = group.dataset.kind;
     const list = kind === 'required' ? t.required : t.optional;
     const item = list.find(x => x.id === group.dataset.id);
     if (!item) return;
 
-    if (e.target.classList.contains('el-label')) item.label = e.target.value;
-    else if (e.target.classList.contains('el-len')) item.len = Math.max(0, parseInt(e.target.value, 10) || 0);
-    else if (e.target.classList.contains('el-article')) {
-      item.article = e.target.value.trim();
-      const btn = group.querySelector('.btn-toggle-drawer');
-      if (btn) btn.classList.toggle('has-rich', !!(item.article || item.info || item.v360 || item.excludeFromCount));
+    if (target.classList.contains('el-label')) item.label = target.value;
+    else if (target.classList.contains('el-len')) item.len = Math.max(0, parseInt(target.value, 10) || 0);
+    else if (target.classList.contains('el-group-label')) {
+      const val = target.value.trim() || undefined;
+      item.groupLabel = val;
+      if (item.group) {
+        list.forEach(x => {
+          if (x.group === item.group) {
+            x.groupLabel = val;
+            const otherGroupEl = editPane.querySelector(`.edit-item-group[data-id="${x.id}"]`);
+            const otherInput = otherGroupEl?.querySelector('.el-group-label');
+            if (otherInput instanceof HTMLInputElement && otherInput !== target) {
+              otherInput.value = target.value;
+            }
+          }
+        });
+      }
+      updateDrawerRich(group, item);
     }
-    else if (e.target.classList.contains('el-info')) {
-      item.info = e.target.value;
-      const btn = group.querySelector('.btn-toggle-drawer');
-      if (btn) btn.classList.toggle('has-rich', !!(item.article || item.info || item.v360));
+    else if (target.classList.contains('el-article')) {
+      item.article = target.value.trim();
+      updateDrawerRich(group, item);
     }
-    else if (e.target.classList.contains('el-v360')) {
-      item.v360 = e.target.value || null;
-      const btn = group.querySelector('.btn-toggle-drawer');
-      if (btn) btn.classList.toggle('has-rich', !!(item.article || item.info || item.v360 || item.mpesaTxn || item.defaultValue));
+    else if (target.classList.contains('el-info')) {
+      item.info = target.value;
+      updateDrawerRich(group, item);
     }
-    else if (e.target.classList.contains('el-mpesa-txn')) {
-      item.mpesaTxn = e.target.value || undefined;
-      const btn = group.querySelector('.btn-toggle-drawer');
-      if (btn) btn.classList.toggle('has-rich', !!(item.article || item.info || item.v360 || item.mpesaTxn || item.defaultValue));
+    else if (target.classList.contains('el-v360')) {
+      item.v360 = target.value || null;
+      updateDrawerRich(group, item);
     }
-    else if (e.target.classList.contains('el-default')) {
-      item.defaultValue = e.target.value.trim() || undefined;
-      // Immediately apply to the live form value if the field hasn't been filled yet
+    else if (target.classList.contains('el-mpesa-txn')) {
+      item.mpesaTxn = target.value || undefined;
+      updateDrawerRich(group, item);
+    }
+    else if (target.classList.contains('el-default')) {
+      item.defaultValue = target.value.trim() || undefined;
       const liveVal = curValues()[item.id];
       if (liveVal === '' || liveVal === undefined) {
         if (item.defaultValue) curValues()[item.id] = item.defaultValue;
-        else delete curValues()[item.id]; // allow createRowHtml to re-init as ''
+        else delete curValues()[item.id];
       }
-      const btn = group.querySelector('.btn-toggle-drawer');
-      if (btn) btn.classList.toggle('has-rich', !!(item.article || item.info || item.v360 || item.mpesaTxn || item.defaultValue));
+      updateDrawerRich(group, item);
     }
     saveTypes();
   };
 
   editPane.onchange = (e) => {
-    if (e.target.classList.contains('el-v360')) {
-      const group = e.target.closest('.edit-item-group');
-      if (!group) return;
-      const kind = group.dataset.kind;
-      const list = kind === 'required' ? t.required : t.optional;
-      const item = list.find(x => x.id === group.dataset.id);
-      if (!item) return;
-      item.v360 = e.target.value || null;
-      const btn = group.querySelector('.btn-toggle-drawer');
-      if (btn) btn.classList.toggle('has-rich', !!(item.article || item.info || item.v360 || item.mpesaTxn || item.defaultValue));
+    const target = e.target;
+    if (!(target instanceof HTMLElement)) return;
+    const group = target.closest('.edit-item-group');
+    if (!(group instanceof HTMLElement)) return;
+    const kind = group.dataset.kind;
+    const list = kind === 'required' ? t.required : t.optional;
+    const item = list.find(x => x.id === group.dataset.id);
+    if (!item) return;
+
+    if (target instanceof HTMLSelectElement && target.classList.contains('el-role')) {
+      const val = target.value;
+      if (val === 'identifier' || val === 'primary' || val === 'secondary' || val === 'policy' || val === 'action') {
+        item.role = val;
+      }
+      updateDrawerRich(group, item);
       saveTypes();
-    } else if (e.target.classList.contains('el-mpesa-txn')) {
-      const group = e.target.closest('.edit-item-group');
-      if (!group) return;
-      const kind = group.dataset.kind;
-      const list = kind === 'required' ? t.required : t.optional;
-      const item = list.find(x => x.id === group.dataset.id);
-      if (!item) return;
-      item.mpesaTxn = e.target.value || undefined;
-      const btn = group.querySelector('.btn-toggle-drawer');
-      if (btn) btn.classList.toggle('has-rich', !!(item.article || item.info || item.v360 || item.mpesaTxn || item.defaultValue));
+    } else if (target instanceof HTMLInputElement && target.classList.contains('el-compact-chip')) {
+      item.compactChip = target.checked || undefined;
+      if (!item.compactChip) {
+        delete item.attachTo;
+      }
+      const attachRow = group.querySelector(`#attach_row_${item.id}`);
+      if (attachRow instanceof HTMLElement) attachRow.style.display = item.compactChip ? 'flex' : 'none';
+      updateDrawerRich(group, item);
       saveTypes();
-    } else if (e.target.classList.contains('el-omit-default')) {
-      const group = e.target.closest('.edit-item-group');
-      if (!group) return;
-      const kind = group.dataset.kind;
-      const list = kind === 'required' ? t.required : t.optional;
-      const item = list.find(x => x.id === group.dataset.id);
-      if (!item) return;
-      item.omitDefault = e.target.checked || undefined;
+    } else if (target instanceof HTMLSelectElement && target.classList.contains('el-attach-to')) {
+      item.attachTo = target.value.trim() || undefined;
       saveTypes();
-    } else if (e.target.classList.contains('el-exclude-count')) {
-      const group = e.target.closest('.edit-item-group');
-      if (!group) return;
-      const kind = group.dataset.kind;
-      const list = kind === 'required' ? t.required : t.optional;
-      const item = list.find(x => x.id === group.dataset.id);
-      if (!item) return;
-      item.excludeFromCount = e.target.checked || undefined;
-      const btn = group.querySelector('.btn-toggle-drawer');
-      if (btn) btn.classList.toggle('has-rich', !!(item.article || item.info || item.v360 || item.defaultValue || item.excludeFromCount || item.multiline));
+    } else if (target instanceof HTMLSelectElement && target.classList.contains('el-v360')) {
+      item.v360 = target.value || null;
+      updateDrawerRich(group, item);
       saveTypes();
-    } else if (e.target.classList.contains('el-multiline')) {
-      const group = e.target.closest('.edit-item-group');
-      if (!group) return;
-      const kind = group.dataset.kind;
-      const list = kind === 'required' ? t.required : t.optional;
-      const item = list.find(x => x.id === group.dataset.id);
-      if (!item) return;
-      item.multiline = e.target.checked || undefined;
+    } else if (target instanceof HTMLSelectElement && target.classList.contains('el-mpesa-txn')) {
+      item.mpesaTxn = target.value || undefined;
+      updateDrawerRich(group, item);
+      saveTypes();
+    } else if (target instanceof HTMLInputElement && target.classList.contains('el-omit-default')) {
+      item.omitDefault = target.checked || undefined;
+      saveTypes();
+    } else if (target instanceof HTMLInputElement && target.classList.contains('el-exclude-count')) {
+      item.excludeFromCount = target.checked || undefined;
+      updateDrawerRich(group, item);
+      saveTypes();
+    } else if (target instanceof HTMLInputElement && target.classList.contains('el-multiline')) {
+      item.multiline = target.checked || undefined;
       const maxRow = group.querySelector(`#maxlines_row_${item.id}`);
-      if (maxRow) maxRow.style.display = item.multiline ? 'flex' : 'none';
-      const btn = group.querySelector('.btn-toggle-drawer');
-      if (btn) btn.classList.toggle('has-rich', !!(item.article || item.info || item.v360 || item.defaultValue || item.excludeFromCount || item.multiline));
+      if (maxRow instanceof HTMLElement) maxRow.style.display = item.multiline ? 'flex' : 'none';
+      updateDrawerRich(group, item);
       saveTypes();
-    } else if (e.target.classList.contains('el-maxlines')) {
-      const group = e.target.closest('.edit-item-group');
-      if (!group) return;
-      const kind = group.dataset.kind;
-      const list = kind === 'required' ? t.required : t.optional;
-      const item = list.find(x => x.id === group.dataset.id);
-      if (!item) return;
-      const val = parseInt(e.target.value, 10);
+    } else if (target instanceof HTMLInputElement && target.classList.contains('el-maxlines')) {
+      const val = parseInt(target.value, 10);
       item.maxLines = Math.min(Math.max(isNaN(val) ? 4 : val, 2), 10);
-      e.target.value = item.maxLines;
+      target.value = String(item.maxLines);
       saveTypes();
-    } else if (e.target.classList.contains('el-item-type')) {
-      const group = e.target.closest('.edit-item-group');
-      if (!group) return;
-      const kind = group.dataset.kind;
-      const list = kind === 'required' ? t.required : t.optional;
-      const item = list.find(x => x.id === group.dataset.id);
-      if (!item) return;
-      const val = e.target.value;
+    } else if (target instanceof HTMLSelectElement && target.classList.contains('el-item-type')) {
+      const val = target.value;
       item.itemType = val === 'policy' ? 'policy' : val === 'action' ? 'action' : undefined;
       if (item.itemType === 'policy' || item.itemType === 'action') {
         item.excludeFromCount = true;
       }
-      const violRow = group.querySelector<HTMLElement>(`#violation_row_${item.id}`);
-      if (violRow) violRow.style.display = item.itemType === 'policy' ? 'flex' : 'none';
-      const exclCountBox = group.querySelector<HTMLInputElement>('.el-exclude-count');
-      if (exclCountBox && item.excludeFromCount) exclCountBox.checked = true;
-      const btn = group.querySelector('.btn-toggle-drawer');
-      if (btn) btn.classList.toggle('has-rich', !!(item.article || item.info || item.v360 || item.defaultValue || item.excludeFromCount || item.multiline || item.itemType));
+      const violRow = group.querySelector(`#violation_row_${item.id}`);
+      if (violRow instanceof HTMLElement) violRow.style.display = item.itemType === 'policy' ? 'flex' : 'none';
+      const exclCountBox = group.querySelector('.el-exclude-count');
+      if (exclCountBox instanceof HTMLInputElement && item.excludeFromCount) exclCountBox.checked = true;
+      updateDrawerRich(group, item);
       saveTypes();
-    } else if (e.target.classList.contains('el-violation-advice')) {
-      const group = e.target.closest('.edit-item-group');
-      if (!group) return;
-      const kind = group.dataset.kind;
-      const list = kind === 'required' ? t.required : t.optional;
-      const item = list.find(x => x.id === group.dataset.id);
-      if (!item) return;
-      item.violationAdvice = e.target.value.trim() || undefined;
+    } else if (target instanceof HTMLInputElement && target.classList.contains('el-violation-advice')) {
+      item.violationAdvice = target.value.trim() || undefined;
       saveTypes();
     }
   };
@@ -4908,13 +5063,20 @@ const templateBodyInput = document.getElementById('templateBodyInput');
 const btnCancelTemplate = document.getElementById('btnCancelTemplate');
 const btnSaveTemplate = document.getElementById('btnSaveTemplate');
 
-let editingTemplateState = null; // { tpl, type, isNew }
+let editingTemplateState: {
+  tpl: QuickSmsTemplate | QuickInteractionTemplate | null;
+  type: 'sms' | 'interaction';
+  isNew: boolean;
+  unpinnedVars: Set<string>;
+} | null = null;
 
 function openTemplateEditModal(tpl, type) {
+  const unpinnedSet = new Set<string>((tpl?.unpinnedVars || []).map((s: string) => String(s).trim().toUpperCase()));
   editingTemplateState = {
     tpl: tpl || null,
     type: type,
-    isNew: !tpl
+    isNew: !tpl,
+    unpinnedVars: unpinnedSet
   };
 
   if (templateEditModalTitle) {
@@ -4925,6 +5087,8 @@ function openTemplateEditModal(tpl, type) {
 
   const templateCharCounter = document.getElementById('templateCharCounter');
   const templateDiyLinkNotice = document.getElementById('templateDiyLinkNotice');
+  const templateVarsSection = document.getElementById('templateVarsSection');
+  const templateVarsChips = document.getElementById('templateVarsChips');
 
   const updateCharCounter = () => {
     if (!templateCharCounter) return;
@@ -4938,10 +5102,53 @@ function openTemplateEditModal(tpl, type) {
     }
   };
 
+  const updateVarsSection = () => {
+    if (!templateVarsSection || !templateVarsChips) return;
+    const text = templateBodyInput?.value || '';
+    const vars = parseTemplateVariables(text);
+    if (vars.length === 0) {
+      templateVarsSection.style.display = 'none';
+      templateVarsChips.innerHTML = '';
+      return;
+    }
+    templateVarsSection.style.display = 'block';
+    templateVarsChips.innerHTML = vars.map(v => {
+      const isUnpinned = editingTemplateState?.unpinnedVars.has(v.toUpperCase());
+      return `
+        <button type="button" class="template-var-chip ${isUnpinned ? 'unpinned' : ''}" data-var="${escapeHtml(v)}" title="${isUnpinned ? 'Unpinned: transient default, not remembered in history across calls' : 'Pinned: remembered in history across calls'}">
+          <span class="chip-name">{${escapeHtml(v)}}</span>
+          <span class="chip-status">${isUnpinned ? 'Transient' : 'Remembered'}</span>
+        </button>
+      `;
+    }).join('');
+  };
+
+  if (templateVarsChips) {
+    templateVarsChips.onclick = (e: MouseEvent) => {
+      const target = e.target;
+      if (!(target instanceof HTMLElement)) return;
+      const btn = target.closest('.template-var-chip');
+      if (!(btn instanceof HTMLElement) || !editingTemplateState) return;
+      const v = btn.dataset.var;
+      if (!v) return;
+      const key = v.toUpperCase();
+      if (editingTemplateState.unpinnedVars.has(key)) {
+        editingTemplateState.unpinnedVars.delete(key);
+      } else {
+        editingTemplateState.unpinnedVars.add(key);
+      }
+      updateVarsSection();
+    };
+  }
+
   if (templateBodyInput) {
-    templateBodyInput.oninput = updateCharCounter;
+    templateBodyInput.oninput = () => {
+      updateCharCounter();
+      updateVarsSection();
+    };
   }
   updateCharCounter();
+  updateVarsSection();
 
   if (templateDiyLinkNotice) {
     if (type === 'sms' && tpl) {
@@ -4964,6 +5171,8 @@ function openTemplateEditModal(tpl, type) {
 
 function closeTemplateEditModal() {
   if (templateBodyInput) templateBodyInput.oninput = null;
+  const templateVarsChips = document.getElementById('templateVarsChips');
+  if (templateVarsChips) templateVarsChips.onclick = null;
   if (templateEditOverlay) templateEditOverlay.style.display = 'none';
   if (templateEditModal) templateEditModal.style.display = 'none';
   editingTemplateState = null;
@@ -4983,25 +5192,40 @@ if (btnSaveTemplate) {
       return;
     }
 
-    const { tpl, type, isNew } = editingTemplateState;
+    const { tpl, type, isNew, unpinnedVars } = editingTemplateState;
+    const parsed = parseTemplateVariables(text);
+    const finalUnpinned = parsed.filter(v => unpinnedVars.has(v.toUpperCase()));
+
     if (isNew) {
-      const newTpl = {
-        id: (type === 'sms' ? 'sms_' : 'int_') + Date.now(),
-        title,
-        text
-      };
       if (type === 'sms') {
-        quickSmsTemplates.push(newTpl);
+        const newSms: QuickSmsTemplate = {
+          id: 'sms_' + Date.now(),
+          title,
+          text,
+          unpinnedVars: finalUnpinned.length > 0 ? finalUnpinned : undefined
+        };
+        quickSmsTemplates.push(newSms);
         saveQuickSmsTemplates();
         renderQuickSmsList();
       } else {
-        quickInteractionTemplates.push(newTpl);
+        const newInt: QuickInteractionTemplate = {
+          id: 'int_' + Date.now(),
+          title,
+          text,
+          unpinnedVars: finalUnpinned.length > 0 ? finalUnpinned : undefined
+        };
+        quickInteractionTemplates.push(newInt);
         saveQuickInteractionTemplates();
         renderQuickInteractionList();
       }
     } else if (tpl) {
       tpl.title = title;
       tpl.text = text;
+      if (finalUnpinned.length > 0) {
+        tpl.unpinnedVars = finalUnpinned;
+      } else {
+        delete tpl.unpinnedVars;
+      }
       if (type === 'sms') {
         saveQuickSmsTemplates();
         renderQuickSmsList();
