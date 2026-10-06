@@ -835,7 +835,14 @@ function buildCopyText(t) {
     if (l) lines.push(l);
   }
 
-  // Tier 2: Primary and secondary question items in recorded filling order
+  // Tier 2: Action and policy items (actions done / DIY before vettings list)
+  const actionPolicyItems = allItems.filter(it => getFieldRole(it) === 'action' || getFieldRole(it) === 'policy');
+  for (const it of actionPolicyItems) {
+    const l = renderItemLine(it);
+    if (l) lines.push(l);
+  }
+
+  // Tier 3: Primary and secondary question items in recorded filling order
   const questionItems = allItems.filter(it => isVettingItem(it));
   const sortedQuestionItems = [...questionItems].sort((a, b) => {
     const idxA = orderList.indexOf(a.id);
@@ -847,13 +854,6 @@ function buildCopyText(t) {
   });
 
   for (const it of sortedQuestionItems) {
-    const l = renderItemLine(it);
-    if (l) lines.push(l);
-  }
-
-  // Tier 3: Action and policy items
-  const actionPolicyItems = allItems.filter(it => getFieldRole(it) === 'action' || getFieldRole(it) === 'policy');
-  for (const it of actionPolicyItems) {
     const l = renderItemLine(it);
     if (l) lines.push(l);
   }

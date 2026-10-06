@@ -1,15 +1,24 @@
 /**
- * Vetting Notepad - Active Browser Tab Break Screensaver & Overlay
- * Renders an isolated, non-blocking glassmorphic ambient overlay on the user's active page.
- * Features:
- * - Isolated Shadow DOM to prevent any CSS bleed
- * - Non-blocking (pointer-events: none on backdrop, click-through to host web page)
- * - Esc key / Dismiss button for instant emergency dismissal
- * - Turn Off / On switch directly on the overlay
- * - Pre-break heads-up pill mode and active break screensaver card mode
+ * Vetting Notepad - Active Browser Tab Break Notifier Overlay
+ * Renders an isolated, ambient, draggable screensaver overlay with edge glow and snooze controls.
  */
 
-interface BreakStateMessage {
+declare global {
+  interface Window {
+    __brk?: {
+      stop: () => void;
+    };
+  }
+}
+
+export interface BreakNotifierOptions {
+  name?: string;
+  seconds?: number;
+  snooze?: number[];
+  onDismiss?: () => void;
+}
+
+export interface BreakStateMessage {
   type: 'VPAD_BREAK_STATE';
   isConfigured: boolean;
   currentPhase: string;
@@ -26,304 +35,159 @@ interface BreakStateMessage {
   showPageOverlay?: boolean;
 }
 
-let hostEl: HTMLElement | null = null;
-let shadowRoot: ShadowRoot | null = null;
+let activePhase: string | null = null;
 let dismissedPhase: string | null = null;
-let currentMessage: BreakStateMessage | null = null;
 
-function ensureHost(): ShadowRoot {
-  if (shadowRoot && hostEl) return shadowRoot;
+export function breakNotifier({
+  name = '☕ Tea break',
+  seconds = 300,
+  snooze = [2, 5, 10],
+  onDismiss
+}: BreakNotifierOptions = {}) {
+  window.__brk?.stop();
 
-  hostEl = document.getElementById('vpad-break-overlay-host');
-  if (!hostEl) {
-    hostEl = document.createElement('div');
-    hostEl.id = 'vpad-break-overlay-host';
-    hostEl.style.position = 'fixed';
-    hostEl.style.top = '0';
-    hostEl.style.left = '0';
-    hostEl.style.width = '100vw';
-    hostEl.style.height = '100vh';
-    hostEl.style.pointerEvents = 'none';
-    hostEl.style.zIndex = '2147483647'; // maximum z-index
-    document.documentElement.appendChild(hostEl);
-  }
-
-  shadowRoot = hostEl.shadowRoot || hostEl.attachShadow({ mode: 'open' });
-  return shadowRoot;
-}
-
-function removeOverlay() {
-  if (hostEl) {
-    hostEl.remove();
-    hostEl = null;
-    shadowRoot = null;
-  }
-}
-
-function renderOverlay(state: BreakStateMessage) {
-  if (state.showPageOverlay === false) {
-    removeOverlay();
-    return;
-  }
-
-  // If user dismissed this specific phase, do not show until phase transitions
-  if (dismissedPhase && dismissedPhase === state.currentPhase) {
-    removeOverlay();
-    return;
-  } else if (dismissedPhase && dismissedPhase !== state.currentPhase) {
-    // Phase changed (e.g. from pre-break to in_break), reset dismissed state
-    dismissedPhase = null;
-  }
-
-  if (!state.isActive && !state.isPreBreak) {
-    removeOverlay();
-    return;
-  }
-
-  const root = ensureHost();
-
-  const isPre = state.isPreBreak && !state.isActive;
-
+  const host = document.createElement('div');
+  host.style.cssText = 'all:initial;position:fixed;inset:0;z-index:2147483647;pointer-events:none';
+  const root = host.attachShadow({ mode: 'open' });
   root.innerHTML = `
-    <style>
-      :host {
-        all: initial;
-      }
-      * {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      }
-      .vpad-card {
-        pointer-events: auto;
-        position: fixed;
-        background: rgba(15, 23, 42, 0.92);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        border: 1px solid rgba(255, 255, 255, 0.14);
-        box-shadow: 0 20px 48px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(0, 0, 0, 0.2);
-        color: #f8fafc;
-        animation: vpadSlide 0.25s cubic-bezier(0.16, 1, 0.3, 1);
-        z-index: 2147483647;
-      }
+    <div class="glow"></div>
+    <div class="bar">
+      <b class="name"></b><span class="time"></span>
+      <i>|</i><span class="lbl">Snooze</span><span class="btns"></span>
+      <button class="x" title="Close break">×</button>
+    </div>`;
 
-      /* Mode 1: Pre-break heads up pill */
-      .vpad-pill {
-        top: 20px;
-        right: 24px;
-        border-radius: 9999px;
-        padding: 8px 16px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        border-left: 3px solid #f59e0b;
-      }
-      .vpad-pill-text {
-        font-size: 13px;
-        font-weight: 500;
-        color: #f1f5f9;
-        display: flex;
-        align-items: center;
-        gap: 6px;
-      }
-      .vpad-pill-text strong {
-        color: #fde68a;
-      }
+  const css = `
+    .glow{position:fixed;inset:0;pointer-events:none;animation:p var(--d,2.4s) ease-in-out infinite;
+      box-shadow:inset 0 0 70px 12px rgba(var(--c,30,191,138),.5)}
+    @keyframes p{
+      0%,100%{box-shadow:inset 0 0 calc(50px + 30px*var(--p,0)) calc(6px + 10px*var(--p,0)) rgba(var(--c,30,191,138),calc(.3 + .25*var(--p,0)))}
+      50%{box-shadow:inset 0 0 calc(110px + 90px*var(--p,0)) calc(26px + 30px*var(--p,0)) rgba(var(--c,30,191,138),calc(.7 + .3*var(--p,0)))}}
+    @media (prefers-reduced-motion:reduce){.glow{animation:none}}
+    .bar{position:fixed;top:6px;left:50%;transform:translateX(-50%);pointer-events:auto;
+      display:flex;align-items:center;gap:6px;white-space:nowrap;padding:3px 4px 3px 10px;
+      background:#232938;color:#f2f5f8;border-radius:999px;font:13px/1 system-ui,sans-serif;
+      opacity:.92;box-shadow:0 2px 10px rgba(0,0,0,.3),0 0 0 1px rgba(var(--c,30,191,138),.7)}
+    .bar{cursor:grab;user-select:none;touch-action:none}
+    .bar:active{cursor:grabbing}
+    .bar:hover{opacity:1}
+    .name{font-weight:700}
+    .time{font-variant-numeric:tabular-nums;font-weight:700;color:rgb(var(--c,30,191,138))}
+    i{font-style:normal;opacity:.35}
+    .lbl{opacity:.7}
+    .btns{display:flex;gap:3px}
+    button{all:unset;cursor:pointer;background:rgba(255,255,255,.1);padding:4px 7px;border-radius:999px}
+    .x{font-size:15px;padding:3px 7px;margin-left:2px}
+    button:hover,button:focus-visible{background:rgb(var(--c,30,191,138));color:#05281d}`;
 
-      /* Mode 2: Active break screensaver card */
-      .vpad-screensaver {
-        top: 32px;
-        right: 32px;
-        width: 320px;
-        border-radius: 16px;
-        padding: 20px 22px;
-        border-left: 4px solid #10b981;
-      }
-      .vpad-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        margin-bottom: 12px;
-      }
-      .vpad-title-wrap {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-      }
-      .vpad-icon {
-        font-size: 24px;
-      }
-      .vpad-title {
-        font-size: 15px;
-        font-weight: 700;
-        color: #ffffff;
-        letter-spacing: -0.01em;
-      }
-      .vpad-badge {
-        font-size: 10.5px;
-        font-weight: 600;
-        text-transform: uppercase;
-        background: rgba(16, 185, 129, 0.2);
-        color: #34d399;
-        padding: 2px 7px;
-        border-radius: 6px;
-      }
-      .vpad-countdown {
-        font-size: 32px;
-        font-weight: 800;
-        letter-spacing: -0.02em;
-        color: #10b981;
-        margin-bottom: 4px;
-        font-variant-numeric: tabular-nums;
-      }
-      .vpad-sub {
-        font-size: 12px;
-        color: #94a3b8;
-        margin-bottom: 14px;
-      }
-      .vpad-wellness {
-        font-size: 11px;
-        color: #cbd5e1;
-        background: rgba(255, 255, 255, 0.05);
-        padding: 8px 10px;
-        border-radius: 8px;
-        margin-bottom: 16px;
-        line-height: 1.4;
-      }
-      .vpad-actions {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-      }
-      .vpad-btn {
-        appearance: none;
-        border: none;
-        cursor: pointer;
-        padding: 7px 12px;
-        font-size: 11.5px;
-        font-weight: 600;
-        border-radius: 8px;
-        transition: all 0.15s ease;
-      }
-      .vpad-btn-primary {
-        background: #10b981;
-        color: #ffffff;
-        flex: 1;
-      }
-      .vpad-btn-primary:hover {
-        background: #059669;
-      }
-      .vpad-btn-subtle {
-        background: rgba(255, 255, 255, 0.08);
-        color: #94a3b8;
-      }
-      .vpad-btn-subtle:hover {
-        background: rgba(255, 255, 255, 0.14);
-        color: #f1f5f9;
-      }
-      .vpad-close {
-        cursor: pointer;
-        background: transparent;
-        border: none;
-        color: #64748b;
-        font-size: 16px;
-        padding: 2px 6px;
-        border-radius: 4px;
-        transition: color 0.15s ease;
-      }
-      .vpad-close:hover {
-        color: #f1f5f9;
-        background: rgba(255, 255, 255, 0.1);
-      }
-
-      @keyframes vpadSlide {
-        from {
-          opacity: 0;
-          transform: translateY(-8px) scale(0.98);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0) scale(1);
-        }
-      }
-    </style>
-
-    ${isPre ? `
-      <div class="vpad-card vpad-pill" id="vpadPill">
-        <div class="vpad-pill-text">
-          <span>⏳</span>
-          <span><strong>${escapeText(state.eventName)}</strong> in ${Math.ceil(state.diffSec / 60)}m &bull; Wrap up your call</span>
-        </div>
-        <button class="vpad-close" id="vpadDismissBtn" title="Dismiss (Esc)">&times;</button>
-      </div>
-    ` : `
-      <div class="vpad-card vpad-screensaver" id="vpadScreensaver">
-        <div class="vpad-header">
-          <div class="vpad-title-wrap">
-            <span class="vpad-icon">${escapeText(state.icon || '☕')}</span>
-            <div>
-              <div class="vpad-title">${escapeText(state.eventName)}</div>
-              <div class="vpad-badge">${escapeText(state.eventTag || 'Active')}</div>
-            </div>
-          </div>
-          <button class="vpad-close" id="vpadDismissBtn" title="Dismiss (Esc)">&times;</button>
-        </div>
-        <div class="vpad-countdown">${escapeText(state.bigCountdown)}</div>
-        <div class="vpad-sub">${escapeText(state.statusSub)}</div>
-        <div class="vpad-wellness">💧 Time to step away from the screen, stretch, and hydrate.</div>
-        <div class="vpad-actions">
-          <button class="vpad-btn vpad-btn-primary" id="vpadTakeCallBtn">Take Call / Dismiss</button>
-          <button class="vpad-btn vpad-btn-subtle" id="vpadTurnOffBtn">Turn Off on Page</button>
-        </div>
-      </div>
-    `}
-  `;
-
-  // Attach event listeners
-  const dismissBtn = root.getElementById('vpadDismissBtn');
-  if (dismissBtn) {
-    dismissBtn.onclick = () => {
-      dismissedPhase = state.currentPhase;
-      removeOverlay();
-    };
+  try {
+    const sheet = new CSSStyleSheet();
+    sheet.replaceSync(css);
+    root.adoptedStyleSheets = [sheet];
+  } catch {
+    const st = document.createElement('style');
+    st.textContent = css;
+    root.append(st);
   }
 
-  const takeCallBtn = root.getElementById('vpadTakeCallBtn');
-  if (takeCallBtn) {
-    takeCallBtn.onclick = () => {
-      dismissedPhase = state.currentPhase;
-      removeOverlay();
-    };
+  const nameEl = root.querySelector('.name');
+  if (nameEl) nameEl.textContent = name;
+  const timeEl = root.querySelector('.time');
+  const btnsEl = root.querySelector('.btns');
+  const closeBtn = root.querySelector('.x');
+  const bar = root.querySelector('.bar');
+
+  let remaining = seconds * 1000;
+  let end = Date.now() + remaining;
+  let tick: ReturnType<typeof setInterval> | undefined;
+  let wake: ReturnType<typeof setTimeout> | undefined;
+
+  const fmt = (s: number) => String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+
+  const mix = (a: number[], b: number[], t: number) => a.map((v, i) => Math.round(v + (b[i] - v) * t));
+  const GREEN = [30, 191, 138];
+  const AMBER = [255, 176, 32];
+  const RED = [255, 70, 60];
+  let lastStep = -1;
+
+  function setIntensity(p: number) {
+    p = Math.min(1, Math.max(0, p));
+    // green -> amber (0-60%) -> red (60-100%)
+    const c = p < 0.6 ? mix(GREEN, AMBER, p / 0.6) : mix(AMBER, RED, (p - 0.6) / 0.4);
+    host.style.setProperty('--p', p.toFixed(3));
+    host.style.setProperty('--c', c.join(','));
+    // pulse faster in steps (avoids animation jumps every second)
+    const step = Math.floor(p * 5);
+    if (step !== lastStep) {
+      lastStep = step;
+      host.style.setProperty('--d', (2.4 - step * 0.35).toFixed(2) + 's');
+    }
   }
 
-  const turnOffBtn = root.getElementById('vpadTurnOffBtn');
-  if (turnOffBtn) {
-    turnOffBtn.onclick = () => {
-      dismissedPhase = state.currentPhase;
-      removeOverlay();
-      try {
-        chrome.storage.local.get(['vpad.break_schedule', 'vpad.breakSchedule'], (res) => {
-          const sched = res['vpad.break_schedule'] || res['vpad.breakSchedule'] || {};
-          sched.showPageOverlay = false;
-          chrome.storage.local.set({
-            'vpad.break_schedule': sched,
-            'vpad.breakSchedule': sched
-          });
-        });
-      } catch {
-        // ignore
-      }
-    };
+  function render() {
+    const left = Math.max(0, Math.round((end - Date.now()) / 1000));
+    if (timeEl) timeEl.textContent = fmt(left);
+    setIntensity(1 - left / seconds);
+    if (left <= 0) stop();
   }
-}
 
-function escapeText(str: string): string {
-  return (str || '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+  function stop() {
+    if (tick) clearInterval(tick);
+    if (wake) clearTimeout(wake);
+    host.remove();
+    delete window.__brk;
+    onDismiss?.();
+  }
+
+  function doSnooze(mins: number) {
+    if (tick) clearInterval(tick);
+    remaining = end - Date.now();
+    host.style.display = 'none';
+    wake = setTimeout(() => {
+      end = Date.now() + remaining;
+      host.style.display = '';
+      tick = setInterval(render, 1000);
+      render();
+    }, mins * 60000);
+  }
+
+  snooze.forEach((m) => {
+    const b = document.createElement('button');
+    b.textContent = m + 'm';
+    b.title = 'Snooze ' + m + ' minutes';
+    b.onclick = () => doSnooze(m);
+    if (btnsEl) btnsEl.append(b);
+  });
+
+  if (closeBtn instanceof HTMLElement) {
+    closeBtn.onclick = stop;
+  }
+
+  // drag the strip anywhere (ignore presses on buttons)
+  if (bar instanceof HTMLElement) {
+    let drag: { dx: number; dy: number } | null = null;
+    bar.addEventListener('pointerdown', (e: PointerEvent) => {
+      if (e.target instanceof Element && e.target.closest('button')) return;
+      const r = bar.getBoundingClientRect();
+      Object.assign(bar.style, { left: r.left + 'px', top: r.top + 'px', transform: 'none' });
+      drag = { dx: e.clientX - r.left, dy: e.clientY - r.top };
+      bar.setPointerCapture(e.pointerId);
+    });
+    bar.addEventListener('pointermove', (e: PointerEvent) => {
+      if (!drag) return;
+      bar.style.left = Math.max(0, Math.min(innerWidth - bar.offsetWidth, e.clientX - drag.dx)) + 'px';
+      bar.style.top = Math.max(0, Math.min(innerHeight - bar.offsetHeight, e.clientY - drag.dy)) + 'px';
+    });
+    bar.addEventListener('pointerup', () => {
+      drag = null;
+    });
+  }
+
+  document.documentElement.append(host);
+  tick = setInterval(render, 1000);
+  render();
+  window.__brk = { stop };
+  return 'Break started. Run __brk.stop() to remove it.';
 }
 
 function isBreakStateMessage(msg: unknown): msg is BreakStateMessage {
@@ -331,45 +195,90 @@ function isBreakStateMessage(msg: unknown): msg is BreakStateMessage {
   return 'type' in msg && msg.type === 'VPAD_BREAK_STATE';
 }
 
-// Global Esc key listener to dismiss overlay cleanly
-window.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && hostEl) {
-    if (currentMessage) {
-      dismissedPhase = currentMessage.currentPhase;
+function handleBreakState(state: BreakStateMessage) {
+  if (state.showPageOverlay === false || !state.isActive) {
+    if (window.__brk) {
+      window.__brk.stop();
     }
-    removeOverlay();
+    activePhase = null;
+    return;
   }
-});
 
-// Runtime message listener from background worker / panel
-chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) => {
-  if (isBreakStateMessage(message)) {
-    currentMessage = message;
-    renderOverlay(currentMessage);
-    sendResponse({ ok: true });
+  // Phase transition check
+  if (dismissedPhase && dismissedPhase !== state.currentPhase) {
+    dismissedPhase = null;
   }
-});
 
-// Initial storage check
-try {
-  chrome.storage.local.get(['vpad.break_schedule', 'vpad.breakSchedule', 'vpad.lastBreakState'], (res) => {
-    const sched = res['vpad.break_schedule'] || res['vpad.breakSchedule'];
-    const state = res['vpad.lastBreakState'];
-    if (sched && sched.showPageOverlay === false) {
-      return;
-    }
-    if (state && typeof state === 'object') {
-      const candidate = {
-        type: 'VPAD_BREAK_STATE',
-        ...state,
-        showPageOverlay: sched ? sched.showPageOverlay !== false : true
-      };
-      if (isBreakStateMessage(candidate)) {
-        currentMessage = candidate;
-        renderOverlay(candidate);
-      }
+  // If already dismissed by user in this phase, do not pop back up
+  if (dismissedPhase === state.currentPhase) {
+    return;
+  }
+
+  // If overlay is already active in this phase, keep it running smoothly
+  if (activePhase === state.currentPhase && window.__brk) {
+    return;
+  }
+
+  activePhase = state.currentPhase;
+  const isLunch = state.currentPhase === 'in_lunch';
+  const name = isLunch
+    ? '🍽 Lunch break'
+    : `${state.icon || '☕'} ${state.eventName || 'Tea break'}`;
+  const snooze = isLunch ? [5, 10, 15] : [2, 5, 10];
+  const seconds = Math.max(1, state.diffSec || (isLunch ? 2400 : 600));
+
+  breakNotifier({
+    name,
+    seconds,
+    snooze,
+    onDismiss: () => {
+      dismissedPhase = state.currentPhase;
+      activePhase = null;
     }
   });
-} catch {
-  // context not ready yet
+}
+
+// Global Esc key listener to dismiss break overlay
+window.addEventListener('keydown', (e: KeyboardEvent) => {
+  if (e.key === 'Escape' && window.__brk) {
+    window.__brk.stop();
+  }
+});
+
+// Runtime message listener from panel / background
+if (typeof chrome !== 'undefined' && chrome.runtime?.onMessage) {
+  chrome.runtime.onMessage.addListener((message: unknown, _sender, sendResponse) => {
+    if (isBreakStateMessage(message)) {
+      handleBreakState(message);
+      sendResponse({ ok: true });
+    }
+  });
+}
+
+// Initial storage check
+if (typeof chrome !== 'undefined' && chrome.storage?.local) {
+  try {
+    chrome.storage.local.get(
+      ['vpad.break_schedule', 'vpad.breakSchedule', 'vpad.lastBreakState'],
+      (res) => {
+        const sched = res['vpad.break_schedule'] || res['vpad.breakSchedule'];
+        const state = res['vpad.lastBreakState'];
+        if (sched && sched.showPageOverlay === false) {
+          return;
+        }
+        if (state && typeof state === 'object') {
+          const candidate = {
+            type: 'VPAD_BREAK_STATE',
+            ...state,
+            showPageOverlay: sched ? sched.showPageOverlay !== false : true
+          };
+          if (isBreakStateMessage(candidate)) {
+            handleBreakState(candidate);
+          }
+        }
+      }
+    );
+  } catch {
+    // context not ready
+  }
 }

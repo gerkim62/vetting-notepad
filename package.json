@@ -7,6 +7,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "zip": "tsc && vite build && (cd dist && zip -FSr ../vetting-notepad.zip .)",
     "check": "tsc --noEmit",
     "lint": "oxlint",
     "test": "vitest run",
