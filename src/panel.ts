@@ -1294,27 +1294,39 @@ function showPrecheckPopover(triggerBtn: HTMLElement, parentFieldId: string) {
         ? (chip.info || 'Agent exemption')
         : (chip.violationAdvice || chip.info || 'Policy restriction');
       const isDrawerOpen = openDrawers.has(chip.id);
+      const fullTitleWithHint = `${lblMain}${lblHint ? ` (${lblHint})` : ''}`;
+      const fullTooltip = `${fullTitleWithHint}\n\n${advice}`;
 
       return `
         <div class="precheck-pop-item ${isAction ? 'is-action' : 'is-policy'} ${isViolated ? 'is-violated' : ''} ${isDone ? 'is-active' : ''}" data-pop-item-id="${chip.id}">
-          <div class="pop-item-row" data-pop-toggle="${chip.id}" title="${isViolated ? 'Flagged rule: Click to clear' : 'Click to flag violation'}">
-            <span class="pop-check-icon">
+          <div class="pop-item-row" title="${escapeHtml(fullTooltip)}">
+            <button type="button" class="pop-check-icon ${isViolated ? 'is-violated' : ''} ${isDone ? 'is-active' : ''}" data-pop-toggle="${chip.id}" title="${isViolated ? 'Click to clear flag' : (isAction ? (isDone ? 'Deactivate exemption' : 'Activate exemption') : 'Click to flag violation')}" aria-label="Toggle ${escapeHtml(lblMain)}">
               ${isViolated ? renderIcon('AlertTriangle', { size: 11, strokeWidth: 2.4 }) :
                 (isDone ? renderIcon('Check', { size: 11, strokeWidth: 2.5 }) :
                 `<span class="pop-empty-box"></span>`)}
-            </span>
-            <span class="pop-item-label">
-              <span class="pop-item-main">${escapeHtml(lblMain)}</span>
-              ${lblHint ? `<span class="pop-item-hint">(${escapeHtml(lblHint)})</span>` : ''}
-            </span>
+            </button>
+            <div class="pop-item-label" data-pop-info="${chip.id}" title="${escapeHtml(fullTooltip)}">
+              <span class="pop-item-main" title="${escapeHtml(fullTooltip)}">${escapeHtml(lblMain)}</span>
+              ${lblHint ? `<span class="pop-item-hint" title="${escapeHtml(fullTooltip)}">(${escapeHtml(lblHint)})</span>` : ''}
+            </div>
             ${advice ? `
-              <button type="button" class="pop-info-btn ${isDrawerOpen ? 'active' : ''}" data-pop-info="${chip.id}" title="SAKA Advice" aria-label="Show advice for ${escapeHtml(lblMain)}">
+              <button type="button" class="pop-info-btn ${isDrawerOpen ? 'active' : ''}" data-pop-info="${chip.id}" title="${escapeHtml(fullTooltip)}" aria-label="Show details for ${escapeHtml(lblMain)}">
                 ${renderIcon('Info', { size: 10, strokeWidth: 2.2 })}
               </button>
             ` : ''}
           </div>
           <div class="pop-item-advice-drawer" id="advice_${chip.id}" style="${isDrawerOpen ? 'display: block;' : 'display: none;'}">
-            <span>${escapeHtml(advice)}</span>
+            <div class="pop-drawer-header">
+              <span class="pop-drawer-title">${escapeHtml(lblMain)}</span>
+              ${lblHint ? `<span class="pop-drawer-hint">(${escapeHtml(lblHint)})</span>` : ''}
+            </div>
+            <div class="pop-drawer-desc">${escapeHtml(advice)}</div>
+            <div class="pop-drawer-actions">
+              <button type="button" class="pop-drawer-toggle-btn ${isViolated ? 'is-violated' : ''} ${isDone ? 'is-active' : ''}" data-pop-toggle="${chip.id}">
+                ${isViolated ? renderIcon('AlertTriangle', { size: 10, strokeWidth: 2.2 }) : (isDone ? renderIcon('Check', { size: 10, strokeWidth: 2.4 }) : '')}
+                <span>${isAction ? (isDone ? 'Active Exemption' : 'Apply Exemption') : (isViolated ? 'Flagged (Click to Clear)' : 'Flag Rule Violation')}</span>
+              </button>
+            </div>
           </div>
         </div>
       `;
@@ -1371,26 +1383,29 @@ function showPrecheckPopover(triggerBtn: HTMLElement, parentFieldId: string) {
   if (listEl instanceof HTMLElement) {
     listEl.onclick = (e) => {
       const target = e.target;
-      if (!(target instanceof HTMLElement)) return;
+      if (!(target instanceof Element)) return;
 
-      const infoBtn = target.closest('[data-pop-info]');
-      if (infoBtn instanceof HTMLElement) {
+      const infoTrigger = target.closest('[data-pop-info]');
+      if (infoTrigger instanceof HTMLElement) {
         e.stopPropagation();
-        const chipId = infoBtn.dataset.popInfo;
+        const chipId = infoTrigger.dataset.popInfo;
         if (!chipId) return;
         const drawer = pop.querySelector(`#advice_${chipId}`);
         if (drawer instanceof HTMLElement) {
           const isOpen = drawer.style.display !== 'none';
           drawer.style.display = isOpen ? 'none' : 'block';
-          infoBtn.classList.toggle('active', !isOpen);
+          const infoBtn = pop.querySelector(`.pop-info-btn[data-pop-info="${chipId}"]`);
+          if (infoBtn instanceof HTMLElement) {
+            infoBtn.classList.toggle('active', !isOpen);
+          }
         }
         return;
       }
 
-      const toggleRow = target.closest('[data-pop-toggle]');
-      if (toggleRow instanceof HTMLElement) {
+      const toggleBtn = target.closest('[data-pop-toggle]');
+      if (toggleBtn instanceof HTMLElement) {
         e.stopPropagation();
-        const chipId = toggleRow.dataset.popToggle;
+        const chipId = toggleBtn.dataset.popToggle;
         if (!chipId) return;
         const chip = compactChips.find(x => x.id === chipId);
         if (!chip) return;
