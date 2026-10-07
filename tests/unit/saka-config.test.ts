@@ -226,6 +226,7 @@ describe('SAKA Vetting Configuration', () => {
 
     const callnoPrechecks = swap.optional.filter(f => f.compactChip && f.attachTo === 'sw_callno');
     expect(callnoPrechecks.map(f => f.id)).toEqual([
+      'sw_call_inactive',
       'sw_call_72h',
       'sw_call_30d',
       'sw_call_roam',

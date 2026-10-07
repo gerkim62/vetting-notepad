@@ -28,7 +28,7 @@ import {
 } from './lib/exporter.js';
 import 'quill/dist/quill.snow.css';
 import './panel.css';
-import type { VettingField } from './types/index.js';
+import type { VettingField, VettingType } from './types/index.js';
 import { logger } from './lib/logger.js';
 import { renderIcon, initIcons } from './lib/icons.js';
 import {
@@ -6698,16 +6698,74 @@ if (noteTitleInput) {
 /* ==========================================================================
    Initialization
    ========================================================================== */
+const CURRENT_CONFIG_VERSION = 3;
+
+function syncVettingTypesWithDefaults(userTypes: VettingType[]): { types: VettingType[]; modified: boolean } {
+  const defaults = defaultVettingTypes();
+  let modified = false;
+
+  const result = userTypes.map(uType => {
+    const dType = defaults.find(d => d.id === uType.id);
+    if (!dType) return uType;
+
+    const allUserFields = [...(uType.required || []), ...(uType.optional || [])];
+    const userFieldMap = new Map(allUserFields.map(f => [f.id, f]));
+
+    for (const dField of [...(dType.required || []), ...(dType.optional || [])]) {
+      const uField = userFieldMap.get(dField.id);
+      if (uField) {
+        if (dField.attachTo && uField.attachTo !== dField.attachTo) {
+          uField.attachTo = dField.attachTo;
+          modified = true;
+        }
+        if (dField.compactChip && !uField.compactChip) {
+          uField.compactChip = dField.compactChip;
+          modified = true;
+        }
+        if (dField.violationAdvice && !uField.violationAdvice) {
+          uField.violationAdvice = dField.violationAdvice;
+          modified = true;
+        }
+        if (dField.role && !uField.role) {
+          uField.role = dField.role;
+          modified = true;
+        }
+        if (dField.itemType && !uField.itemType) {
+          uField.itemType = dField.itemType;
+          modified = true;
+        }
+      } else if (dField.compactChip) {
+        if (!Array.isArray(uType.optional)) uType.optional = [];
+        uType.optional.push({ ...dField });
+        userFieldMap.set(dField.id, dField);
+        modified = true;
+      }
+    }
+
+    return uType;
+  });
+
+  return { types: result, modified };
+}
+
 async function init() {
   logger.initGlobalHandlers();
   initIcons();
 
   const loadedTypes = await Storage.get('vpad.types', null);
+  const savedConfigVer = await Storage.get('vpad.config_version', 0);
+
   if (Array.isArray(loadedTypes) && loadedTypes.length > 0) {
-    types = loadedTypes;
+    const { types: synced, modified } = syncVettingTypesWithDefaults(loadedTypes);
+    types = synced;
+    if (modified || savedConfigVer < CURRENT_CONFIG_VERSION) {
+      await Storage.set('vpad.types', types);
+      await Storage.set('vpad.config_version', CURRENT_CONFIG_VERSION);
+    }
   } else {
     types = defaultVettingTypes();
     await Storage.set('vpad.types', types);
+    await Storage.set('vpad.config_version', CURRENT_CONFIG_VERSION);
   }
 
   const loadedSettings = await Storage.get('vpad.settings', null);

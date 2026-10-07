@@ -183,27 +183,39 @@
           "role": "action"
         },
         {
-          "id": "sw_call_72h",
-          "label": "Swapped <72h // Calling Line",
+          "id": "sw_call_inactive",
+          "label": "Not Active // IN-Data",
           "len": 0,
-          "info": "[SAKA SSCB-0006 / SCEK-0002]\nIf calling number was swapped in last 72 hours (unless M-PESA agent line), decline swap and refer to retail.",
+          "info": "[SAKA SCEK-0002 / SSCB-0006]\nCalling number must be active on IN-Data (Active or Expiry status). If terminated or inactive, decline swap.",
           "excludeFromCount": true,
           "itemType": "policy",
           "compactChip": true,
           "attachTo": "sw_callno",
-          "violationAdvice": "Calling number swapped within last 72 hours. Declined and referred to Retail Center with original ID as per fraud policy.",
+          "violationAdvice": "Calling number is not active on IN-Data. Declined and referred customer to visit Retail Center.",
+          "role": "policy"
+        },
+        {
+          "id": "sw_call_72h",
+          "label": "Swapped <72h // Calling Line",
+          "len": 0,
+          "info": "[SAKA SSCB-0006 / SCEK-0002]\nIf calling number was swapped in last 72 hours (unless M-PESA agent line), decline swap and refer to retail or advise to call via an agent line for assistance.",
+          "excludeFromCount": true,
+          "itemType": "policy",
+          "compactChip": true,
+          "attachTo": "sw_callno",
+          "violationAdvice": "Calling number swapped within last 72 hours. Declined swap; referred customer to Retail Center with original ID or to call via an authorized M-PESA agent line as per SAKA SSCB-0006.",
           "role": "policy"
         },
         {
           "id": "sw_call_30d",
           "label": "Age <30d // Network Tenure",
           "len": 0,
-          "info": "[SAKA SSCB-0006 / SCEK-0002]\nIf calling number has been on network for less than 30 days, decline swap and refer to Retail or agent line.",
+          "info": "[SAKA SSCB-0006 / SCEK-0002]\nIf calling number has been on network for less than 30 days, decline swap and refer to Retail or nearest M-PESA agent to call via an agent line.",
           "excludeFromCount": true,
           "itemType": "policy",
           "compactChip": true,
           "attachTo": "sw_callno",
-          "violationAdvice": "Calling number less than 30 days on network. Declined and referred to Retail Center or agent line as per policy.",
+          "violationAdvice": "Calling number less than 30 days on network. Declined swap; referred customer to Retail Center or nearest M-PESA agent to call via an agent line as per SAKA SSCB-0006.",
           "role": "policy"
         },
         {
@@ -222,12 +234,12 @@
           "id": "sw_call_2swaps",
           "label": ">2 Swaps/24h // Daily Limit",
           "len": 0,
-          "info": "[SAKA SSCB-0006 / SCEK-0002]\nCalling line is allowed a maximum of 2 SIM swap requests for other lines in 24 hours (unless verified M-PESA agent).",
+          "info": "[SAKA SSCB-0006 / SCEK-0002]\nCalling line is allowed a maximum of 2 SIM swap requests for other lines in 24 hours (unless verified M-PESA agent). Where exceeded, decline and refer to retail or advise them to call from an agent line.",
           "excludeFromCount": true,
           "itemType": "policy",
           "compactChip": true,
           "attachTo": "sw_callno",
-          "violationAdvice": "Calling number exceeded maximum of 2 SIM swap requests in 24 hours. Declined and referred to Retail Center.",
+          "violationAdvice": "Calling number exceeded maximum of 2 SIM swap requests in 24 hours. Declined swap; referred to Retail Center or to call via an authorized M-PESA agent line as per SAKA SSCB-0006.",
           "role": "policy"
         },
         {
@@ -347,6 +359,30 @@
         }
       ],
       "optional": [
+        {
+          "id": "rev_call_inactive",
+          "label": "Not Active // IN-Data",
+          "len": 0,
+          "info": "[SAKA MRMM-0003]\nCalling number must be active on IN-Data (Active or Expiry state). If inactive or terminated, decline reversal request.",
+          "excludeFromCount": true,
+          "itemType": "policy",
+          "compactChip": true,
+          "attachTo": "rev_callno",
+          "violationAdvice": "Calling number is not active on IN-Data. Declined and advised customer to call back with an active line.",
+          "role": "policy"
+        },
+        {
+          "id": "rev_call_roam",
+          "label": "Roaming // VLR ≠ 254",
+          "len": 0,
+          "info": "[SAKA MRMM-0003 / ROIE-0010]\nIf SAWA VLR does not start with 254, caller is roaming. Decline and advise to email customercare@safaricom.co.ke.",
+          "excludeFromCount": true,
+          "itemType": "policy",
+          "compactChip": true,
+          "attachTo": "rev_callno",
+          "violationAdvice": "Calling number is roaming (VLR non-254). Referred customer to write to customercare@safaricom.co.ke as per roaming procedure.",
+          "role": "policy"
+        },
         {
           "id": "rev_type",
           "label": "Reversal Type",
@@ -865,12 +901,26 @@
       ],
       "optional": [
         {
+          "id": "unb_call_inactive",
+          "label": "Not Active // IN-Data",
+          "len": 0,
+          "info": "[SAKA BADD-0003]\nCalling number must be active on IN-Data.",
+          "excludeFromCount": true,
+          "itemType": "policy",
+          "compactChip": true,
+          "attachTo": "unb_callno",
+          "violationAdvice": "Calling number not active on IN-Data. Customer advised to call back from an active line.",
+          "role": "policy"
+        },
+        {
           "id": "unb_check_keycom",
           "label": "Siebel Comments // Clean Tag",
           "len": 0,
           "info": "[SAKA BADD-0003]\nCRITICAL PRE-CHECK: Check Siebel key comments. If comment reads \"Phone stolen, Refer to Retail for Unbarring\", line can ONLY be unbarred at Retail. Do NOT unbar at Call Center!",
           "excludeFromCount": true,
           "itemType": "policy",
+          "compactChip": true,
+          "attachTo": "unb_msisdn",
           "violationAdvice": "Siebel key comments indicate phone stolen. Line can ONLY be unbarred at Retail as per policy.",
           "role": "policy"
         },
@@ -1029,6 +1079,18 @@
       ],
       "optional": [
         {
+          "id": "pinu_call_inactive",
+          "label": "Not Active // IN-Data",
+          "len": 0,
+          "info": "[SAKA SKKI-0001]\nProceed only if calling number is a Safaricom number in Active or Expiry state on IN-Data.",
+          "excludeFromCount": true,
+          "itemType": "policy",
+          "compactChip": true,
+          "attachTo": "pinu_callno",
+          "violationAdvice": "Calling number not active on IN-Data. Advice customer to call back with active Safaricom line.",
+          "role": "policy"
+        },
+        {
           "id": "pinu_g3_action",
           "label": "Unlock Action // G3",
           "len": 0,
@@ -1109,12 +1171,26 @@
       ],
       "optional": [
         {
+          "id": "sk_call_inactive",
+          "label": "Not Active // IN-Data",
+          "len": 0,
+          "info": "[SAKA SKKI-0001]\nProceed only if calling number is a Safaricom number in Active or Expiry state on IN-Data. Calling on behalf: must be Active state.",
+          "excludeFromCount": true,
+          "itemType": "policy",
+          "compactChip": true,
+          "attachTo": "sk_callno",
+          "violationAdvice": "Calling number not active on IN-Data. Advised customer to call back with active line or visit Safaricom Shop with original ID.",
+          "role": "policy"
+        },
+        {
           "id": "sk_rule_24h_txn",
           "label": "24h Auth Txn // Retail if Yes",
           "len": 0,
           "info": "[SAKA SKKI-0001]\nCRITICAL FRAUD CHECK: Check if customer had a positive PIN-authenticated transaction in last 24h (Send Money, Paybill, Airtime, Bal Check). If YES, REFER CUSTOMER TO RETAIL! Do not issue Start Key at Contact Center.",
           "excludeFromCount": true,
           "itemType": "policy",
+          "compactChip": true,
+          "attachTo": "sk_callno",
           "violationAdvice": "Positive PIN txn in last 24h. Declined and referred to Retail Center for PIN reset as per fraud policy.",
           "role": "policy"
         },
@@ -1125,6 +1201,8 @@
           "info": "[SAKA SKKI-0001]\nIf SIM replacement was done within 24h, customer must wait until 24h elapses or visit shop. (Note: DIY PIN reset after SIM swap is available after 7 days, not 24h).",
           "excludeFromCount": true,
           "itemType": "policy",
+          "compactChip": true,
+          "attachTo": "sk_callno",
           "violationAdvice": "SIM replacement within 24h. Customer advised to wait 24h or visit Retail (DIY PIN reset available after 7 days).",
           "role": "policy"
         },
@@ -1291,6 +1369,18 @@
         }
       ],
       "optional": [
+        {
+          "id": "puk_call_inactive",
+          "label": "Not Active // IN-Data",
+          "len": 0,
+          "info": "[SAKA PUDA-0004]\nCalling number must be a Safaricom number active on IN-Data (Active or Expiry state).",
+          "excludeFromCount": true,
+          "itemType": "policy",
+          "compactChip": true,
+          "attachTo": "puk_callno",
+          "violationAdvice": "Calling number is not active on IN-Data. Advised customer to call back with active Safaricom line.",
+          "role": "policy"
+        },
         {
           "id": "puk_crm_sms",
           "label": "PUK Sent via SMS // With consent",
