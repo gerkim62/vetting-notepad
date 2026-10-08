@@ -733,7 +733,7 @@ function getCallbackInfo(t, st, v) {
   const needed = Math.max(0, minSec - countSecondaryPassed(t, st, v));
   const failedReq = failedItems.filter(it => t.required.includes(it));
   const failedSec = failedItems.filter(it => t.optional.includes(it));
-  if (failedReq.length === 0 && needed === 0) return { show: false };
+  if (failedReq.length === 0 && needed === 0 && failedSec.length < 5) return { show: false };
 
   const labels = [...failedReq, ...failedSec].map(it => parseLabel(it.label).copy);
   return { show: true, primary: false, labels };
@@ -766,7 +766,6 @@ function buildCopyText(t) {
   const lines = [];
 
   const cb = getCallbackInfo(t, st, v);
-  const failedItems = [...t.required, ...t.optional].filter(it => st[it.id] === 'failed');
   const isFailed = Boolean(cb.show);
 
   const allItems = [...t.required, ...t.optional];
@@ -777,6 +776,11 @@ function buildCopyText(t) {
     return !stVal && val.length === 0;
   });
 
+  const minSec = t.minSecondary || 0;
+  const secPassed = countSecondaryPassed(t, st, v);
+  const hasMetSecondary = minSec === 0 || secPassed >= minSec;
+  const isTrulyPassed = !isFailed && !hasIncompletePrimary && hasMetSecondary;
+
   // 1. Line 1: Top Advice / Action Taken (CEE Priority)
   const manualComment = (v._comment || '').trim();
   const typeName = t.name || t.copyTitle?.replace(/ – Vetting$/i, '') || 'Vetting';
@@ -784,6 +788,16 @@ function buildCopyText(t) {
   let topAdvice = '';
   if (manualComment) {
     topAdvice = `${typeName}: ${manualComment}`;
+  } else if (cb.policy && cb.policyDirective) {
+    topAdvice = `${typeName}: Policy restriction triggered. ${cb.policyDirective}`;
+  } else if (isFailed) {
+    if (cb.primary) {
+      topAdvice = `${typeName}: Failed vetting. Referred to Retail Centre / Care Desk with original ID.`;
+    } else if (callAttempt === 2) {
+      topAdvice = `${typeName}: Failed vetting again. Referred to Retail Centre / Care Desk with original ID.`;
+    } else {
+      topAdvice = `${typeName}: Failed vetting. Advised customer to confirm account details and call back.`;
+    }
   } else {
     const activeDiyIds = activeDiyState[t.id] || [];
     const activeDiys = (t.diyActions || []).filter(d => activeDiyIds.includes(d.id));
@@ -791,28 +805,7 @@ function buildCopyText(t) {
     if (activeDiys.length > 0) {
       const diyText = activeDiys.map(d => d.adviceText || d.label).join(' and ');
       topAdvice = `${typeName}: Processed. ${diyText}.`;
-    } else if (cb.policy && cb.policyDirective) {
-      topAdvice = `${typeName}: Policy restriction triggered. ${cb.policyDirective}`;
-    } else if (isFailed) {
-      if (cb.primary) {
-        topAdvice = `${typeName}: Failed vetting. Referred to Retail Centre / Care Desk with original ID.`;
-      } else if (callAttempt === 2) {
-        topAdvice = `${typeName}: Failed vetting again. Referred to Retail Centre / Care Desk with original ID.`;
-      } else if (cb.labels && cb.labels.length > 0) {
-        const targetLabels = cb.labels.slice(0, 2);
-        const labelText = targetLabels.length === 2 ? `${targetLabels[0]} and ${targetLabels[1]}` : targetLabels[0];
-        topAdvice = `${typeName}: Failed vetting. Advised customer to confirm ${labelText} and call back.`;
-      } else {
-        const fallbackSec = (t.optional || [])
-          .filter(it => it.role === 'secondary' && !it.excludeFromCount && it.itemType !== 'policy' && it.itemType !== 'action')
-          .slice(0, 2)
-          .map(it => parseLabel(it.label).copy);
-        const fallbackText = fallbackSec.length === 2
-          ? `${fallbackSec[0]} and ${fallbackSec[1]}`
-          : (fallbackSec[0] || '2 account details');
-        topAdvice = `${typeName}: Failed vetting. Advised customer to confirm ${fallbackText} and call back.`;
-      }
-    } else if (!hasIncompletePrimary) {
+    } else if (isTrulyPassed) {
       topAdvice = `${typeName}: Passed vetting.`;
     } else {
       topAdvice = typeName;
@@ -822,9 +815,8 @@ function buildCopyText(t) {
 
   // 2. Line 2: Vetting Outcome
   if (isFailed) {
-    const failedNames = (cb.labels && cb.labels.length > 0) ? cb.labels.slice(0, 2) : failedItems.map(it => parseLabel(it.label).copy);
-    lines.push(`Vetting: Failed${failedNames.length > 0 ? ` (${failedNames.join(', ')})` : ''}`);
-  } else if (!hasIncompletePrimary) {
+    lines.push('Vetting: Failed');
+  } else if (isTrulyPassed) {
     lines.push('Vetting: Passed');
   }
 
@@ -1556,11 +1548,6 @@ function renderItemList(items, kind, st) {
 function renderCallbackPanelHtml(t, st) {
   const cb = getCallbackInfo(t, st, curValues());
   if (!cb.show) return '';
-  const rawLabels = cb.labels || [];
-  const targetLabels = rawLabels.slice(0, 2);
-  const failedLabels = targetLabels.length === 2
-    ? `${targetLabels[0]} and ${targetLabels[1]}`
-    : (targetLabels[0] || '2 account details');
 
   if (cb.policy && cb.policyDirective) {
     return `<div class="saka-callback-panel primary-failed policy-violation-panel" title="Policy Rule Violation"><span class="saka-callback-body"><b class="saka-hl">[POLICY VIOLATION]</b> ${escapeHtml(cb.policyDirective)}</span></div>`;
@@ -1573,7 +1560,7 @@ function renderCallbackPanelHtml(t, st) {
   const isAttempt2 = callAttempt === 2;
   const bodyText = isAttempt2
     ? `<b class="saka-hl">Failed again.</b> No callback. Refer to <strong>Retail/Care Desk</strong> with ID.`
-    : `Confirm <strong>${escapeHtml(failedLabels)}</strong>, then call back.`;
+    : `Confirm <strong>account details</strong>, then call back.`;
 
   return `<div class="saka-callback-panel"><button type="button" class="saka-attempt-pill ${isAttempt2 ? 'active' : ''}" id="btnToggleAttempt" title="Toggle 1st vs 2nd failure">${isAttempt2 ? '2nd' : '1st'}</button><span class="saka-callback-body">${bodyText}</span></div>`;
 }

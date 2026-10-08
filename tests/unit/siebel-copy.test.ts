@@ -114,4 +114,52 @@ FDN 1 & 2: 0711111111 / 0722222222 (Passed)`;
     expect(parsed.status['sw_fdn1']).toBeNull();
     expect(parsed.status['sw_fdn2']).toBeNull();
   });
+
+  it('parses text with clean Vetting: Failed without inline parenthesized items and preserves all field statuses', () => {
+    const rawFailedText = `M-PESA Start Key / Forgotten PIN: Failed vetting. Advised customer to confirm account details and call back.
+Vetting: Failed
+Calling Number: 717207568
+Affected M-PESA Line: 717207568
+Full Names: MARTHA WANGUI KUNGU (Passed)
+ID Number: 11293900 (Passed)
+Year of Birth: 1971 (Passed)
+FDN 1 & 2: 711779985 / 713506696 (Failed)
+M-PESA Balance: 520 (Failed)
+Airtime Balance: 60 (Failed)
+Fuliza Limit: 200 (Passed)
+Registration Date: 2020 (Failed)
+Self-Txn 1: 300.00 hanna wangui 5pm (Failed)`;
+
+    const parsed = parseVettingText(rawFailedText, types, 'startkey');
+    expect(parsed.typeId).toBe('startkey');
+    expect(parsed.values['sk_callno']).toBe('717207568');
+    expect(parsed.values['sk_name']).toBe('MARTHA WANGUI KUNGU');
+    expect(parsed.values['sk_idnum']).toBe('11293900');
+    expect(parsed.values['sk_yob']).toBe('1971');
+    expect(parsed.status['sk_fdn1']).toBe('failed');
+    expect(parsed.status['sk_fdn2']).toBe('failed');
+    expect(parsed.status['sk_mpesa_bal']).toBe('failed');
+    expect(parsed.status['sk_airtime_bal']).toBe('failed');
+    expect(parsed.status['sk_fuliza_limit']).toBeFalsy();
+    expect(parsed.status['sk_regdate']).toBe('failed');
+    expect(parsed.status['sk_mpesa_txn1']).toBe('failed');
+  });
+
+  it('parses neutral text when primary questions pass but secondary requirements are incomplete', () => {
+    const rawIncomplete = `SIM Swap
+Calling Number: 743171577
+Line to Swap: 140365621
+Full Names: JEREMIAH NYAWOKA BUNDI (Passed)
+ID Number: 33636834 (Passed)
+Year of Birth: 1996 (Passed)`;
+
+    const parsed = parseVettingText(rawIncomplete, types, 'swap');
+    expect(parsed.typeId).toBe('swap');
+    expect(parsed.values['sw_callno']).toBe('743171577');
+    expect(parsed.values['sw_msisdn']).toBe('140365621');
+    expect(parsed.values['sw_name']).toBe('JEREMIAH NYAWOKA BUNDI');
+    expect(parsed.values['sw_idnum']).toBe('33636834');
+    expect(parsed.values['sw_yob']).toBe('1996');
+    expect(parsed.comment).toBeFalsy();
+  });
 });

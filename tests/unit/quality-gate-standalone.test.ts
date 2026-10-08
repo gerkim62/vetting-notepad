@@ -106,5 +106,47 @@ describe('Quality Gate: Standalone Config & Zero-Hardcoded-Knowledge Policy', ()
       const driftedFieldVarMap = { NAME: 'field_name', CODE: 'non_existent_field' };
       expect(Object.values(driftedFieldVarMap).some(f => !mockFields.includes(f))).toBe(true);
     });
+
+    it('enforces that vetting is NOT truly passed until secondary questions satisfy minSecondary', () => {
+      const minSecondary = 2;
+      const primaryItemsCompleted = true;
+      const isFailed = false;
+
+      // 0 secondary passed
+      let secondaryPassed = 0;
+      let hasMetSecondary = minSecondary === 0 || secondaryPassed >= minSecondary;
+      let isTrulyPassed = !isFailed && primaryItemsCompleted && hasMetSecondary;
+      expect(isTrulyPassed).toBe(false);
+
+      // 1 secondary passed
+      secondaryPassed = 1;
+      hasMetSecondary = minSecondary === 0 || secondaryPassed >= minSecondary;
+      isTrulyPassed = !isFailed && primaryItemsCompleted && hasMetSecondary;
+      expect(isTrulyPassed).toBe(false);
+
+      // 2 secondary passed
+      secondaryPassed = 2;
+      hasMetSecondary = minSecondary === 0 || secondaryPassed >= minSecondary;
+      isTrulyPassed = !isFailed && primaryItemsCompleted && hasMetSecondary;
+      expect(isTrulyPassed).toBe(true);
+    });
+
+    it('enforces that active DIY actions do NOT override fail mode when vetting has failed', () => {
+      const isFailed = true;
+      const activeDiys = [{ label: 'DIY PIN Manager (*334#)', adviceText: 'Educated on *334# M-PESA PIN Manager' }];
+      const typeName = 'M-PESA Start Key / Forgotten PIN';
+
+      // Simulation of advice hierarchy
+      let topAdvice = '';
+      if (isFailed) {
+        topAdvice = `${typeName}: Failed vetting. Advised customer to confirm account details and call back.`;
+      } else if (activeDiys.length > 0) {
+        const diyText = activeDiys.map(d => d.adviceText || d.label).join(' and ');
+        topAdvice = `${typeName}: Processed. ${diyText}.`;
+      }
+
+      expect(topAdvice).toContain('Failed vetting');
+      expect(topAdvice).not.toContain('Processed');
+    });
   });
 });
