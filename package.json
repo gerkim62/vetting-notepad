@@ -1,6 +1,6 @@
 {
   "name": "vetting-notepad",
-  "version": "3.2.0",
+  "version": "3.3.0",
   "packageManager": "pnpm@11.11.0",
   "description": "",
   "main": "index.js",
@@ -9,7 +9,8 @@
     "build": "tsc && vite build",
     "zip": "tsc && vite build && (cd dist && zip -FSr ../vetting-notepad.zip .)",
     "check": "tsc --noEmit",
-    "lint": "oxlint",
+    "check:standalone": "node scripts/verify-standalone.js",
+    "lint": "oxlint && node scripts/verify-standalone.js",
     "test": "vitest run",
     "test:watch": "vitest"
   },

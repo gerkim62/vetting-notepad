@@ -181,7 +181,14 @@ export function isVarHighChurn(
   const hasSettledAnchor = maxCount >= 3;
   if (hasSettledAnchor || topDominance > 0.40) return false;
 
-  const recent = prefs?.usageValues?.[key] || [];
+  const rawRecent: unknown = prefs?.usageValues?.[key];
+  let recent: string[] = [];
+  if (Array.isArray(rawRecent)) {
+    recent = rawRecent.filter((item): item is string => typeof item === 'string');
+  } else if (typeof rawRecent === 'string') {
+    const trimmed = rawRecent.trim();
+    if (trimmed) recent = [trimmed];
+  }
   const recentUnique = new Set(recent.map(s => s.trim().toLowerCase())).size;
   const isRecentConsecutiveChurn = recent.length >= 3 && recentUnique === recent.length;
 
@@ -190,6 +197,59 @@ export function isVarHighChurn(
   }
 
   return churnRatio >= 0.80;
+}
+
+/**
+ * Resolves initial/saved values for template variables based on history and preferences.
+ * - Explicit prefill values take highest priority.
+ * - Remembered/pinned variables pre-fill from the most recent matching record in history.
+ * - Unpinned/transient variables (e.g. TXN CODE, PUK) default to empty string unless prefilled.
+ */
+export function resolveInitialTemplateVars(
+  vars: string[],
+  history: VarRecord[],
+  prefs?: VarPreferences | null,
+  unpinnedVars?: string[],
+  prefills?: Record<string, string> | null
+): Record<string, string> {
+  const result: Record<string, string> = {};
+  if (!Array.isArray(vars)) return result;
+
+  // Find the most recent record that has values for any remembered variable in this template
+  const matchingRecord = Array.isArray(history)
+    ? history.find(r =>
+        r?.values &&
+        vars.some(v => isVarRemembered(v, prefs, unpinnedVars) && typeof r.values[v.trim()] === 'string' && r.values[v.trim()].trim().length > 0)
+      )
+    : undefined;
+
+  for (const rawVar of vars) {
+    if (!rawVar) continue;
+    const key = rawVar.trim();
+
+    // 1. Explicit prefill (e.g. from current transaction / vetting inputs)
+    if (prefills && typeof prefills[key] === 'string' && prefills[key].trim().length > 0) {
+      result[key] = prefills[key].trim();
+      continue;
+    }
+
+    // 2. Remembered/pinned fields prefill from history
+    if (isVarRemembered(key, prefs, unpinnedVars)) {
+      if (matchingRecord?.values?.[key] && typeof matchingRecord.values[key] === 'string' && matchingRecord.values[key].trim().length > 0) {
+        result[key] = matchingRecord.values[key].trim();
+      } else {
+        const fallback = Array.isArray(history)
+          ? history.find(r => r?.values?.[key] && typeof r.values[key] === 'string' && r.values[key].trim().length > 0)
+          : undefined;
+        result[key] = fallback?.values?.[key]?.trim() || '';
+      }
+    } else {
+      // 3. Unpinned / transient fields start blank
+      result[key] = '';
+    }
+  }
+
+  return result;
 }
 
 /**
@@ -246,7 +306,14 @@ export function saveVarRecord(
     if (!v) continue;
 
     // Track usage values for frequency heuristic
-    const prevValues = updatedPrefs.usageValues[k] ? [...updatedPrefs.usageValues[k]] : [];
+    const rawPrev: unknown = updatedPrefs.usageValues[k];
+    let prevValues: string[] = [];
+    if (Array.isArray(rawPrev)) {
+      prevValues = rawPrev.filter((item): item is string => typeof item === 'string');
+    } else if (typeof rawPrev === 'string') {
+      const trimmed = rawPrev.trim();
+      if (trimmed) prevValues = [trimmed];
+    }
     prevValues.push(v);
     if (prevValues.length > 5) prevValues.shift();
     updatedPrefs.usageValues[k] = prevValues;

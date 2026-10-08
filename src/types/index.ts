@@ -22,6 +22,7 @@ export interface VettingField {
   compactChip?: boolean;
   attachTo?: string;
   groupLabel?: string;
+  templateVar?: string;
 }
 
 export interface VettingDiyAction {
@@ -29,6 +30,7 @@ export interface VettingDiyAction {
   label: string;
   adviceText: string;
   smsId?: string;
+  varMap?: Record<string, string>;
 }
 
 export interface VettingType {

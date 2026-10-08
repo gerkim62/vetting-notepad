@@ -1,4 +1,10 @@
+---
+trigger: always_on
+---
+
 # Quality Gate & Package Manager Policy
+
+THE CODE MUST KNOW 0 ABOUT OUR SPECIFIC JSON CONFIG IDS OR NAMES LET CONFIG BBE FULLY STANDALONE
 
 ## 1. Package Manager Enforcement
 - ALWAYS use `pnpm` for all dependency management, script running, and package execution.

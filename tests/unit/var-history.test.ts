@@ -8,6 +8,7 @@ import {
   migrateLegacyVars,
   isVarHighChurn,
   purgeVarFromHistory,
+  resolveInitialTemplateVars,
   VarRecord,
   VarPreferences
 } from '../../src/lib/var-history.js';
@@ -376,6 +377,75 @@ describe('Variable History & Autocomplete Engine', () => {
 
     it('handles empty legacy variables gracefully', () => {
       expect(migrateLegacyVars({})).toEqual([]);
+    });
+  });
+
+  describe('resolveInitialTemplateVars', () => {
+    const history: VarRecord[] = [
+      {
+        id: 'rec-1',
+        values: {
+          ORGANIZATION: 'Kenya Power',
+          PHONE: '888888',
+          'TXN CODE': 'QK12345678'
+        },
+        lastUsed: 2000,
+        useCount: 2
+      },
+      {
+        id: 'rec-0',
+        values: {
+          ORGANIZATION: 'Equity Bank',
+          PHONE: '0763000000'
+        },
+        lastUsed: 1000,
+        useCount: 1
+      }
+    ];
+
+    it('pre-fills remembered variables from most recent matching history record', () => {
+      const vars = ['ORGANIZATION', 'PHONE', 'TXN CODE'];
+      const unpinnedVars = ['TXN CODE'];
+      const initial = resolveInitialTemplateVars(vars, history, null, unpinnedVars);
+
+      expect(initial['ORGANIZATION']).toBe('Kenya Power');
+      expect(initial['PHONE']).toBe('888888');
+      // TXN CODE is unpinned, so it defaults to blank
+      expect(initial['TXN CODE']).toBe('');
+    });
+
+    it('prioritizes explicit prefill values over history and unpinned settings', () => {
+      const vars = ['ORGANIZATION', 'PHONE', 'TXN CODE'];
+      const unpinnedVars = ['TXN CODE'];
+      const prefills = {
+        'TXN CODE': 'TRANSACTION_ABC',
+        'ORGANIZATION': 'Custom Corp'
+      };
+      const initial = resolveInitialTemplateVars(vars, history, null, unpinnedVars, prefills);
+
+      expect(initial['TXN CODE']).toBe('TRANSACTION_ABC');
+      expect(initial['ORGANIZATION']).toBe('Custom Corp');
+      expect(initial['PHONE']).toBe('888888');
+    });
+
+    it('falls back to empty string if no history exists for a variable', () => {
+      const vars = ['UNKNOWN_VAR'];
+      const initial = resolveInitialTemplateVars(vars, [], null);
+      expect(initial['UNKNOWN_VAR']).toBe('');
+    });
+
+    it('tolerates non-array or legacy string usageValues in preferences without throwing', () => {
+      const legacyPrefs = {
+        remember: { 'TXN CODE': true },
+        usageValues: { 'TXN CODE': 'SINGLE_STRING_VALUE' as unknown as string[] }
+      };
+
+      // Does not throw TypeError: recent.map is not a function
+      expect(() => isVarHighChurn(history, 'TXN CODE', legacyPrefs)).not.toThrow();
+
+      // saveVarRecord does not explode when spreading non-array usageValues
+      const saveRes = saveVarRecord(history, { 'TXN CODE': 'NEW_VAL' }, legacyPrefs);
+      expect(Array.isArray(saveRes.updatedPrefs.usageValues['TXN CODE'])).toBe(true);
     });
   });
 });

@@ -532,7 +532,12 @@
           "id": "diy_paybill_merchant_sms",
           "label": "Send Merchant Contacts",
           "smsId": "sms_paybill_rev",
-          "adviceText": "Merchant contact details sent to customer via SMS"
+          "adviceText": "Merchant contact details sent to customer via SMS",
+          "varMap": {
+            "ORGANIZATION": "pbr_orgname",
+            "PHONE": "pbr_merchantphone",
+            "TXN CODE": "pbr_txnid"
+          }
         }
       ],
       "comments": [
@@ -1423,7 +1428,10 @@
           "id": "diy_puk_issuance",
           "label": "Send PUK SMS",
           "smsId": "sms_puk_issuance",
-          "adviceText": "PUK sent via SMS to calling number"
+          "adviceText": "PUK sent via SMS to calling number",
+          "varMap": {
+            "MSISDN": "puk_msisdn"
+          }
         }
       ],
       "copyTitle": "PUK Retrieval – Vetting"
@@ -2278,6 +2286,94 @@
         "Wrong recipient has insufficient funds. SR raised to Support per DSMP-0008 (72h SLA).",
         "Till not whitelisted for 2530. Whitelist template initiated per DSMP-0008."
       ]
+    }
+  ],
+  "quickSmsTemplates": [
+    {
+      "id": "sms_paybill_rev",
+      "title": "Paybill Merchant Contact Details",
+      "text": "Jambo, kindly contact {ORGANIZATION} on {PHONE} for reversal request of transaction {TXN CODE}. Safaricom.",
+      "unpinnedVars": ["TXN CODE"],
+      "version": 2
+    },
+    {
+      "id": "sms_rev_456",
+      "title": "M-PESA Self-Service Reversal (456)",
+      "text": "Jambo, you can reverse a wrong M-PESA transaction by forwarding the M-PESA transaction message to 456. Safaricom.",
+      "version": 2
+    },
+    {
+      "id": "sms_pin_334",
+      "title": "M-PESA Self PIN Unlock (*334#)",
+      "text": "Jambo, to unlock your M-PESA PIN, dial *334# > My Account > Unlock M-PESA PIN > Enter your ID Number. Safaricom.",
+      "version": 2
+    },
+    {
+      "id": "sms_puk_100",
+      "title": "Self-Service PUK Retrieval (*100# / *456#)",
+      "text": "Jambo, to get PUK for a blocked line, dial *100# or *456# from another line > Get PUK > Enter mobile number > Enter ID number. Safaricom.",
+      "version": 2
+    },
+    {
+      "id": "sms_puk_issuance",
+      "title": "PUK Number Issuance to Caller",
+      "text": "Jambo, your PUK number for {MSISDN} is {PUK}. Do not share your PIN or PUK with anyone. Safaricom.",
+      "unpinnedVars": ["MSISDN", "PUK"],
+      "version": 2
+    },
+    {
+      "id": "sms_pin_manager_334",
+      "title": "M-PESA PIN Manager (*334#)",
+      "text": "Jambo, to set security questions or reset your forgotten M-PESA PIN, dial *334# > My Account > M-PESA PIN Manager and follow the prompts. Safaricom.",
+      "version": 2
+    },
+    {
+      "id": "sms_till_rev_100",
+      "title": "Buy Goods / Till Reversal (*100#)",
+      "text": "Jambo, to reverse a wrong Buy Goods transaction, dial *100# > Mpesa/Reversal > Reverse Buy Goods Transaction and follow the prompts. Safaricom.",
+      "version": 2
+    },
+    {
+      "id": "sms_agent_rev_2530",
+      "title": "Agent Self-Reversal (2530)",
+      "text": "Jambo, M-PESA agents can reverse wrong customer deposits and withdrawals within 1 hour by forwarding the transaction SMS to 2530. Safaricom.",
+      "version": 2
+    },
+    {
+      "id": "sms_till_sim_swap_234",
+      "title": "Till Self SIM Swap (*234#)",
+      "text": "Jambo, to swap your Till notification SIM, dial *234# from the Nominated Number > M-PESA Business Till > Account Services > SIM Swap, or use the M-PESA Business App. Safaricom.",
+      "version": 2
+    },
+    {
+      "id": "sms_statement_334",
+      "title": "M-PESA Statement DIY (*334# / App)",
+      "text": "Jambo, to get your M-PESA statement, dial *334# > My Account > M-PESA Statement or download it via the M-PESA App / MySafaricom App. Safaricom.",
+      "version": 2
+    },
+    {
+      "id": "sms_stop_promo_456",
+      "title": "Stop Promotional SMS (*456*9# / 40044)",
+      "text": "Jambo, to stop unwanted marketing SMS or manage subscriptions, dial *456*9# > Stop Promotional Messages or send STOP to 40044. Safaricom.",
+      "version": 2
+    },
+    {
+      "id": "sms_report_fraud_333",
+      "title": "Report Fraud or Scam (333)",
+      "text": "Dear Customer, to report fraud or con messages, forward the message or caller number via SMS to 333 for investigation. Safaricom.",
+      "version": 2
+    },
+    {
+      "id": "sms_pooled_reactivation",
+      "title": "Pooled Line Reactivation (*100# / *456#)",
+      "text": "Jambo, to recreate your pooled line, dial *100# > SIM Card Queries > SIM Card Reactivation or *456# from another line and enter your ID and Old SIM serial. Top up within 7 days. Safaricom.",
+      "version": 2
+    },
+    {
+      "id": "sms_inaudible_call",
+      "title": "Inaudible Call / Voice Break Reversal",
+      "text": "Jambo, sorry we cannot hear you on call. Dial 100, 200 or 234 for assistance or call us from a different phone. To reverse M-PESA forward the message to 456. Thank you.",
+      "version": 2
     }
   ]
 }

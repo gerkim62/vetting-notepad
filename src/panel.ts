@@ -1878,18 +1878,63 @@ function renderDiyChips(t) {
       let smsText = foundTpl.text;
       const v = curValues();
       const allItems = [...t.required, ...t.optional];
+      const formPrefills: Record<string, string> = {};
+
+      // 1. Config-driven DIY Action varMap mapping (polymorphic, schema-driven)
+      if (diy.varMap && typeof diy.varMap === 'object') {
+        for (const [varName, fieldTarget] of Object.entries(diy.varMap)) {
+          if (!varName || typeof fieldTarget !== 'string') continue;
+          const matchedItem = allItems.find(it => it.id === fieldTarget || it.label === fieldTarget);
+          const val = (matchedItem ? v[matchedItem.id] : v[fieldTarget])?.trim();
+          if (val) {
+            formPrefills[varName] = val;
+            smsText = smsText.replace(new RegExp(`\\{${escapeRegExp(varName)}\\}`, 'gi'), val);
+          }
+        }
+      }
+
+      // 2. Field-level templateVar and exact label matching
       for (const it of allItems) {
         const val = (v[it.id] || '').trim();
         if (val) {
+          if (it.templateVar) {
+            formPrefills[it.templateVar] = val;
+            smsText = smsText.replace(new RegExp(`\\{${escapeRegExp(it.templateVar)}\\}`, 'gi'), val);
+          }
           const { copy: copyLabel } = parseLabel(it.label);
-          smsText = smsText.replace(new RegExp(`\\{${escapeRegExp(copyLabel)}\\}`, 'gi'), val);
+          if (copyLabel) {
+            formPrefills[copyLabel] = val;
+            smsText = smsText.replace(new RegExp(`\\{${escapeRegExp(copyLabel)}\\}`, 'gi'), val);
+          }
+          formPrefills[it.label] = val;
           smsText = smsText.replace(new RegExp(`\\{${escapeRegExp(it.label)}\\}`, 'gi'), val);
+        }
+      }
+
+      // 3. Fallback: Generic normalized matching for any remaining template variables
+      // (e.g. {ORGANIZATION} gracefully matches field "Organization" or "Organization Name")
+      const currentRemaining = parseTemplateVariables(smsText);
+      if (currentRemaining.length > 0) {
+        for (const remVar of currentRemaining) {
+          const cleanVar = remVar.toLowerCase().replace(/[^a-z0-9]/g, '');
+          if (!cleanVar) continue;
+          const matchedItem = allItems.find(it => {
+            const cleanL = parseLabel(it.label).copy.toLowerCase().replace(/[^a-z0-9]/g, '');
+            return cleanL === cleanVar || cleanL.includes(cleanVar) || cleanVar.includes(cleanL);
+          });
+          if (matchedItem) {
+            const val = (v[matchedItem.id] || '').trim();
+            if (val) {
+              formPrefills[remVar] = val;
+              smsText = smsText.replace(new RegExp(`\\{${escapeRegExp(remVar)}\\}`, 'gi'), val);
+            }
+          }
         }
       }
 
       const remainingVars = parseTemplateVariables(smsText);
       if (remainingVars.length > 0) {
-        openVarFillModal(foundTpl, 'sms');
+        openVarFillModal(foundTpl, 'sms', formPrefills);
       } else {
         await writeToClipboard(smsText);
         const updatedChip = diyRow.querySelector<HTMLElement>(`.diy-chip[data-diy-id="${diyId}"]`);
@@ -4207,8 +4252,19 @@ async function loadQuickTemplates() {
   varHistory = (await Storage.get('vpad.var_history', [])) || [];
   varPreferences = (await Storage.get('vpad.var_prefs', { remember: {}, usageValues: {}, ignoredWarnings: {} })) || { remember: {}, usageValues: {}, ignoredWarnings: {} };
   if (!varPreferences.ignoredWarnings) varPreferences.ignoredWarnings = {};
-  if (!varPreferences.usageValues) varPreferences.usageValues = {};
   if (!varPreferences.remember) varPreferences.remember = {};
+  if (!varPreferences.usageValues || typeof varPreferences.usageValues !== 'object') {
+    varPreferences.usageValues = {};
+  } else {
+    for (const [k, val] of Object.entries(varPreferences.usageValues)) {
+      if (typeof val === 'string') {
+        const trimmed = val.trim();
+        varPreferences.usageValues[k] = trimmed ? [trimmed] : [];
+      } else if (!Array.isArray(val)) {
+        varPreferences.usageValues[k] = [];
+      }
+    }
+  }
 
   if (legacyRemembered && typeof legacyRemembered === 'object' && Object.keys(legacyRemembered).length > 0) {
     if (varHistory.length === 0) {
@@ -4218,7 +4274,9 @@ async function loadQuickTemplates() {
     for (const [k, v] of Object.entries(legacyRemembered)) {
       if (typeof v === 'string' && v) {
         varPreferences.remember[k] = true;
-        if (!varPreferences.usageValues[k]) varPreferences.usageValues[k] = v;
+        if (!varPreferences.usageValues[k] || varPreferences.usageValues[k].length === 0) {
+          varPreferences.usageValues[k] = [v];
+        }
       }
     }
     persistVarHistory();
@@ -4677,6 +4735,7 @@ async function deleteTemplate(id, type) {
           for (const diy of vt.diyActions) {
             if (diy.smsId === id) {
               delete diy.smsId;
+              delete diy.varMap;
               typesModified = true;
             }
           }
@@ -4747,7 +4806,7 @@ function highlightVarQuery(label, query) {
   return escaped;
 }
 
-function openVarFillModal(tpl, _type) {
+function openVarFillModal(tpl, _type, prefillValues?: Record<string, string>) {
   const vars = parseTemplateVariables(tpl.text);
   if (vars.length === 0) {
     const card = document.querySelector<HTMLElement>(`.template-card[data-template-id="${tpl.id}"]`);
@@ -4765,13 +4824,18 @@ function openVarFillModal(tpl, _type) {
   if (varFillOverlay) varFillOverlay.style.display = 'block';
   if (varFillModal) varFillModal.style.display = 'flex';
 
-  const currentValues = {};
-  const manualEdits = new Set();
+  const currentValues: Record<string, string> = {};
+  const manualEdits = new Set<string>();
 
-  // Variable inputs always start fresh and blank for each session
   vars.forEach(v => {
-    currentValues[v] = '';
+    currentValues[v] = prefillValues?.[v]?.trim() || '';
   });
+
+  if (prefillValues) {
+    for (const [k, val] of Object.entries(prefillValues)) {
+      if (val && val.trim()) manualEdits.add(k);
+    }
+  }
 
   const updatePreview = () => {
     if (varPreviewText) {
@@ -4863,18 +4927,18 @@ function openVarFillModal(tpl, _type) {
         currentValues[v] = sug.primaryValue;
         if (isCommit) {
           inp.value = sug.primaryValue;
+          manualEdits.add(v);
         }
 
-        // Fill accompanying variables into all empty or whitespace companion inputs
+        // Fill accompanying variables into companion inputs
         vars.forEach(otherVar => {
           if (otherVar !== v && sug.accompanying && sug.accompanying[otherVar] !== undefined) {
             const siblingRow = Array.from(varInputsList.querySelectorAll<HTMLElement>('.var-input-row')).find(
               r => r.dataset.varName === otherVar
             );
             const siblingInp = siblingRow ? siblingRow.querySelector<HTMLInputElement>('.var-input') : null;
-            const currentVal = siblingInp ? siblingInp.value.trim() : '';
 
-            if (!currentVal || !isCommit) {
+            if (!manualEdits.has(otherVar) || !isCommit) {
               currentValues[otherVar] = sug.accompanying[otherVar];
               if (siblingInp && isCommit) {
                 siblingInp.value = sug.accompanying[otherVar];
@@ -4924,8 +4988,15 @@ function openVarFillModal(tpl, _type) {
             applySuggestion(sug, false);
           };
 
+          itemEl.onmousedown = (e) => {
+            if (!e.target.closest('.var-suggestion-del')) {
+              e.preventDefault();
+            }
+          };
+
           itemEl.onclick = (e) => {
             if (e.target.closest('.var-suggestion-del')) return;
+            e.stopPropagation();
             applySuggestion(sug, true);
           };
 
@@ -5130,6 +5201,12 @@ function openVarFillModal(tpl, _type) {
           renderSuggestions();
         };
 
+        inp.onclick = () => {
+          if (!dropdown || dropdown.style.display === 'none') {
+            renderSuggestions();
+          }
+        };
+
         inp.onblur = () => {
           setTimeout(() => {
             if (document.activeElement !== inp && (!dropdown || !dropdown.contains(document.activeElement))) {
@@ -5222,8 +5299,9 @@ function openVarFillModal(tpl, _type) {
       }
     });
 
-    const firstInp = varInputsList.querySelector('.var-input');
-    if (firstInp) setTimeout(() => firstInp.focus(), 50);
+    const emptyInp = Array.from(varInputsList.querySelectorAll<HTMLInputElement>('.var-input')).find(i => !i.value.trim());
+    const targetFocus = emptyInp || varInputsList.querySelector<HTMLInputElement>('.var-input');
+    if (targetFocus) setTimeout(() => targetFocus.focus(), 50);
   }
 
   updatePreview();
@@ -5240,15 +5318,6 @@ function openVarFillModal(tpl, _type) {
       const saveRes = saveVarRecord(varHistory, currentValues, varPreferences, 100, tpl?.unpinnedVars);
       varHistory = saveRes.updatedHistory;
       varPreferences = saveRes.updatedPrefs;
-      persistVarHistory();
-
-      vars.forEach(v => {
-        if (isVarRemembered(v, varPreferences, tpl?.unpinnedVars)) {
-          varPreferences.usageValues[v] = currentValues[v] || '';
-        } else {
-          delete varPreferences.usageValues[v];
-        }
-      });
       persistVarHistory();
 
       if (saveRes.autoMutedVars.length > 0) {

@@ -160,4 +160,30 @@ describe('Feature Enhancements: Policy, DIY Unified, Shift+Enter & Multiline', (
       controller.destroy();
     });
   });
+
+  describe('5. Paybill Reversal DIY SMS Action & Field Linking', () => {
+    it('verifies Paybill Reversal has linked SMS action and required fields', () => {
+      const pbr = config.types.find(t => t.id === 'paybill_reversal');
+      expect(pbr).toBeDefined();
+
+      const diySms = pbr?.diyActions?.find(d => d.id === 'diy_paybill_merchant_sms');
+      expect(diySms).toBeDefined();
+      expect(diySms?.smsId).toBe('sms_paybill_rev');
+      expect(diySms?.varMap).toEqual({
+        ORGANIZATION: 'pbr_orgname',
+        PHONE: 'pbr_merchantphone',
+        'TXN CODE': 'pbr_txnid'
+      });
+
+      // Vetting fields with clipboard parser mappings
+      const orgField = pbr?.required.find(f => f.id === 'pbr_orgname');
+      expect(orgField?.mpesaTxn).toBe('orgName');
+
+      const txnField = pbr?.required.find(f => f.id === 'pbr_txnid');
+      expect(txnField?.mpesaTxn).toBe('receiptNumber');
+
+      const phoneField = pbr?.optional.find(f => f.id === 'pbr_merchantphone');
+      expect(phoneField?.label).toContain('Merchant Contact');
+    });
+  });
 });
