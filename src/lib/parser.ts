@@ -220,7 +220,7 @@ export function parseVettingText(rawText: string | null | undefined, types: Vett
       lineLower.startsWith('vetting: failed') ||
       lineLower.startsWith('advised:') ||
       line.startsWith('Referred to Retail') ||
-      line.startsWith('Failed vetting. Advised') ||
+      line.startsWith('Failed vetting.') ||
       line.startsWith('Failed vetting again.')
     ) {
       continue;

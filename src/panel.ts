@@ -548,6 +548,7 @@ if (topBannerClose) {
 const showToast = showBanner;
 
 let activeDiyState: Record<string, string[]> = {};
+let activeOutcomeState: Record<string, string> = {};
 
 function morphButton(btn: HTMLElement | null, text: string, iconName = 'Check', type: 'success' | 'error' = 'success', durationMs = 1200) {
   if (!btn) return;
@@ -789,22 +790,47 @@ function buildCopyText(t) {
   if (manualComment) {
     topAdvice = `${typeName}: ${manualComment}`;
   } else if (cb.policy && cb.policyDirective) {
-    topAdvice = `${typeName}: Policy restriction triggered. ${cb.policyDirective}`;
-  } else if (isFailed) {
-    if (cb.primary) {
-      topAdvice = `${typeName}: Failed vetting. Referred to Retail Centre / Care Desk with original ID.`;
-    } else if (callAttempt === 2) {
-      topAdvice = `${typeName}: Failed vetting again. Referred to Retail Centre / Care Desk with original ID.`;
+    const activeDiyIds = activeDiyState[t.id] || [];
+    const activeDiys = (t.diyActions || []).filter(d => activeDiyIds.includes(d.id));
+    if (activeDiys.length > 0) {
+      const diyText = activeDiys.map(d => d.adviceText || d.label).join(' and ');
+      topAdvice = `${typeName}: Policy restriction triggered. ${cb.policyDirective} ${diyText}.`;
     } else {
-      topAdvice = `${typeName}: Failed vetting. Advised customer to confirm account details and call back.`;
+      topAdvice = `${typeName}: Policy restriction triggered. ${cb.policyDirective}`;
+    }
+  } else if (isFailed) {
+    let failSentence = '';
+    if (cb.primary) {
+      failSentence = `${typeName}: Failed vetting. Referred to Retail Centre / Care Desk with original ID.`;
+    } else if (callAttempt === 2) {
+      failSentence = `${typeName}: Failed vetting again. Referred to Retail Centre / Care Desk with original ID.`;
+    } else {
+      failSentence = `${typeName}: Failed vetting. Advised customer to confirm account details and call back.`;
+    }
+    const activeDiyIds = activeDiyState[t.id] || [];
+    const activeDiys = (t.diyActions || []).filter(d => activeDiyIds.includes(d.id));
+    if (activeDiys.length > 0) {
+      const diyText = activeDiys.map(d => d.adviceText || d.label).join(' and ');
+      topAdvice = `${failSentence} ${diyText}.`;
+    } else {
+      topAdvice = failSentence;
     }
   } else {
     const activeDiyIds = activeDiyState[t.id] || [];
     const activeDiys = (t.diyActions || []).filter(d => activeDiyIds.includes(d.id));
+    const diyText = activeDiys.length > 0 ? activeDiys.map(d => d.adviceText || d.label).join(' and ') : '';
 
-    if (activeDiys.length > 0) {
-      const diyText = activeDiys.map(d => d.adviceText || d.label).join(' and ');
-      topAdvice = `${typeName}: Processed. ${diyText}.`;
+    const hasOutcomes = Array.isArray(t.outcomes) && t.outcomes.length > 0;
+    const defaultOutcome = hasOutcomes ? (t.outcomes?.find(o => o.isDefault) || t.outcomes?.[0]) : null;
+    const selectedOutcomeId = activeOutcomeState[t.id] || defaultOutcome?.id;
+    const selectedOutcome = hasOutcomes ? t.outcomes?.find(o => o.id === selectedOutcomeId) : null;
+
+    if (selectedOutcome && isTrulyPassed) {
+      topAdvice = diyText
+        ? `${typeName}: ${selectedOutcome.line1Text}. ${diyText}.`
+        : `${typeName}: ${selectedOutcome.line1Text}.`;
+    } else if (diyText) {
+      topAdvice = `${typeName}: ${diyText}.`;
     } else if (isTrulyPassed) {
       topAdvice = `${typeName}: Passed vetting.`;
     } else {
@@ -989,6 +1015,7 @@ function startAutoClear(typeId) {
       formValues[typeId] = {};
       itemStatus[typeId] = {};
       activeDiyState[typeId] = [];
+      delete activeOutcomeState[typeId];
       renderForm();
       updateCommentInput();
       syncPreview();
@@ -1023,10 +1050,12 @@ btnClear.onclick = async () => {
   const snapStatus = JSON.parse(JSON.stringify(itemStatus));
   const snapAttempt = callAttempt;
   const snapDiy = JSON.parse(JSON.stringify(activeDiyState));
+  const snapOutcome = JSON.parse(JSON.stringify(activeOutcomeState));
 
   formValues = {};
   itemStatus = {};
   activeDiyState = {};
+  activeOutcomeState = {};
   callAttempt = 1;
   resetFillingOrder();
 
@@ -1053,6 +1082,7 @@ btnClear.onclick = async () => {
     formValues = snapVal;
     itemStatus = snapStatus;
     activeDiyState = snapDiy;
+    activeOutcomeState = snapOutcome;
     callAttempt = snapAttempt;
     renderForm();
     updateCommentInput();
@@ -1805,8 +1835,48 @@ function renderForm() {
   updateTiedGroupBrackets();
   updateSecondaryCounter();
   setupInfoPopovers();
+  renderOutcomeChips(t);
   renderDiyChips(t);
   syncPreview();
+}
+
+function renderOutcomeChips(t: VettingType | undefined) {
+  const outcomeRow = document.getElementById('outcomeChipsRow');
+  if (!outcomeRow) return;
+  if (!t || !Array.isArray(t.outcomes) || t.outcomes.length === 0) {
+    outcomeRow.style.display = 'none';
+    outcomeRow.innerHTML = '';
+    return;
+  }
+
+  outcomeRow.style.display = 'flex';
+  const defaultOutcome = t.outcomes.find(o => o.isDefault) || t.outcomes[0];
+  const activeId = activeOutcomeState[t.id] || defaultOutcome?.id;
+
+  let chipsHtml = `<span class="outcome-chips-label">Outcome:</span>`;
+  chipsHtml += t.outcomes.map(out => {
+    const isActive = activeId === out.id;
+    return `
+      <button type="button" class="outcome-chip ${isActive ? 'active' : ''}" data-outcome-id="${escapeHtml(out.id)}" title="${escapeHtml(out.line1Text)}">
+        <span class="outcome-chip-icon">${isActive ? renderIcon('Check', { size: 10, strokeWidth: 2.5 }) : ''}</span>
+        <span class="outcome-chip-text">${escapeHtml(out.label)}</span>
+      </button>
+    `;
+  }).join('');
+
+  outcomeRow.innerHTML = chipsHtml;
+
+  outcomeRow.querySelectorAll<HTMLElement>('.outcome-chip').forEach(chipEl => {
+    chipEl.onclick = (e) => {
+      e.stopPropagation();
+      const outcomeId = chipEl.dataset.outcomeId;
+      if (!outcomeId) return;
+
+      activeOutcomeState[t.id] = outcomeId;
+      renderOutcomeChips(t);
+      syncPreview();
+    };
+  });
 }
 
 function renderDiyChips(t) {

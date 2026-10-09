@@ -294,6 +294,24 @@
         "Customer vetted on primary and secondary details. Line swapped successfully. Educated on M-PESA activation.",
         "Customer failed secondary vetting. Advised to confirm FDN 1 and FDN 2 and call back."
       ],
+      "outcomes": [
+        {
+          "id": "swap_done",
+          "label": "Swap Completed",
+          "line1Text": "Line swapped successfully",
+          "isDefault": true
+        },
+        {
+          "id": "swap_advised",
+          "label": "Advised Only",
+          "line1Text": "Advised customer on replacement requirements; swap not executed"
+        },
+        {
+          "id": "swap_referred",
+          "label": "Referred to Retail",
+          "line1Text": "Referred to Retail Centre with original ID"
+        }
+      ],
       "copyTitle": "SIM Swap – Vetting"
     },
     {
@@ -1176,6 +1194,18 @@
       ],
       "optional": [
         {
+          "id": "sk_call_on_behalf",
+          "label": "Calling on Behalf // DIY Only",
+          "len": 0,
+          "info": "[SAKA SKKI-0001]\nWhere customer is calling on behalf of the owner, CEE can only give Start Key DIY; cannot issue Start Key at Contact Center. Calling line must be in Active state.",
+          "excludeFromCount": true,
+          "itemType": "policy",
+          "compactChip": true,
+          "attachTo": "sk_callno",
+          "violationAdvice": "Calling on behalf. Advised customer on Start Key DIY for line owner as per SAKA SKKI-0001.",
+          "role": "policy"
+        },
+        {
           "id": "sk_call_inactive",
           "label": "Not Active // IN-Data",
           "len": 0,
@@ -1325,6 +1355,19 @@
           "label": "DIY PIN Manager (*334#)",
           "adviceText": "Educated on *334# M-PESA PIN Manager",
           "smsId": "sms_pin_manager_334"
+        }
+      ],
+      "outcomes": [
+        {
+          "id": "sk_issued",
+          "label": "Start Key Issued",
+          "line1Text": "Start Key issued",
+          "isDefault": true
+        },
+        {
+          "id": "sk_not_issued",
+          "label": "Start Key Not Issued",
+          "line1Text": "Start Key not issued"
         }
       ],
       "copyTitle": "M-PESA Start Key – Vetting"

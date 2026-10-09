@@ -131,7 +131,7 @@ describe('Quality Gate: Standalone Config & Zero-Hardcoded-Knowledge Policy', ()
       expect(isTrulyPassed).toBe(true);
     });
 
-    it('enforces that active DIY actions do NOT override fail mode when vetting has failed', () => {
+    it('enforces that active DIY actions do NOT override fail mode when vetting has failed and preserves DIY advice', () => {
       const isFailed = true;
       const activeDiys = [{ label: 'DIY PIN Manager (*334#)', adviceText: 'Educated on *334# M-PESA PIN Manager' }];
       const typeName = 'M-PESA Start Key / Forgotten PIN';
@@ -139,14 +139,21 @@ describe('Quality Gate: Standalone Config & Zero-Hardcoded-Knowledge Policy', ()
       // Simulation of advice hierarchy
       let topAdvice = '';
       if (isFailed) {
-        topAdvice = `${typeName}: Failed vetting. Advised customer to confirm account details and call back.`;
+        const failSentence = `${typeName}: Failed vetting. Advised customer to confirm account details and call back.`;
+        if (activeDiys.length > 0) {
+          const diyText = activeDiys.map(d => d.adviceText || d.label).join(' and ');
+          topAdvice = `${failSentence} ${diyText}.`;
+        } else {
+          topAdvice = failSentence;
+        }
       } else if (activeDiys.length > 0) {
         const diyText = activeDiys.map(d => d.adviceText || d.label).join(' and ');
-        topAdvice = `${typeName}: Processed. ${diyText}.`;
+        topAdvice = `${typeName}: ${diyText}.`;
       }
 
       expect(topAdvice).toContain('Failed vetting');
       expect(topAdvice).not.toContain('Processed');
+      expect(topAdvice).toContain('Educated on *334# M-PESA PIN Manager');
     });
   });
 });

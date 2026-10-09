@@ -23,6 +23,15 @@ export interface VettingField {
   attachTo?: string;
   groupLabel?: string;
   templateVar?: string;
+  actionText?: string;
+  negationText?: string;
+}
+
+export interface VettingOutcome {
+  id: string;
+  label: string;
+  line1Text: string;
+  isDefault?: boolean;
 }
 
 export interface VettingDiyAction {
@@ -43,6 +52,7 @@ export interface VettingType {
   optional: VettingField[];
   comments?: string[];
   diyActions?: VettingDiyAction[];
+  outcomes?: VettingOutcome[];
   isCustom?: boolean;
 }
 

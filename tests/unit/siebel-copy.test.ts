@@ -162,4 +162,98 @@ Year of Birth: 1996 (Passed)`;
     expect(parsed.values['sw_yob']).toBe('1996');
     expect(parsed.comment).toBeFalsy();
   });
+
+  it('verifies default outcomes exist on swap and startkey in config', () => {
+    const swapType = types.find(t => t.id === 'swap');
+    expect(swapType?.outcomes).toBeDefined();
+    expect(swapType?.outcomes?.length).toBeGreaterThanOrEqual(2);
+    expect(swapType?.outcomes?.find(o => o.isDefault)?.line1Text).toBe('Line swapped successfully');
+
+    const startKeyType = types.find(t => t.id === 'startkey');
+    expect(startKeyType?.outcomes).toBeDefined();
+    expect(startKeyType?.outcomes?.find(o => o.isDefault)?.line1Text).toBe('Start Key issued');
+    expect(startKeyType?.outcomes?.find(o => o.id === 'sk_not_issued')?.line1Text).toBe('Start Key not issued');
+  });
+
+  it('verifies Calling on Behalf policy chip exists on startkey in config', () => {
+    const startKeyType = types.find(t => t.id === 'startkey');
+    const onBehalfField = startKeyType?.optional.find(f => f.id === 'sk_call_on_behalf');
+    expect(onBehalfField).toBeDefined();
+    expect(onBehalfField?.itemType).toBe('policy');
+    expect(onBehalfField?.attachTo).toBe('sk_callno');
+    expect(onBehalfField?.violationAdvice).toContain('Calling on behalf');
+  });
+
+  it('parses copy text with Line swapped successfully outcome header', () => {
+    const rawSwapDone = `SIM Swap: Line swapped successfully.
+Vetting: Passed
+Calling Number: 797246352
+Line to Swap: 745032328
+New SIMEX Serial: 89254021454231385080
+Full Names: MILLICENT ATIENO KIRAKA (Passed)
+ID Number: 32708967 (Passed)
+Year of Birth: 1994 (Passed)
+Registration Date: 02/2025 (Passed)
+Fuliza Limit: 300.00 (Passed)`;
+
+    const parsed = parseVettingText(rawSwapDone, types, 'swap');
+    expect(parsed.typeId).toBe('swap');
+    expect(parsed.comment).toBe('Line swapped successfully.');
+    expect(parsed.values['sw_callno']).toBe('797246352');
+    expect(parsed.values['sw_msisdn']).toBe('745032328');
+    expect(parsed.values['sw_name']).toBe('MILLICENT ATIENO KIRAKA');
+    expect(parsed.status['sw_name']).toBeNull();
+  });
+
+  it('parses copy text with Start Key issued and DIY PIN Manager educated', () => {
+    const rawStartKeyText = `M-PESA Start Key / Forgotten PIN: Start Key issued. Educated on *334# M-PESA PIN Manager.
+Vetting: Passed
+Calling Number: 181968803
+Affected M-PESA Line: 181968803
+Full Names: ROBINSON GIKUNJU MURIITHI (Passed)
+ID Number: 41391558 (Passed)
+Year of Birth: 2001 (Passed)
+M-PESA Balance: 800 (Passed)
+Airtime Balance: 0 (Failed)
+Registration Date: 10/2026 (Passed)`;
+
+    const parsed = parseVettingText(rawStartKeyText, types, 'startkey');
+    expect(parsed.typeId).toBe('startkey');
+    expect(parsed.comment).toBe('Start Key issued. Educated on *334# M-PESA PIN Manager.');
+    expect(parsed.values['sk_callno']).toBe('181968803');
+    expect(parsed.values['sk_msisdn']).toBe('181968803');
+    expect(parsed.status['sk_airtime_bal']).toBe('failed');
+  });
+
+  it('parses copy text with Start Key not issued', () => {
+    const rawNotIssuedText = `M-PESA Start Key / Forgotten PIN: Start Key not issued. Educated on *334# M-PESA PIN Manager.
+Vetting: Passed
+Calling Number: 181968803
+Affected M-PESA Line: 181968803
+Full Names: ROBINSON GIKUNJU MURIITHI (Passed)
+ID Number: 41391558 (Passed)
+Year of Birth: 2001 (Passed)
+M-PESA Balance: 800 (Passed)
+Registration Date: 10/2026 (Passed)`;
+
+    const parsed = parseVettingText(rawNotIssuedText, types, 'startkey');
+    expect(parsed.typeId).toBe('startkey');
+    expect(parsed.comment).toBe('Start Key not issued. Educated on *334# M-PESA PIN Manager.');
+  });
+
+  it('parses copy text where vetting failed but DIY advice was preserved', () => {
+    const rawFailedDiy = `Pooled Number: Failed vetting. Referred to Retail Centre / Care Desk with original ID. Educated on *334# M-PESA PIN Manager.
+Vetting: Failed
+Calling Number: 746108116
+Pooled Line Number: 746108116
+Full Names: CHRISTINE KADENGE (Passed)
+ID Number: 27206487 (Failed)`;
+
+    const parsed = parseVettingText(rawFailedDiy, types, 'pooled');
+    expect(parsed.typeId).toBe('pooled');
+    expect(parsed.comment).toBe('Failed vetting. Referred to Retail Centre / Care Desk with original ID. Educated on *334# M-PESA PIN Manager.');
+    expect(parsed.values['pol_callno']).toBe('746108116');
+    expect(parsed.values['pol_msisdn']).toBe('746108116');
+    expect(parsed.status['pol_idnum']).toBe('failed');
+  });
 });
